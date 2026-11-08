@@ -488,6 +488,19 @@ describe('deriveRun: countertops', () => {
       tier(r, 0).items.splice(2, 0, { kind: 'slot', spanId: id });
     });
     expect(counters(result).map((c) => [c.bounds.x, c.bounds.x + c.bounds.width])).toEqual([[0, inches(120)]]);
+    // A 1 1/2" hardwood top over 36" is stiff enough.
+    expect(result.issues.some((i) => i.code === 'shelf-sag')).toBe(false);
+  });
+
+  it('flags a thin countertop sagging over a wide bridged gap', () => {
+    const { result } = withCounter((_, r) => {
+      tier(r, 0).countertop = { ...CT, thickness: inches(3 / 4) };
+      const id = newId();
+      r.spans.push({ id, kind: 'gap', name: 'Desk', bridgeCountertop: true, x: { anchor: 'center', offset: 0 }, width: inches(60), tiers: { from: tier(r, 0).id, to: tier(r, 0).id }, content: opening() });
+      tier(r, 0).items = [flexBox(opening({ type: 'doorPair' }, 1)), { kind: 'slot', spanId: id }, flexBox(opening({ type: 'doorPair' }, 1))];
+    });
+    const sag = result.issues.find((i) => i.code === 'shelf-sag')!;
+    expect(sag.message).toContain('"Desk"');
   });
 
   it('stops at a tall box beside it and notes the stile notch', () => {

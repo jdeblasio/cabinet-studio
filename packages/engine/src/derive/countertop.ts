@@ -7,6 +7,7 @@
 import type { Part } from '../derived';
 import { resolveSettings } from '../settings';
 import type { Ticks } from '../units';
+import { checkShelfSag } from './checks';
 import { makePart, type Ctx } from './context';
 import type { PlacedBox, RunLayoutResult } from './layout';
 import { endReach } from './reach';
@@ -69,6 +70,13 @@ export function deriveCountertops(ctx: Ctx, layout: RunLayoutResult, stiles: rea
         ownerId: tier.id,
       });
       parts.push(part);
+
+      // Where the top bridges a gap it's unsupported across it: check it like a shelf.
+      for (const g of bridges) {
+        if (g.rect.x < part.bounds.x || g.rect.x + g.rect.width > part.bounds.x + part.bounds.width) continue;
+        const name = ctx.run.spans.find((sp) => sp.id === g.spanId)?.name;
+        checkShelfSag(ctx, settings, g.spanId, `The countertop over ${name ? `"${name}"` : 'the gap'}`, settings.materials.countertop, g.rect.width, depth, tl.countertop);
+      }
 
       // A stile that runs up past the counter (e.g. shared with a tall box) needs a notch.
       const b = part.bounds;
