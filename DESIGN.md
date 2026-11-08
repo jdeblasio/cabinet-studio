@@ -401,7 +401,8 @@ Proves the design experience:
   and how its face frame joins neighbors.
 - **Freestanding units:** modeled as a run with no wall, or a distinct entity?
 - **Countertops:** they are shop-built parts today. Should ordered tops (stone, laminate;
-  size-only, not in the cut list) be an option? Should a top bridge a gap (desk knee space)?
+  size-only, not in the cut list) be an option? (A top can now bridge a gap marked
+  "countertop over it", e.g. desk knee space; it isn't checked for sag yet.)
 - **Moldings:** profile library vs. bounding-box profiles; miter returns at run ends.
 - **Grain matching** across door pairs / drawer banks beyond "group onto one sheet".
 - **Drawing layout:** pagination, sheet sizes, title block.

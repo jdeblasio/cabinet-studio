@@ -326,6 +326,11 @@ export interface Span extends SettingsScope {
   tiers: { from: Id; to: Id };
   /** Carcass depth; defaults to the bottom spanned tier's depth. */
   depth?: Ticks;
+  /**
+   * Gaps only: the countertop of the top tier this gap passes through continues over it as one
+   * piece (e.g. a desk top over knee space between two base cabinets).
+   */
+  bridgeCountertop?: boolean;
   /** Face layout for kind 'box'; ignored for gaps. */
   content: Section;
 }

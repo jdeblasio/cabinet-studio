@@ -481,6 +481,15 @@ describe('deriveRun: countertops', () => {
     ]);
   });
 
+  it('continues over a gap marked to bridge it, e.g. a desk over knee space', () => {
+    const { result } = withCounter((_, r) => {
+      const id = newId();
+      r.spans.push({ id, kind: 'gap', name: 'Knee space', bridgeCountertop: true, x: { anchor: 'center', offset: 0 }, width: inches(36), tiers: { from: tier(r, 0).id, to: tier(r, 0).id }, content: opening() });
+      tier(r, 0).items.splice(2, 0, { kind: 'slot', spanId: id });
+    });
+    expect(counters(result).map((c) => [c.bounds.x, c.bounds.x + c.bounds.width])).toEqual([[0, inches(120)]]);
+  });
+
   it('stops at a tall box beside it and notes the stile notch', () => {
     const { result } = withCounter((_, r) => {
       const id = newId();

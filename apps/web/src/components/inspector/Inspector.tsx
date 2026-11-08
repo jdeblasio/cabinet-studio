@@ -788,6 +788,23 @@ function SpanPanel({ run, span, result }: { run: Run; span: Span; result: RunRes
         <Field label="Width" tip="Overall width.">
           <LengthInput value={span.width} min={inches(1)} onCommit={(width) => geom({ width })} ariaLabel="Span width" />
         </Field>
+        {span.kind === 'gap' && (
+          <Field label="Countertop over it" tip="Carry the countertop of the tier this gap ends in across the gap as one piece, e.g. a desk top over knee space between two base cabinets.">
+            <input
+              type="checkbox"
+              aria-label="Countertop continues over the gap"
+              checked={!!span.bridgeCountertop}
+              onChange={(e) =>
+                edit((d) => {
+                  const sp = d.runs.find((x) => x.id === run.id)?.spans.find((x) => x.id === span.id);
+                  if (!sp) return;
+                  if (e.target.checked) sp.bridgeCountertop = true;
+                  else delete sp.bridgeCountertop;
+                })
+              }
+            />
+          </Field>
+        )}
         {span.kind === 'box' && (
           <Field label="Depth" tip="Carcass depth. Leave it to follow the bottom tier it spans." hint={span.depth === undefined ? 'From bottom tier' : undefined}>
             <LengthInput value={span.depth ?? bottomDepth} min={inches(2)} onCommit={(depth) => geom({ depth })} ariaLabel="Span depth" />

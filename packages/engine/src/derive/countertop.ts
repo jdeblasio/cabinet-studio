@@ -6,6 +6,7 @@
  */
 import type { Part } from '../derived';
 import { resolveSettings } from '../settings';
+import type { Ticks } from '../units';
 import { makePart, type Ctx } from './context';
 import type { PlacedBox, RunLayoutResult } from './layout';
 import { endReach } from './reach';
@@ -25,11 +26,19 @@ export function deriveCountertops(ctx: Ctx, layout: RunLayoutResult, stiles: rea
     // Other carcasses at countertop height (e.g. a tall box beside the counter) stop it.
     const blocks = layout.boxes.filter((b) => !own.includes(b) && b.carcass.y < y1 && b.carcass.y + b.carcass.height > y0);
 
+    // Gaps that end at this tier's top and are marked to carry the countertop over them.
+    const tierTop = tl.y + tl.height;
+    const bridges = layout.gaps.filter((g) => g.rect.y + g.rect.height === tierTop && ctx.run.spans.find((sp) => sp.id === g.spanId)?.bridgeCountertop);
+    /** True when the space between two boxes is covered by bridging gaps (plus any end-stile reserve). */
+    const bridged = (x0: Ticks, x1: Ticks) =>
+      bridges.some((g) => g.rect.x >= x0 && g.rect.x + g.rect.width <= x1) && !blocks.some((o) => o.carcass.x < x1 && o.carcass.x + o.carcass.width > x0);
+
     const segments: PlacedBox[][] = [];
     for (const b of own) {
       const seg = segments[segments.length - 1];
       const prev = seg?.[seg.length - 1];
-      if (seg && prev && prev.carcass.x + prev.carcass.width === b.carcass.x) seg.push(b);
+      const prevEnd = prev ? prev.carcass.x + prev.carcass.width : 0;
+      if (seg && prev && (prevEnd === b.carcass.x || bridged(prevEnd, b.carcass.x))) seg.push(b);
       else segments.push([b]);
     }
 
