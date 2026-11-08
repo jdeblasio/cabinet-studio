@@ -7,6 +7,7 @@
  *   y: up, 0 = floor
  *   z: out from the wall, 0 = wall face, increasing into the room
  */
+import type { CutListOptions } from './cutlist/options';
 import type { Ticks, UnitSystem } from './units';
 
 export type Id = string;
@@ -29,6 +30,8 @@ export interface Project {
   materials: Material[];
   /** Hardware library; the built-in seed catalog when missing. */
   hardware?: HardwareLibrary;
+  /** Cut list / optimizer options that differ from the defaults (kerf, trim, stock lengths, ...). */
+  cutList?: DeepPartial<CutListOptions>;
   runs: Run[];
 }
 

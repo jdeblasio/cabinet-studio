@@ -106,10 +106,17 @@ describe('deriveRun: default project', () => {
 
   it('builds one toe kick platform under the contiguous base boxes', () => {
     const kick = result.parts.filter((p) => p.role === 'toeKick');
-    const front = kick.find((p) => p.id.endsWith('-front'))!;
-    // The front board runs wall to wall; the platform behind it sits under the carcasses.
-    expect(front.length).toBe(inches(120));
-    expect(kick.find((p) => p.id.endsWith('-back'))!.length).toBe(inches(119));
+    const fronts = kick.filter((p) => p.name === 'Toe kick (front)');
+    const backs = kick.filter((p) => p.name === 'Toe kick (back)');
+    // The front board runs wall to wall; the platform behind it sits under the carcasses. Boards
+    // longer than a 96" sheet are pieced, joined over the cross piece under a box joint.
+    expect(fronts.map((p) => [p.bounds.x, p.bounds.x + p.bounds.width])).toEqual([
+      [0, inches(89.75)],
+      [inches(89.75), inches(120)],
+    ]);
+    expect(backs.map((p) => p.length)).toEqual([inches(89.25), inches(29.75)]);
+    expect(fronts[0]!.note).toBe('Piece 1 of 2; joints fall on cross pieces');
+    const front = fronts[0]!;
     expect(front.width).toBe(inches(3.5));
     // Kick face 3" back from the face of the frame.
     expect(front.bounds.z + front.bounds.depth).toBe(inches(16 + 0.75 - 3));
@@ -187,8 +194,8 @@ describe('deriveRun: spans', () => {
     expect([shared.bounds.y, shared.bounds.height]).toEqual([inches(3.5), inches(92)]);
     expect(part(result, `${span.id}/stile-right`).name).toBe('Scribe stile');
     // Toe kick runs under the tall box too, and its front board on to both walls.
-    const front = result.parts.find((p) => p.id.endsWith('kick-0-front'))!;
-    expect(front.length).toBe(inches(120));
+    const fronts = result.parts.filter((p) => p.name === 'Toe kick (front)');
+    expect(fronts.reduce((n, p) => n + p.bounds.width, 0)).toBe(inches(120));
     void run;
   });
 
@@ -744,7 +751,7 @@ describe('deriveRun: frameless construction', () => {
     // Bottom panel flush with the carcass bottom.
     expect(part(result, `${b0.id}/bottom`).bounds.y).toBe(inches(3.5));
     // Toe kick face 3" back from the carcass front.
-    const kick = result.parts.find((p) => p.id.endsWith('kick-0-front'))!;
+    const kick = result.parts.find((p) => p.name === 'Toe kick (front)')!;
     expect(kick.bounds.z + kick.bounds.depth).toBe(inches(13));
   });
 

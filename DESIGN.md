@@ -321,6 +321,14 @@ step or two off its siblings. Hold Alt/Option to drag freely.
   table saw or track saw. Honors kerf, trim, and grain.
 - **1D lumber optimization** for solid stock (rails and stiles from standard board lengths).
 - No CNC / free-form nesting.
+- **Implemented so far:** a cut list (identical parts grouped into lettered rows, with notes),
+  guillotine nesting (112 strategies, keeping the fewest sheets, then the biggest offcut, then
+  the fewest cuts; a numbered cut sequence), 1D lumber packing by rip width with glue-ups for
+  wide parts, a shopping list (sheets, boards and board feet, moldings by length, hardware by
+  type, edge banding), CSV export, and issues for parts that fit no sheet or board. Kerf,
+  trim, grain, stock lengths, widest board and glue-up allowance are options saved with the
+  project. Toe kick boards longer than a sheet are pieced over cross pieces. Per-part grain
+  locks, offcut sheets and grouping parts onto one sheet are still to come.
 - **Constraints, not edits**: users don't drag parts on sheets. They steer the optimizer:
   lock grain per part, mark sheets as offcuts/partial, group parts onto one sheet (e.g.
   grain-matched doors), set kerf/trim.

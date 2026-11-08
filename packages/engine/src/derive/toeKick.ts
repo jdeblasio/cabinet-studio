@@ -8,6 +8,7 @@
  * the wall (scribed) so no slot shows beside the scribe stile.
  */
 import type { Part } from '../derived';
+import { inches, type Ticks } from '../units';
 import { makePart, type Ctx } from './context';
 import type { PlacedBox, RunLayoutResult } from './layout';
 import { endReach } from './reach';
@@ -48,15 +49,31 @@ export function deriveToeKick(ctx: Ctx, layout: RunLayoutResult): Part[] {
       return;
     }
     const base = `${kick.tierId}/kick-${si}`;
-    const len = xb - xa;
     const cross = platformDepth - 2 * tk;
     const common = { role: 'toeKick' as const, materialId: s.materials.toeKick, ownerId: kick.tierId };
-    parts.push(
-      makePart({ ...common, id: `${base}-front`, name: 'Toe kick (front)', bounds: { x: fa, y: 0, z: platformDepth - tk, width: fb - fa, height: h, depth: tk }, grain: 'horizontal', thicknessAxis: 'z', length: ctx.down(fb - fa) }),
-      makePart({ ...common, id: `${base}-back`, name: 'Toe kick (back)', bounds: { x: xa, y: 0, z: 0, width: len, height: h, depth: tk }, grain: 'horizontal', thicknessAxis: 'z', length: ctx.down(len) }),
-    );
     // Cross pieces at both ends and under every joint between boxes.
     const xs = [xa, ...seg.slice(1).map((b) => b.carcass.x - tk / 2), xb - tk];
+    // Boards longer than the material's sheet are pieced, joined over a cross piece.
+    const centers = xs.map((cx) => cx + tk / 2);
+    const boards = (which: 'front' | 'back', a: Ticks, b: Ticks, z: Ticks, name: string) => {
+      const pieces = splitAt(a, b, centers, maxBoard(ctx, s.materials.toeKick));
+      pieces.forEach(([p0, p1], k) => {
+        parts.push(
+          makePart({
+            ...common,
+            id: pieces.length === 1 ? `${base}-${which}` : `${base}-${which}-${k}`,
+            name,
+            bounds: { x: p0, y: 0, z, width: p1 - p0, height: h, depth: tk },
+            grain: 'horizontal',
+            thicknessAxis: 'z',
+            length: ctx.down(p1 - p0),
+            ...(pieces.length > 1 ? { note: `Piece ${k + 1} of ${pieces.length}; joints fall on cross pieces` } : {}),
+          }),
+        );
+      });
+    };
+    boards('front', fa, fb, platformDepth - tk, 'Toe kick (front)');
+    boards('back', xa, xb, 0, 'Toe kick (back)');
     xs.forEach((cx, ci) => {
       parts.push(
         makePart({ ...common, id: `${base}-cross-${ci}`, name: 'Toe kick (cross)', bounds: { x: cx, y: 0, z: tk, width: tk, height: h, depth: cross }, grain: 'horizontal', thicknessAxis: 'x', length: ctx.down(cross) }),
@@ -64,4 +81,27 @@ export function deriveToeKick(ctx: Ctx, layout: RunLayoutResult): Part[] {
     });
   });
   return parts;
+}
+
+/** Longest board that fits the material's sheet (less a little for trimming), or no limit for lumber. */
+function maxBoard(ctx: Ctx, materialId: string): Ticks {
+  const m = ctx.project.materials.find((mm) => mm.id === materialId);
+  return m?.kind === 'sheet' && m.sheet ? m.sheet.length - inches(1 / 2) : Infinity;
+}
+
+/**
+ * Split [a, b] into pieces no longer than `max`, cutting at the given joint positions where
+ * possible (the farthest one that keeps a piece within `max`), else at `max`.
+ */
+export function splitAt(a: Ticks, b: Ticks, joints: readonly Ticks[], max: Ticks): [Ticks, Ticks][] {
+  const pieces: [Ticks, Ticks][] = [];
+  let start = a;
+  while (b - start > max) {
+    const options = joints.filter((j) => j > start && j - start <= max && j < b);
+    const cut = options.length ? Math.max(...options) : start + max;
+    pieces.push([start, cut]);
+    start = cut;
+  }
+  pieces.push([start, b]);
+  return pieces;
 }
