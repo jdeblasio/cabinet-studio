@@ -44,8 +44,37 @@ describe('solveDrag snapping', () => {
     const sol = solveDrag(p, runId, h, inches(0.1), OPTS);
     expect(sol.guide).toEqual({ axis: 'x', pos: target });
     expect(rightEdge(sol.project, 1, u3!)).toBe(target);
-    // Boxes keep their type: the fixed box absorbs the change.
-    expect(sol.project.runs[0]!.tiers[1]!.items[3]).toMatchObject({ width: { kind: 'fixed' } });
+    // Boxes keep their type: the fixed box absorbs the change, and the flex boxes stay equal.
+    const items = sol.project.runs[0]!.tiers[1]!.items as Box[];
+    expect(items[3]).toMatchObject({ width: { kind: 'fixed' } });
+    expect(items.slice(0, 3).map((b) => b.width)).toEqual([0, 1, 2].map(() => ({ kind: 'flex', ratio: 1 })));
+  });
+
+  it('reaches an edge that equal flex boxes can\'t land on by nudging the neighbor\'s ratio', () => {
+    // A full-width end stile beside the gap moves the lower box's edge 23/32" left, to a position
+    // the upper boundary can't reach with three equal flex boxes and a split scribe remainder.
+    const p = gapProject();
+    const base = p.runs[0]!.tiers[0]!.items.filter((i): i is Box => i.kind === 'box');
+    base[2]!.overrides = { faceFrame: { endStiles: { right: 'full' } } };
+    const runId = p.runs[0]!.id;
+    const [u1, u2, u3, u4] = boxIds(p, 1);
+    const target = rightEdge(p, 0, base[2]!.id);
+    const h = handleBetween(p, u3!, u4!);
+    // Out of reach for a plain drag (which keeps the flex boxes equal) at any nearby grid step.
+    for (let k = -6; k <= 6; k++) {
+      const plain = solveDrag(p, runId, h, target - h.pos + k * GRID, { ...OPTS, snap: false });
+      expect(rightEdge(plain.project, 1, u3!)).not.toBe(target);
+    }
+    const sol = solveDrag(p, runId, h, target - h.pos + inches(0.1), OPTS);
+    expect(sol.guide).toEqual({ axis: 'x', pos: target });
+    expect(rightEdge(sol.project, 1, u3!)).toBe(target);
+    const widths = (sol.project.runs[0]!.tiers[1]!.items as Box[]).map((b) => b.width);
+    expect(widths.slice(0, 2)).toEqual([0, 1].map(() => ({ kind: 'flex', ratio: 1 })));
+    expect(widths[2]).toMatchObject({ kind: 'flex' });
+    expect(Math.abs((widths[2] as { ratio: number }).ratio - 1)).toBeLessThan(0.01);
+    expect(widths[3]).toMatchObject({ kind: 'fixed' });
+    void u1;
+    void u2;
   });
 
   it('aligns two flex boxes with the boxes below', () => {

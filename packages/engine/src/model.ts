@@ -88,6 +88,10 @@ export interface ConstructionSettings {
     topRailWidth: Ticks;
     bottomRailWidth: Ticks;
     midRailWidth: Ticks;
+    /**
+     * Stile-only column dividers. A stile over a partition always matches a shared stile
+     * (2 × (side thickness + lip)), so a partitioned box looks like boxes side by side.
+     */
     midStileWidth: Ticks;
     /** Minimum space between a wall and the first/last carcass; the end stile covers it and gets scribed. */
     scribeAllowance: Ticks;

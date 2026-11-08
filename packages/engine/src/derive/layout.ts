@@ -20,6 +20,8 @@ export interface PlacedBox {
   /** True when nothing sits between this box and the wall at that end (its end stile scribes to the wall). */
   atLeftWall: boolean;
   atRightWall: boolean;
+  /** True when part of the box's underside is visible (over a gap, an open space tier or nothing). */
+  bottomExposed: boolean;
 }
 
 export interface RunLayoutResult {
@@ -199,7 +201,21 @@ export function layoutRun(ctx: Ctx): RunLayoutResult {
       if (width < 0) {
         ctx.issue('error', 'span-overlap', tier.id, `Spanning elements overlap in "${tier.name}".`);
       }
-      const sol = solveLine(Math.max(0, width), regionBoxes.map((bx) => bx.width), grid);
+      // A full-width end stile at an open end of the region (beside a gap, at an open run end, or
+      // next to a box with a different face plane) must not overhang past it: reserve its overhang.
+      const leftSlot = k === 0 ? undefined : slotOrder[k - 1];
+      const rightSlot = k === last ? undefined : slotOrder[k];
+      const openBeside = (sp: SpanPlacement | undefined, wallEnd: boolean) =>
+        sp ? sp.span.kind === 'gap' || (sp.span.depth ?? run.tiers[sp.fromIdx]!.depth) !== tier.depth : !wallEnd;
+      const reserve = (bx: Box | undefined, side: 'left' | 'right', open: boolean): Ticks => {
+        if (!bx || !open) return 0;
+        const bs = resolveSettings(ctx.project, [run, tier, bx]);
+        if (bs.faceFrame.endStiles[side] !== 'full') return 0;
+        return snap(ctx.thickness(bs.materials.carcass, bx.id) + bs.faceFrame.lip, grid, 'up');
+      };
+      const resL = reserve(regionBoxes[0], 'left', openBeside(leftSlot, run.ends.left === 'wall'));
+      const resR = reserve(regionBoxes[regionBoxes.length - 1], 'right', openBeside(rightSlot, run.ends.right === 'wall'));
+      const sol = solveLine(Math.max(0, width - resL - resR), regionBoxes.map((bx) => bx.width), grid);
       if (sol.overflow > 0) {
         ctx.issue('error', 'tier-overflow', tier.id, `Boxes in "${tier.name}" are ${ctx.fmt(sol.overflow)} wider than the available space.`);
       }
@@ -224,7 +240,7 @@ export function layoutRun(ctx: Ctx): RunLayoutResult {
         ctx.issue('warning', 'region-empty', tier.id, `${ctx.fmt(rem)} of empty space between spanning elements in "${tier.name}".`);
       }
 
-      let x = a + shift;
+      let x = a + resL + shift;
       regionBoxes.forEach((bx, i) => {
         const w = sizes[i] ?? 0;
         boxes.push({
@@ -236,6 +252,7 @@ export function layoutRun(ctx: Ctx): RunLayoutResult {
           settings: resolveSettings(ctx.project, [run, tier, bx]),
           atLeftWall: false,
           atRightWall: false,
+          bottomExposed: false,
         });
         layout.items.push({ kind: 'box', id: bx.id, x, width: w });
         x += w;
@@ -282,6 +299,7 @@ export function layoutRun(ctx: Ctx): RunLayoutResult {
       settings: resolveSettings(ctx.project, [run, sp.span as SettingsScope]),
       atLeftWall: false,
       atRightWall: false,
+      bottomExposed: false,
     });
   }
 
@@ -298,6 +316,27 @@ export function layoutRun(ctx: Ctx): RunLayoutResult {
     const overlapsV = (o: (typeof obstacles)[number]) => o.y0 < y1 && o.y1 > y0;
     b.atLeftWall = run.ends.left === 'wall' && !obstacles.some((o) => overlapsV(o) && o.x1 <= x0 && o.x0 < x0);
     b.atRightWall = run.ends.right === 'wall' && !obstacles.some((o) => overlapsV(o) && o.x0 >= x1 && o.x1 > x1);
+  }
+
+  // ---- Which carcass bottoms are exposed: not resting on the floor, a carcass or a countertop ----
+  const tierIdx = new Map(run.tiers.map((t, i) => [t.id, i]));
+  const topOf = (o: PlacedBox) => o.carcass.y + o.carcass.height + (o.source === 'tier' ? (counterH[tierIdx.get(o.tierId) ?? -1] ?? 0) : 0);
+  for (const b of boxes) {
+    if (b.carcass.y <= kickH(0)) continue; // on the floor or the toe kick platform
+    // Only the span between the sides matters; a sliver under a side isn't a visible recess.
+    const t = ctx.thickness(b.settings.materials.carcass, b.id);
+    const x0 = b.carcass.x + t;
+    const x1 = b.carcass.x + b.carcass.width - t;
+    const under = boxes
+      .filter((o) => o !== b && topOf(o) === b.carcass.y && o.carcass.x < x1 && o.carcass.x + o.carcass.width > x0)
+      .map((o) => [o.carcass.x, o.carcass.x + o.carcass.width] as const)
+      .sort((p, q) => p[0] - q[0]);
+    let covered = x0;
+    for (const [u0, u1] of under) {
+      if (u0 > covered) break;
+      covered = Math.max(covered, u1);
+    }
+    b.bottomExposed = covered < x1;
   }
 
   return { width: W, ceilingHeight: H, ceilingGap, tiers, boxes, gaps, toeKick };

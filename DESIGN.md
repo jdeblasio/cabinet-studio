@@ -99,7 +99,10 @@ pixels, to box edges, gap edges and split lines elsewhere in the run (a box's ow
 excluded, since its edges move with the drag). A dashed guide shows the alignment. Flex
 sizes round down to the grid, so a naive snap can land a grid step off. The editor tries
 nearby grid steps and keeps the one whose derived boundary lands exactly on the target.
-Hold Alt/Option to drag freely.
+Some positions can't be reached while equal flex boxes stay equal: with three equal flex
+boxes and the remainder split between two wall scribes, about one 1/32" position in three
+is out of reach. Then the flex neighbor's ratio is also nudged, so that box ends up a grid
+step or two off its siblings. Hold Alt/Option to drag freely.
 
 ## 5. Fitting to measured walls
 
@@ -144,19 +147,32 @@ Hold Alt/Option to drag freely.
 - The frame is flush with the carcass top and bottom. The bottom panel, and each fixed
   shelf, is raised so its top surface is flush with the top edge of the rail below it.
 - Split child sizes are **clear face-opening sizes** (inside the frame).
+- A stile over a partition is as wide as a shared stile between boxes (2 × (side + lip)),
+  so a partitioned box reads exactly like boxes side by side and its stiles line up with
+  box boundaries in other tiers. The mid stile setting applies to stile-only dividers.
 - Stiles are derived per frame group at every vertical boundary: shared stiles cover both
   sides; an end stile at a wall runs to the wall (scribe space); an end stile elsewhere
   (open end, beside a gap or a set-back box) is flush with the side by default. The
   `faceFrame.endStiles.left/right` setting (cascades like any other) can make it
   **full width** instead: as wide as a shared stile and centered on the box edge,
-  overhanging the side, so it lines up with shared stiles in a tier above or below. Lint
-  notes how far it overhangs into a gap, and warns if it would run into a box with a
-  different face plane.
+  overhanging the side, so it lines up with shared stiles in a tier above or below.
+  Layout reserves the overhang at that end of the tier region (beside a gap, at an open
+  run end, or next to a box with a different face plane), so the flex boxes shrink and the
+  stile's outer edge lands on the region edge. An **end panel** (a doubled side, carcass
+  material, wall to frame) fills in behind the overhang, so the exposed end is flush.
+  Tall (span) boxes have fixed widths and get no reserve: lint notes how far their
+  overhang reaches into a gap, and warns if it would run into a box with a different face
+  plane.
 - A shared stile between a base box and a flush tall box runs the tall box's full height,
   so above the base it stands proud of the tall box's side by one side thickness.
 - Rails are per box. Where two same-plane tiers stack, each box keeps its own top/bottom
   rail (a doubled rail band); merging them into one rail is a later refinement. Setting the
   lower box's top to **open** avoids the doubled band today.
+- **Exposed bottoms:** a box not resting on the floor, a carcass or a countertop across
+  the span between its sides (e.g. over a gap or an open space tier) gets a flush
+  underside. A **finished bottom** panel at the carcass bottom closes the recess behind
+  the bottom rail. If the rail is narrower than two panels, the single bottom panel drops
+  flush instead, which leaves a small step up to the rail inside.
 - **Open top / bottom** (`carcass.top` / `carcass.bottom`, cascades): an open edge has no
   panel and no rail, so the face opening and the shelf interior run to the carcass edge.
   Fronts stop half a reveal short of an open edge instead of overlaying a rail that isn't

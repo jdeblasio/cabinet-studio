@@ -6,6 +6,8 @@
  *  - End stile elsewhere (open end, next to a gap or a set-back box): flush with the side by
  *    default; with `faceFrame.endStiles.<side> = 'full'` it is as wide as a shared stile and
  *    centered on the box edge, overhanging the side (so it lines up with stiles above/below).
+ *    Layout reserves room for that overhang, and an end panel (a doubled side) fills in behind
+ *    it so the exposed end is flush with the stile's outer edge.
  * Rails are per box (see box.ts).
  */
 import type { FrameGroup, Part, Rect } from '../derived';
@@ -133,12 +135,35 @@ export function deriveFrames(
             ownerId: owner.box.id as Id,
           }),
         );
-        if (left.kind === 'full') checkOverhang(ctx, edges, gaps, owner.box.id, { x0: x - left.cover, x1: x, y0, y1 });
-        if (right.kind === 'full') checkOverhang(ctx, edges, gaps, owner.box.id, { x0: x, x1: x + right.cover, y0, y1 });
+        if (left.kind === 'full') {
+          checkOverhang(ctx, edges, gaps, owner.box.id, { x0: x - left.cover, x1: x, y0, y1 });
+          for (const m of rightBoxes) if (m.box.settings.faceFrame.endStiles.left === 'full') parts.push(endPanel(ctx, m, 'left'));
+        }
+        if (right.kind === 'full') {
+          checkOverhang(ctx, edges, gaps, owner.box.id, { x0: x, x1: x + right.cover, y0, y1 });
+          for (const m of leftBoxes) if (m.box.settings.faceFrame.endStiles.right === 'full') parts.push(endPanel(ctx, m, 'right'));
+        }
       }
     }
   }
   return { frames, parts };
+}
+
+/** A doubled side behind a full-width end stile's overhang, flush with the stile's outer edge. */
+function endPanel(ctx: Ctx, m: Edges, side: 'left' | 'right'): Part {
+  const t = ctx.thickness(m.box.settings.materials.carcass, m.box.id);
+  const x = side === 'left' ? m.x0 - m.cover : m.x1 + m.cover - t;
+  const z = m.box.carcass.z;
+  return makePart({
+    id: `${m.box.id}/end-panel-${side}`,
+    name: 'End panel',
+    role: 'side',
+    materialId: m.box.settings.materials.carcass,
+    bounds: { x, y: m.y0, z, width: t, height: m.y1 - m.y0, depth: m.front - z },
+    grain: 'vertical',
+    thicknessAxis: 'x',
+    ownerId: m.box.id,
+  });
 }
 
 /** Lint a full-width end stile's overhang: it must not run into another box, and narrows any gap it reaches. */

@@ -3,8 +3,13 @@
  * gap edge or split line elsewhere in the run snaps to it exactly. Flex boxes re-flow and their
  * sizes snap down to the grid, so the first guess can land a grid step off. To prevent that,
  * nearby grid steps are tried and the one whose derived boundary lands on the target is kept.
+ *
+ * Some positions can't be reached that way. For example, with three equal flex boxes and the
+ * leftover split between two wall scribes, about one 1/32" position in three is out of reach.
+ * Then the flex neighbor's ratio is also nudged so its size differs from its siblings by a grid
+ * step or two. Equal boxes stay equal whenever the plain search succeeds.
  */
-import { resizeBoundary, type BoxLayout, type Id, type Project, type RunResult, type Ticks } from '@built-in-planner/engine';
+import { resizeBoundary, type BoxLayout, type Id, type Project, type RunResult, type SizeSpec, type Ticks } from '@built-in-planner/engine';
 import { produce } from 'immer';
 import { getRunResult } from '../../store/derived';
 import type { BoundaryHandle } from './geometry';
@@ -22,6 +27,14 @@ export interface DragSolution {
 
 /** Grid steps to try around the snapped position, nearest first. */
 const NUDGES = [0, -1, 1, -2, 2, -3, 3];
+/** Grid steps to resize the flex neighbor by when the plain search fails, smallest first. */
+const RATIO_STEPS = [-1, 1, -2, 2];
+
+/** Scale a flex ratio so a box of `size` would grow by `step`. */
+function nudgeRatio(spec: SizeSpec, size: Ticks, step: Ticks): SizeSpec {
+  if (spec.kind !== 'flex' || size <= 0) return spec;
+  return { ...spec, ratio: Math.round(((spec.ratio * (size + step)) / size) * 1e6) / 1e6 };
+}
 
 /** Boundaries between consecutive children of each split in a box, on one axis. */
 function splitLines(box: BoxLayout, axis: 'x' | 'y'): Ticks[] {
@@ -74,9 +87,15 @@ export function solveDrag(
   move: Ticks,
   opts: { grid: Ticks; threshold: Ticks; snap: boolean },
 ): DragSolution {
-  const attempt = (m: Ticks): Project => {
+  /** Move by `m`; with `step`, also resize the flex neighbor by that many grid steps. */
+  const attempt = (m: Ticks, step = 0): Project => {
     const res = resizeBoundary(handle.a, handle.b, handle.sign * m, { grid: opts.grid, minSize: handle.minSize });
-    return produce(base, (d) => handle.apply(d, res.a, res.b));
+    let { a, b } = res;
+    if (step !== 0) {
+      if (a.kind === 'flex') a = nudgeRatio(a, handle.a.size + res.delta, step * opts.grid);
+      else b = nudgeRatio(b, handle.b.size - res.delta, step * opts.grid);
+    }
+    return produce(base, (d) => handle.apply(d, a, b));
   };
   const measure = handle.snap?.measure;
   if (opts.snap && measure) {
@@ -88,13 +107,16 @@ export function solveDrag(
     }
     if (target !== undefined) {
       let closest: { project: Project; err: Ticks } | undefined;
-      for (const k of NUDGES) {
-        const project = attempt(target - handle.pos + k * opts.grid);
-        const at = measure(getRunResult(project, runId));
-        if (at === undefined) continue;
-        const err = Math.abs(at - target);
-        if (err === 0) return { project, guide: { axis: handle.axis, pos: target } };
-        if (!closest || err < closest.err) closest = { project, err };
+      const flexNeighbor = handle.a.spec.kind === 'flex' || handle.b.spec.kind === 'flex';
+      for (const step of [0, ...(flexNeighbor ? RATIO_STEPS : [])]) {
+        for (const k of NUDGES) {
+          const project = attempt(target - handle.pos + k * opts.grid, step);
+          const at = measure(getRunResult(project, runId));
+          if (at === undefined) continue;
+          const err = Math.abs(at - target);
+          if (err === 0) return { project, guide: { axis: handle.axis, pos: target } };
+          if (!closest || err < closest.err) closest = { project, err };
+        }
       }
       // Can't land exactly (e.g. off-grid materials): stay as close as possible, without a guide.
       if (closest) return { project: closest.project };

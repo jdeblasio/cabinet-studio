@@ -56,7 +56,8 @@ const SETTINGS: SettingDef[] = [
   { path: 'faceFrame.topRailWidth', label: 'Top rail', type: 'length' },
   { path: 'faceFrame.bottomRailWidth', label: 'Bottom rail', type: 'length' },
   { path: 'faceFrame.midRailWidth', label: 'Mid rail', type: 'length' },
-  { path: 'faceFrame.midStileWidth', label: 'Mid stile', type: 'length' },
+  // Stiles over partitions match shared stiles; this is for stile-only dividers.
+  { path: 'faceFrame.midStileWidth', label: 'Stile-only divider', type: 'length' },
   // Only affects edges with no neighbor and no wall (beside a gap, at an open end).
   { path: 'faceFrame.endStiles.left', label: 'Open left end', type: 'select', options: END_STILE_OPTIONS },
   { path: 'faceFrame.endStiles.right', label: 'Open right end', type: 'select', options: END_STILE_OPTIONS },

@@ -9,8 +9,14 @@
  *    is raised so its top surface is flush with the top edge of the rail below it.
  *  - Stile coverage on each box side is (side thickness + lip); with lip 0 the frame is flush inside.
  *  - Split child sizes are clear face-opening sizes.
+ *  - A stile over a partition is as wide as a shared stile between two boxes (it covers the
+ *    partition the way a shared stile covers two sides), so stiles line up across tiers.
+ *    `midStileWidth` applies to stile-only dividers.
  *  - An 'open' top or bottom (settings.carcass) has no panel and no rail on that edge; the
  *    opening and interior run to the carcass edge, and fronts stop half a reveal short of it.
+ *  - An exposed bottom (box over a gap or open space) is finished flush with the bottom rail:
+ *    a second bottom panel closes the recess behind the rail, or, if the rail is too narrow for
+ *    two panels, the single bottom panel drops flush with the carcass bottom.
  */
 import type { Part, Rect, SectionLayout } from '../derived';
 import type { Opening, Section } from '../model';
@@ -66,11 +72,14 @@ export function deriveBox(ctx: Ctx, box: PlacedBox): { parts: Part[]; sections: 
   // ---- Carcass ----
   const cm = s.materials.carcass;
   const innerW = W - 2 * t;
-  const floorTop = openBottom ? y : y + Math.max(bottomRail, t);
+  const exposedRecess = !openBottom && box.bottomExposed && bottomRail > t;
+  const doubledBottom = exposedRecess && bottomRail >= 2 * t;
+  const floorTop = openBottom ? y : exposedRecess && !doubledBottom ? y + t : y + Math.max(bottomRail, t);
   add({ id: `${id}/side-left`, name: 'Left side', role: 'side', materialId: cm, bounds: { x, y, z: tb, width: t, height: H, depth: Ds }, grain: 'vertical', thicknessAxis: 'x', ownerId: id });
   add({ id: `${id}/side-right`, name: 'Right side', role: 'side', materialId: cm, bounds: { x: x + W - t, y, z: tb, width: t, height: H, depth: Ds }, grain: 'vertical', thicknessAxis: 'x', ownerId: id });
   if (!openTop) add({ id: `${id}/top`, name: 'Top', role: 'top', materialId: cm, bounds: { x: x + t, y: top - t, z: tb, width: innerW, height: t, depth: Ds }, grain: 'horizontal', thicknessAxis: 'y', ownerId: id, length: down(innerW), width: down(Ds) });
   if (!openBottom) add({ id: `${id}/bottom`, name: 'Bottom', role: 'bottom', materialId: cm, bounds: { x: x + t, y: floorTop - t, z: tb, width: innerW, height: t, depth: Ds }, grain: 'horizontal', thicknessAxis: 'y', ownerId: id, length: down(innerW), width: down(Ds) });
+  if (doubledBottom) add({ id: `${id}/bottom-finish`, name: 'Finished bottom', role: 'bottom', materialId: cm, bounds: { x: x + t, y, z: tb, width: innerW, height: t, depth: Ds }, grain: 'horizontal', thicknessAxis: 'y', ownerId: id, length: down(innerW), width: down(Ds) });
   if (tb > 0) {
     add({ id: `${id}/back`, name: 'Back', role: 'back', materialId: s.materials.back, bounds: { x, y, z: 0, width: W, height: H, depth: tb }, grain: 'vertical', thicknessAxis: 'z', ownerId: id });
   }
@@ -110,7 +119,7 @@ export function deriveBox(ctx: Ctx, box: PlacedBox): { parts: Part[]; sections: 
       return;
     }
     const rows = sec.direction === 'rows';
-    const member = rows ? ff.midRailWidth : ff.midStileWidth;
+    const member = rows ? ff.midRailWidth : sec.divider === 'panel' ? snap(2 * (t + lip), ctx.grid) : ff.midStileWidth;
     const span = rows ? r.height : r.width;
     const sol = solveLine(span - (n - 1) * member, sec.children.map((c) => c.size), ctx.grid);
     if (sol.overflow > 0) {
