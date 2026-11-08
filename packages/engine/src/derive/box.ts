@@ -22,7 +22,7 @@
  *    two panels, the single bottom panel drops flush with the carcass bottom.
  */
 import type { Part, Rect, SectionLayout } from '../derived';
-import type { Opening, Section } from '../model';
+import type { ConstructionSettings, Opening, Section } from '../model';
 import { inches, snap, type Ticks } from '../units';
 import { checkShelfSag } from './checks';
 import { makePart, type Ctx } from './context';
@@ -377,5 +377,30 @@ export function deriveBox(ctx: Ctx, box: PlacedBox): { parts: Part[]; sections: 
   };
 
   layoutSection(box.content, R, I, cover);
+  applyEdgeBanding(ctx, s, frameless, parts);
   return { parts, sections };
+}
+
+/**
+ * Band exposed sheet-good edges: adjustable shelf fronts; slab doors and drawer fronts all round;
+ * and for frameless boxes the front edges of sides, top, bottom, partitions and fixed shelves.
+ * Cut sizes shrink by the banding thickness per banded edge; the banded length is recorded.
+ */
+function applyEdgeBanding(ctx: Ctx, s: ConstructionSettings, frameless: boolean, parts: Part[]): void {
+  const eb = s.edgeBanding;
+  if (!eb.enabled) return;
+  const isSheet = (id: string) => ctx.project.materials.find((m) => m.id === id)?.kind === 'sheet';
+  const th = eb.thickness;
+  const tag = (p: Part, what: string) => (th > 0 ? `${what} (cut ${ctx.fmt(th)} under per banded edge)` : what);
+  for (let i = 0; i < parts.length; i++) {
+    const p = parts[i]!;
+    if (!isSheet(p.materialId)) continue;
+    const frontEdge = p.role === 'adjustableShelf' || (frameless && ['side', 'top', 'bottom', 'partition', 'fixedShelf'].includes(p.role));
+    if (frontEdge) {
+      // The front edge runs along the part's length.
+      parts[i] = { ...p, width: p.width - th, banding: p.length, note: [p.note, tag(p, 'Band the front edge')].filter(Boolean).join('; ') };
+    } else if (p.role === 'door' || p.role === 'drawerFront') {
+      parts[i] = { ...p, length: p.length - 2 * th, width: p.width - 2 * th, banding: 2 * (p.length + p.width), note: [p.note, tag(p, 'Band all four edges')].filter(Boolean).join('; ') };
+    }
+  }
 }

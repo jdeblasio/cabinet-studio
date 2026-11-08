@@ -194,6 +194,10 @@ step or two off its siblings. Hold Alt/Option to drag freely.
   vanish so stacked drawers meet at the reveal. Full-width end stiles don't apply. At a
   wall, a filler in the plane of the fronts closes the scribe space. Countertops and toe
   kicks measure from the carcass front.
+- **Edge banding** (`edgeBanding`): exposed sheet-good edges are banded: adjustable shelf
+  fronts, slab doors and drawer fronts all round, and for frameless boxes the front edges of
+  the carcass and fixed shelves. Parts record the banded length (for the shopping list) and
+  are cut smaller by the banding thickness per banded edge (0 for veneer tape).
 - **Moldings** (per run, simplified bounding-box profiles): crown runs along the top tier's
   fronts with its top against the ceiling (or sitting on the boxes if the ceiling gap is
   taller); base molding runs at the floor along the bottom tier when there's no toe kick.

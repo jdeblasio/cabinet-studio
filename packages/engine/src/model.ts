@@ -162,6 +162,12 @@ export interface ConstructionSettings {
   };
   /** Minimum gap left at the ceiling for scribing (top of the highest tier). */
   ceilingScribe: Ticks;
+  /**
+   * Edge banding on exposed plywood edges: adjustable shelf fronts; slab plywood doors and drawer
+   * fronts (all four edges); and, for frameless boxes, the front edges of the carcass and fixed
+   * shelves. Banded parts are cut smaller by `thickness` per banded edge (0 for veneer tape).
+   */
+  edgeBanding: { enabled: boolean; thickness: Ticks };
 }
 
 export type DeepPartial<T> = { [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K] };

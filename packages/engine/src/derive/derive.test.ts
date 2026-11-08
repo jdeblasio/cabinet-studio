@@ -860,3 +860,40 @@ describe('deriveRun: moldings', () => {
     expect(m.bounds).toMatchObject({ y: 0, z: inches(16.75), height: inches(3.5), depth: inches(0.75) });
   });
 });
+
+describe('deriveRun: edge banding', () => {
+  const banded = (thickness: number, more?: (p: Project) => void) =>
+    setup((p) => {
+      p.settings = { ...p.settings, edgeBanding: { enabled: true, thickness } };
+      more?.(p);
+    });
+
+  it('records banded edges, and cuts parts smaller by solid edging thickness', () => {
+    const veneer = banded(0);
+    const solid = banded(inches(1 / 4));
+    const op = boxesOf(tier(veneer.run, 0))[0]!.content.id;
+    const opSolid = boxesOf(tier(solid.run, 0))[0]!.content.id;
+    const door = part(veneer.result, `${op}/door-left`);
+    expect(door.banding).toBe(2 * (door.length + door.width));
+    expect(door.note).toBe('Band all four edges');
+    const doorSolid = part(solid.result, `${opSolid}/door-left`);
+    expect([doorSolid.length, doorSolid.width]).toEqual([door.length - inches(0.5), door.width - inches(0.5)]);
+    const shelf = part(veneer.result, `${op}/adj-shelf-0`);
+    const shelfSolid = part(solid.result, `${opSolid}/adj-shelf-0`);
+    expect(shelf.banding).toBe(shelf.length);
+    expect(shelfSolid.width).toBe(shelf.width - inches(0.25));
+    // Face-frame carcass edges are covered by the frame, so they aren't banded.
+    expect(part(veneer.result, `${boxesOf(tier(veneer.run, 0))[0]!.id}/side-left`).banding).toBeUndefined();
+  });
+
+  it('bands frameless carcass front edges and can be turned off', () => {
+    const fl = banded(0, (p) => {
+      p.settings = { ...p.settings, construction: 'frameless' };
+    });
+    expect(part(fl.result, `${boxesOf(tier(fl.run, 0))[0]!.id}/side-left`).banding).toBe(inches(26.5));
+    const off = setup((p) => {
+      p.settings = { ...p.settings, edgeBanding: { enabled: false, thickness: 0 } };
+    });
+    expect(off.result.parts.some((p) => p.banding !== undefined)).toBe(false);
+  });
+});

@@ -127,6 +127,17 @@ const SETTINGS: SettingDef[] = [
   },
   { path: 'shelves.designLoad', label: 'Shelf load', tip: 'Load for the shelf sag check, in pounds per square foot of shelf. 20 is roughly a full shelf of books.', type: 'number', unit: 'lb/ft²', min: 0 },
   { path: 'shelves.maxSagPerFoot', label: 'Max shelf sag', tip: 'Largest acceptable shelf sag, in inches per foot of span. 0.02 is about where sag becomes visible.', type: 'number', unit: 'in/ft', min: 0.001 },
+  {
+    path: 'edgeBanding.enabled',
+    label: 'Edge banding',
+    tip: 'Band exposed plywood edges: adjustable shelf fronts, slab doors and drawer fronts all round, and (frameless) the carcass front edges. The cut list shows the banding.',
+    type: 'select',
+    options: [
+      ['true', 'On'],
+      ['false', 'Off'],
+    ],
+  },
+  { path: 'edgeBanding.thickness', label: 'Banding thickness', tip: 'Banded parts are cut this much smaller per banded edge. 0 for iron-on veneer tape; e.g. 1/4" for solid wood edging.', type: 'length' },
   { path: 'ceilingScribe', label: 'Ceiling scribe', tip: 'Space left at the ceiling above the top tier, for scribing to an uneven ceiling.', type: 'length' },
   // Which material (and so which thickness) each kind of part uses.
   { path: 'materials.carcass', label: 'Carcass material', tip: 'Material for box sides, tops, bottoms, partitions and end panels. Its thickness sets theirs.', type: 'material' },
@@ -313,6 +324,8 @@ export function SettingsSection({ scope, title }: { scope: ScopeRef; title?: str
                   </span>
                 ) : def.type === 'material' ? (
                   <Select value={value as string} options={materialOptions(value as string)} onChange={(v) => setValue(def.path, v)} ariaLabel={def.label} />
+                ) : typeof value === 'boolean' ? (
+                  <Select value={String(value)} options={def.options} onChange={(v) => setValue(def.path, v === 'true')} ariaLabel={def.label} />
                 ) : (
                   <Select value={value as string} options={def.options} onChange={(v) => setValue(def.path, v)} ariaLabel={def.label} />
                 )}

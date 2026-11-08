@@ -110,6 +110,7 @@ export const DEFAULT_SETTINGS: ConstructionSettings = {
     maxSagPerFoot: 0.02,
   },
   ceilingScribe: inches(0.5),
+  edgeBanding: { enabled: true, thickness: 0 },
 };
 
 export function opening(front: Front = { type: 'none' }, adjustableShelves = 0): Section {

@@ -78,6 +78,8 @@ export interface Part {
   ownerId: Id;
   /** Why the cut size differs from what's visible, e.g. "+1/4" each end into dados". */
   note?: string;
+  /** Total length of edge banding applied to this part (finished edge lengths). */
+  banding?: Ticks;
 }
 
 export interface RunResult {
