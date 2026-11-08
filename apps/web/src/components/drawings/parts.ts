@@ -2,7 +2,7 @@
  * Parts for drawings: how each role is drawn, box numbering, and grouping identical parts for
  * the per-box parts tables.
  */
-import type { Id, Part, PartRole, Run, RunResult, Ticks } from '@built-in-planner/engine';
+import { describeBandedEdges, type Id, type Part, type PartRole, type Run, type RunResult, type Ticks } from '@built-in-planner/engine';
 
 /** How a part is drawn. Unknown roles draw as carcass parts. */
 export type RoleClass = 'carcass' | 'interior' | 'frame' | 'front' | 'panel' | 'countertop' | 'kick' | 'trim';
@@ -93,6 +93,8 @@ export interface PartGroup {
   thickness: Ticks;
   materialId: Id;
   partIds: Id[];
+  /** Banded edges, in shop words ("Front edge", "All 4 edges"); empty when none. */
+  banding: string;
 }
 
 const ROLE_ORDER: readonly string[] = [
@@ -159,7 +161,7 @@ export function commonName(names: readonly string[]): string {
 export function groupParts(parts: readonly Part[]): PartGroup[] {
   const groups = new Map<string, { parts: Part[] }>();
   for (const p of parts) {
-    const key = [p.role, p.length, p.width, p.thickness, p.materialId].join('|');
+    const key = [p.role, p.length, p.width, p.thickness, p.materialId, describeBandedEdges(p.bandedEdges)].join('|');
     const g = groups.get(key);
     if (g) g.parts.push(p);
     else groups.set(key, { parts: [p] });
@@ -177,6 +179,7 @@ export function groupParts(parts: readonly Part[]): PartGroup[] {
       thickness: p.thickness,
       materialId: p.materialId,
       partIds: ps.map((x) => x.id),
+      banding: describeBandedEdges(p.bandedEdges),
     });
   }
   return out.sort((a, b) => roleRank(a.role) - roleRank(b.role) || b.length - a.length || b.width - a.width || a.name.localeCompare(b.name));

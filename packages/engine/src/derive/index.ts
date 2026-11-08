@@ -4,6 +4,7 @@ import type { Id, Project } from '../model';
 import { deriveBox } from './box';
 import { applyFinishes } from './finish';
 import { splitOversizeParts } from './split';
+import { markRawEdges } from './edges';
 import { resolveSettings } from '../settings';
 import { deriveCountertops } from './countertop';
 import { makeCtx } from './context';
@@ -52,6 +53,7 @@ export function deriveRun(project: Project, runId: Id): RunResult {
   const settingsFor = (ownerId: string) => boxSettings.get(ownerId) ?? tierSettings.get(ownerId) ?? runSettings;
   applyFinishes(parts, settingsFor);
   splitOversizeParts(ctx, parts, hardware, settingsFor);
+  markRawEdges(ctx, layout, parts, settingsFor);
 
   for (const id of ctx.offGridMaterials) {
     const m = project.materials.find((mat) => mat.id === id);

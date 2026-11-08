@@ -74,6 +74,7 @@ export function BoxSheet({ meta, result, box, label, materials, fmt, system }: P
   const leaves = frontLeaves(result, box.id);
   const owned = boxParts(result, box.id);
   const groups = groupParts(owned);
+  const anyBanding = groups.some((g) => g.banding);
   const holes = holeSummary(owned);
   const firstCup = cupDoor ? holesOf(cupDoor).find((h) => h.axis === 'z') : undefined;
   // Hardware is often specified in whole or half millimeters (35 mm cups, 32 mm rows): say so in imperial projects.
@@ -174,6 +175,7 @@ export function BoxSheet({ meta, result, box, label, materials, fmt, system }: P
                 <th className="num">Qty</th>
                 <th>L × W × T</th>
                 <th>Material</th>
+                {anyBanding && <th title="Edge-banded edges">Edge band</th>}
               </tr>
             </thead>
             <tbody>
@@ -185,6 +187,7 @@ export function BoxSheet({ meta, result, box, label, materials, fmt, system }: P
                     {fmt(g.length)} × {fmt(g.width)} × {fmt(g.thickness)}
                   </td>
                   <td className="mat">{matName.get(g.materialId) ?? g.materialId}</td>
+                  {anyBanding && <td className="band">{g.banding}</td>}
                 </tr>
               ))}
             </tbody>
@@ -192,7 +195,7 @@ export function BoxSheet({ meta, result, box, label, materials, fmt, system }: P
               <tr>
                 <td>Total</td>
                 <td className="num">{groups.reduce((s, g) => s + g.qty, 0)}</td>
-                <td colSpan={2} className="muted">
+                <td colSpan={anyBanding ? 3 : 2} className="muted">
                   Stiles shared with a neighbor are listed on one of the two boxes.
                 </td>
               </tr>

@@ -1,6 +1,7 @@
 import { inches, TICKS_PER_INCH, type Part, type Rect, type RunResult, type Ticks } from '@built-in-planner/engine';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { usePartColor } from '../../lib/colors';
+import { BANDING_COLOR, BandingToggle, RAW_EDGE_COLOR } from '../BandingToggle';
 import { useFormatter } from '../../lib/units';
 import { useRunResult } from '../../store/derived';
 import { sameSelection, selectionKey, type Selection } from '../../store/selection';
@@ -152,6 +153,7 @@ export function Elevation() {
     [result.parts],
   );
   const colorOf = usePartColor();
+  const showBanding = useEditor((s) => s.showBanding);
   const handles = useMemo(() => computeHandles(run, result, MIN_SIZE), [run, result]);
 
   const W = I(result.width);
@@ -188,7 +190,7 @@ export function Elevation() {
         {/* Parts, back to front */}
         <g className="parts">
           {parts.map((p) => (
-            <PartRect key={p.id} part={p} color={colorOf(p)} />
+            <PartRect key={p.id} part={p} color={colorOf(p)} banding={showBanding} />
           ))}
         </g>
 
@@ -215,6 +217,7 @@ export function Elevation() {
         </g>
       </svg>
       <div className="elevation-controls">
+        <BandingToggle />
         <button onClick={fit} title="Fit to view">Fit</button>
       </div>
       {result.tiers.length === 0 && <div className="elevation-empty">Layout not available yet.</div>}
@@ -222,19 +225,55 @@ export function Elevation() {
   );
 }
 
-function PartRect({ part, color }: { part: Part; color: string }) {
+function PartRect({ part, color, banding }: { part: Part; color: string; banding: boolean }) {
   const b = part.bounds;
   const r = rectToSvg({ x: b.x, y: b.y, width: b.width, height: b.height });
   const front = FRONT_ROLES.has(part.role);
-  return (
-    <rect
-      {...r}
-      fill={color}
-      className={`part role-${part.role}${front ? ' front' : ''}`}
-      data-part={part.id}
-    >
+  const rect = (
+    <rect {...r} fill={color} className={`part role-${part.role}${front ? ' front' : ''}`} data-part={part.id}>
       <title>{part.name}</title>
     </rect>
+  );
+  if (!banding || (!part.bandedEdges?.length && !part.rawEdges?.length)) return rect;
+  // Drawn with the part, so parts in front (e.g. doors) still cover what's behind them.
+  const x0 = r.x;
+  const x1 = r.x + r.width;
+  const y0 = r.y;
+  const y1 = r.y + r.height;
+  // Exposed raw stretches: a face toward the viewer is filled; the others are seen as lines.
+  const raw = (part.rawEdges ?? []).map((e, i) => {
+    const key = `raw-${i}`;
+    if (e.face === 'back') return null;
+    const xs: [number, number] = e.axis === 'x' ? [I(e.from), I(e.to)] : [x0, x1];
+    const ys: [number, number] = e.axis === 'y' ? [-I(e.to), -I(e.from)] : [y0, y1];
+    if (e.face === 'front') return <rect key={key} className="raw-face" fill={RAW_EDGE_COLOR} x={xs[0]} y={ys[0]} width={xs[1] - xs[0]} height={ys[1] - ys[0]} />;
+    if (e.face === 'top' || e.face === 'bottom') {
+      const y = e.face === 'top' ? y0 : y1;
+      return <line key={key} className="raw-edge" stroke={RAW_EDGE_COLOR} x1={xs[0]} x2={xs[1]} y1={y} y2={y} />;
+    }
+    const x = e.face === 'left' ? x0 : x1;
+    return <line key={key} className="raw-edge" stroke={RAW_EDGE_COLOR} x1={x} x2={x} y1={ys[0]} y2={ys[1]} />;
+  });
+  return (
+    <>
+      {rect}
+      {raw}
+      {(part.bandedEdges ?? []).map((e) =>
+        e === 'front' ? (
+          <rect key={e} {...r} className="banded-face" fill={BANDING_COLOR} />
+        ) : e === 'back' ? null : (
+          <line
+            key={e}
+            className="banded-edge"
+            stroke={BANDING_COLOR}
+            x1={e === 'right' ? x1 : x0}
+            x2={e === 'left' ? x0 : x1}
+            y1={e === 'bottom' ? y1 : y0}
+            y2={e === 'top' ? y0 : y1}
+          />
+        ),
+      )}
+    </>
   );
 }
 

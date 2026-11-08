@@ -92,3 +92,13 @@ describe('roles', () => {
     expect(frontToBack([door, rail, back]).map((p) => p.id)).toEqual(['back', 'rail', 'door']);
   });
 });
+
+describe('groupParts edge banding', () => {
+  it('says which edges are banded, keeping banded and plain parts apart', () => {
+    const { result } = derive();
+    const groups = groupParts(result.parts);
+    expect(groups.find((g) => g.role === 'adjustableShelf')!.banding).toBe('Front edge');
+    expect(groups.find((g) => g.role === 'door')!.banding).toBe('All 4 edges');
+    expect(groups.find((g) => g.role === 'side')!.banding).toBe('');
+  });
+});

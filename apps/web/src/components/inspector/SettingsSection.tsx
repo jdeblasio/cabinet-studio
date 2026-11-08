@@ -155,6 +155,16 @@ const SETTINGS: SettingDef[] = [
       ['false', 'Off'],
     ],
   },
+  {
+    path: 'edgeBanding.exposed',
+    label: 'Band exposed edges',
+    tip: 'Also band any other plywood edge left showing: not covered by another part, a neighboring box, the wall, floor or ceiling gap (e.g. the tops of base cabinet sides in front of shallower uppers, or the bottoms of a box over a doorway). With the edge highlight on, these show as raw edges until banded.',
+    type: 'select',
+    options: [
+      ['false', 'Off'],
+      ['true', 'On'],
+    ],
+  },
   { path: 'edgeBanding.thickness', label: 'Banding thickness', tip: 'Banded parts are cut this much smaller per banded edge. 0 for iron-on veneer tape; e.g. 1/4" for solid wood edging.', type: 'length' },
   {
     path: 'splitOversize',

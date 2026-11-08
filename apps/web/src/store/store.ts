@@ -24,6 +24,8 @@ export interface EditorState {
   showHardware: boolean;
   /** Inspector Construction sections list every setting, not just this level's overrides. */
   showAllSettings: boolean;
+  /** Highlight edge-banded edges in the elevation and 3D preview. */
+  showBanding: boolean;
   view: AppView;
   loaded: boolean;
 
@@ -48,6 +50,7 @@ export interface EditorState {
   setView3d: (v: View3D) => void;
   setShowHardware: (v: boolean) => void;
   setShowAllSettings: (v: boolean) => void;
+  setShowBanding: (v: boolean) => void;
   setView: (v: AppView) => void;
 }
 
@@ -79,6 +82,7 @@ const editorState: StateCreator<EditorState> = (set, get) => {
     view3d: 'shaded',
     showHardware: true,
     showAllSettings: false,
+    showBanding: false,
     view: 'design',
     loaded: false,
 
@@ -175,6 +179,7 @@ const editorState: StateCreator<EditorState> = (set, get) => {
     setView3d: (view3d) => set({ view3d }),
     setShowHardware: (showHardware) => set({ showHardware }),
     setShowAllSettings: (showAllSettings) => set({ showAllSettings }),
+    setShowBanding: (showBanding) => set({ showBanding }),
     setView: (view) => set({ view }),
   };
 };

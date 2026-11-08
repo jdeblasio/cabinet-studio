@@ -495,9 +495,9 @@ function applyEdgeBanding(ctx: Ctx, s: ConstructionSettings, frameless: boolean,
     const frontEdge = p.role === 'adjustableShelf' || (frameless && ['side', 'top', 'bottom', 'partition', 'fixedShelf'].includes(p.role));
     if (frontEdge) {
       // The front edge runs along the part's length.
-      parts[i] = { ...p, width: p.width - th, banding: p.length, note: [p.note, tag(p, 'Band the front edge')].filter(Boolean).join('; ') };
+      parts[i] = { ...p, width: p.width - th, banding: p.length, bandedEdges: ['front'], note: [p.note, tag(p, 'Band the front edge')].filter(Boolean).join('; ') };
     } else if (p.role === 'door' || p.role === 'drawerFront') {
-      parts[i] = { ...p, length: p.length - 2 * th, width: p.width - 2 * th, banding: 2 * (p.length + p.width), note: [p.note, tag(p, 'Band all four edges')].filter(Boolean).join('; ') };
+      parts[i] = { ...p, length: p.length - 2 * th, width: p.width - 2 * th, banding: 2 * (p.length + p.width), bandedEdges: ['left', 'right', 'bottom', 'top'], note: [p.note, tag(p, 'Band all four edges')].filter(Boolean).join('; ') };
     }
   }
 }

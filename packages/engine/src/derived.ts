@@ -80,10 +80,33 @@ export interface Part {
   note?: string;
   /** Total length of edge banding applied to this part (finished edge lengths). */
   banding?: Ticks;
+  /** Which faces of the part's bounds are banded edges (e.g. a shelf's 'front'; a door's four sides). */
+  bandedEdges?: EdgeFace[];
+  /** Exposed stretches of unbanded plywood edges (sheet goods only): seen, but neither banded nor covered. */
+  rawEdges?: RawEdge[];
   /** Machining: holes drilled into this part (shelf pins, hinge cups). */
   features?: PartFeature[];
   /** Paint or finish over the material (a Finish id); none for the material's own look. */
   finishId?: Id;
+}
+
+/** A face of a part's bounds, named by the direction it faces in run space (x: left/right, y: bottom/top, z: back/front). */
+export type EdgeFace = 'left' | 'right' | 'bottom' | 'top' | 'back' | 'front';
+
+/** An exposed stretch of a raw (unbanded) edge: on `face`, from `from` to `to` along `axis`. */
+export interface RawEdge {
+  face: EdgeFace;
+  axis: 'x' | 'y' | 'z';
+  from: Ticks;
+  to: Ticks;
+}
+
+/** Shop wording for a part's banded edges, e.g. "Front edge" or "All 4 edges". */
+export function describeBandedEdges(edges: readonly EdgeFace[] | undefined): string {
+  if (!edges?.length) return '';
+  if (edges.length === 1) return `${edges[0]!.charAt(0).toUpperCase()}${edges[0]!.slice(1)} edge`;
+  if (edges.length === 4 && !edges.includes('front') && !edges.includes('back')) return 'All 4 edges';
+  return `${edges.join(', ').replace(/^./, (c) => c.toUpperCase())} edges`;
 }
 
 /** A hole drilled into a part, in run space: centered at (x, y, z) on the part's face, along `axis`. */

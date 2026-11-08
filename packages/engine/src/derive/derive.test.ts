@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Part, RunResult } from '../derived';
+import { describeBandedEdges, type Part, type RunResult } from '../derived';
 import { createDefaultProject, flexBox, newId, opening } from '../defaults';
 import type { Box, Opening, Project, Run, Span, Split, Tier } from '../model';
 import { inches, mm } from '../units';
@@ -23,9 +23,24 @@ const part = (r: RunResult, id: string): Part => {
   return p;
 };
 const nonInfo = (r: RunResult) => r.issues.filter((i) => i.severity !== 'info');
+/** Issues other than exposed raw edge notes (tested on their own). */
+const notRawEdges = (r: RunResult) => r.issues.filter((i) => i.code !== 'raw-edges');
 /** Problems other than parts too big for stock (some layouts here use wide boxes on purpose). */
 const layoutProblems = (r: RunResult) => nonInfo(r).filter((i) => i.code !== 'part-exceeds-stock');
 const counters = (r: RunResult) => r.parts.filter((p) => p.role === 'countertop');
+
+/** Add a span (tall box or gap) with a slot in each tier it passes through. */
+function addSpan(run: Run, span: Partial<Span> & Pick<Span, 'kind' | 'x' | 'width' | 'tiers'>, slotIndex: (t: Tier) => number) {
+  const s: Span = { id: newId(), content: opening({ type: 'doorPair' }, 4), ...span };
+  run.spans.push(s);
+  const from = run.tiers.findIndex((t) => t.id === s.tiers.from);
+  const to = run.tiers.findIndex((t) => t.id === s.tiers.to);
+  for (let i = from; i <= to; i++) {
+    const t = run.tiers[i]!;
+    t.items.splice(slotIndex(t), 0, { kind: 'slot', spanId: s.id });
+  }
+  return s;
+}
 
 describe('deriveRun: default project', () => {
   const { run, result } = setup();
@@ -33,7 +48,7 @@ describe('deriveRun: default project', () => {
   const upper = tier(run, 1);
 
   it('has no problems', () => {
-    expect(result.issues).toEqual([]);
+    expect(notRawEdges(result)).toEqual([]);
   });
 
   it('stacks tiers bottom to top with the ceiling scribe left over', () => {
@@ -166,17 +181,6 @@ describe('deriveRun: remainders and errors', () => {
 });
 
 describe('deriveRun: spans', () => {
-  function addSpan(run: Run, span: Partial<Span> & Pick<Span, 'kind' | 'x' | 'width' | 'tiers'>, slotIndex: (t: Tier) => number) {
-    const s: Span = { id: newId(), content: opening({ type: 'doorPair' }, 4), ...span };
-    run.spans.push(s);
-    const from = run.tiers.findIndex((t) => t.id === s.tiers.from);
-    const to = run.tiers.findIndex((t) => t.id === s.tiers.to);
-    for (let i = from; i <= to; i++) {
-      const t = run.tiers[i]!;
-      t.items.splice(slotIndex(t), 0, { kind: 'slot', spanId: s.id });
-    }
-    return s;
-  }
 
   it('reserves a slot for a tall box spanning both tiers; tiers flex around it', () => {
     let span!: Span;
@@ -232,7 +236,7 @@ describe('deriveRun: spans', () => {
         centeredGap(r);
         boxesOf(tier(r, 0))[1]!.overrides = { faceFrame: { endStiles: { right: 'full' } } };
       });
-      expect(result.issues).toEqual([]);
+      expect(notRawEdges(result)).toEqual([]);
       const [b0, b1, b2] = boxesOf(tier(run, 0)).map((b) => b.id);
       // 41 1/2" region less the 23/32" reserve: two 20 3/8" boxes, the 1/32" remainder at the wall.
       expect(edgeOf(result, b0!)).toEqual([inches(0.5 + 1 / 32), inches(0.5 + 1 / 32 + 20.375)]);
@@ -259,7 +263,7 @@ describe('deriveRun: spans', () => {
       expect(part(result, `${items[0]!.id}/stile-left`)).toMatchObject({ name: 'Scribe stile', width: inches(0.5 + 1 / 32) + T });
       expect(part(result, `${items[1]!.id}/stile-left`)).toMatchObject({ name: 'Shared stile', width: 2 * T });
       expect(result.parts.filter((p) => p.name === 'End panel')).toHaveLength(2);
-      expect(result.issues).toEqual([]);
+      expect(notRawEdges(result)).toEqual([]);
     });
 
     it('lines up with a shared stile in a shallower tier above', () => {
@@ -741,7 +745,7 @@ describe('deriveRun: frameless construction', () => {
 
   it('has no face frame; full overlay fronts sit on the carcass edges', () => {
     const { run, result } = frameless();
-    expect(result.issues).toEqual([]);
+    expect(notRawEdges(result)).toEqual([]);
     expect(result.parts.filter((p) => p.role === 'stile' || p.role === 'rail')).toEqual([]);
     expect(result.frames).toEqual([]);
     const b0 = boxesOf(tier(run, 0))[0]!;
@@ -901,6 +905,22 @@ describe('deriveRun: edge banding', () => {
       p.settings = { ...p.settings, edgeBanding: { enabled: true, thickness } };
       more?.(p);
     });
+
+  it("names the banded faces: a shelf's front edge, all four edges of a slab door", () => {
+    const { run, result } = banded(0, (p) => {
+      p.settings = { ...p.settings, construction: 'frameless' };
+    });
+    const op = boxesOf(tier(run, 0))[0]!.content.id;
+    expect(part(result, `${op}/door-left`).bandedEdges).toEqual(['left', 'right', 'bottom', 'top']);
+    const upper = boxesOf(tier(run, 1))[0]!;
+    expect(part(result, `${upper.content.id}/adj-shelf-0`).bandedEdges).toEqual(['front']);
+    // Frameless: the carcass front edges too; face frame boxes cover them with the frame.
+    expect(part(result, `${upper.id}/side-left`).bandedEdges).toEqual(['front']);
+    const faceFrame = setup();
+    expect(part(faceFrame.result, `${boxesOf(tier(faceFrame.run, 1))[0]!.id}/side-left`).bandedEdges).toBeUndefined();
+    expect(describeBandedEdges(['front'])).toBe('Front edge');
+    expect(describeBandedEdges(['left', 'right', 'bottom', 'top'])).toBe('All 4 edges');
+  });
 
   it('records banded edges, and cuts parts smaller by solid edging thickness', () => {
     const veneer = banded(0);
@@ -1237,5 +1257,53 @@ describe('deriveRun: splitting oversize parts', () => {
     expect(stile.bounds.y + stile.bounds.height).toBe(rail[0]!.bounds.y + rail[0]!.bounds.height);
     expect(stile.note).toMatch(/Runs through the rail/);
     expect(rail[1]!.bounds.x).toBe(stile.bounds.x + stile.bounds.width);
+  });
+});
+
+
+describe('deriveRun: exposed raw edges', () => {
+  it('flags the tops of base sides left bare on the ledge in front of shallower uppers', () => {
+    const { run, result } = setup();
+    const notes = result.issues.filter((i) => i.code === 'raw-edges');
+    expect(notes.map((i) => i.sourceId).sort()).toEqual(boxesOf(tier(run, 0)).map((b) => b.id).sort());
+    expect(notes[0]!.severity).toBe('info');
+    const side = part(result, `${boxesOf(tier(run, 0))[0]!.id}/side-left`);
+    // Only the top edge, only in front of the 12"-deep uppers (the box above hides the rest).
+    expect(side.rawEdges!.map((e) => [e.face, e.axis])).toEqual([['top', 'z']]);
+    const edge = side.rawEdges![0]!;
+    expect(edge.from).toBeGreaterThanOrEqual(inches(12));
+    expect(edge.to).toBe(side.bounds.z + side.bounds.depth);
+    // Upper boxes: tops at the ceiling gap, everything else covered.
+    expect(result.parts.filter((p) => p.rawEdges && p.ownerId === boxesOf(tier(run, 1))[0]!.id)).toEqual([]);
+  });
+
+  it('has nothing exposed under a countertop', () => {
+    const { result } = setup((_, r) => {
+      tier(r, 0).countertop = { thickness: inches(1.5), frontOverhang: inches(1), endOverhang: inches(1) };
+    });
+    expect(result.parts.filter((p) => p.rawEdges)).toEqual([]);
+  });
+
+  it('bands exposed edges when asked', () => {
+    const { run, result } = setup((p) => {
+      p.settings = { ...p.settings, edgeBanding: { ...p.settings.edgeBanding, exposed: true } };
+    });
+    expect(result.issues.some((i) => i.code === 'raw-edges')).toBe(false);
+    const side = part(result, `${boxesOf(tier(run, 0))[0]!.id}/side-left`);
+    expect(side.bandedEdges).toEqual(['top']);
+    expect(side.banding).toBe(side.bounds.depth);
+    expect(side.note).toMatch(/Band the exposed top edge/);
+  });
+
+  it('flags the bottom edges of a box over a doorway', () => {
+    const { run, result } = setup((_, r) => {
+      addSpan(r, { kind: 'gap', x: { anchor: 'center', offset: 0 }, width: inches(36), tiers: { from: tier(r, 0).id, to: tier(r, 0).id } }, () => 2);
+    });
+    const upper = boxesOf(tier(run, 1)).find((b) => {
+      const c = result.boxes.find((x) => x.id === b.id)!.carcass;
+      return c.x < inches(50) && c.x + c.width > inches(50);
+    })!;
+    const raw = result.parts.filter((p) => p.ownerId === upper.id && p.rawEdges?.some((e) => e.face === 'bottom'));
+    expect(raw.map((p) => p.role)).toContain('back');
   });
 });

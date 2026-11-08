@@ -187,7 +187,12 @@ export interface ConstructionSettings {
    * fronts (all four edges); and, for frameless boxes, the front edges of the carcass and fixed
    * shelves. Banded parts are cut smaller by `thickness` per banded edge (0 for veneer tape).
    */
-  edgeBanding: { enabled: boolean; thickness: Ticks };
+  edgeBanding: {
+    enabled: boolean;
+    thickness: Ticks;
+    /** Also band any other plywood edge left exposed (not covered by another part, a wall or a neighboring box). */
+    exposed?: boolean;
+  };
   /**
    * Piece parts bigger than their stock (a sheet, or the longest board) with as few joints as
    * possible, placed where they hide (on a partition, fixed shelf or mid stile). Off: such parts

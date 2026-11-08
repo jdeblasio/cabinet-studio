@@ -1,9 +1,10 @@
-import { findBox, findSpan, finishesOf, TICKS_PER_INCH, toGLTF, toOBJ, toSTL, type HardwareItem, type HardwareShape, type Id, type Part, type Run, type RunResult, type Ticks } from '@built-in-planner/engine';
+import { findBox, findSpan, finishesOf, TICKS_PER_INCH, toGLTF, toOBJ, toSTL, type EdgeFace, type HardwareItem, type HardwareShape, type Id, type Part, type Run, type RunResult, type Ticks } from '@built-in-planner/engine';
 import { Edges, OrbitControls } from '@react-three/drei';
 import { Canvas, useThree, type ThreeEvent } from '@react-three/fiber';
 import { memo, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { PerspectiveCamera, Vector3 } from 'three';
 import { usePartColor } from '../../lib/colors';
+import { BANDING_COLOR, BandingToggle, RAW_EDGE_COLOR } from '../BandingToggle';
 import { downloadFile, fileSlug } from '../../lib/download';
 import { useRunResult } from '../../store/derived';
 import { selectionForId, type Selection } from '../../store/selection';
@@ -58,6 +59,7 @@ export function Preview3D() {
   const mode = useEditor((s) => s.view3d);
   const setMode = useEditor((s) => s.setView3d);
   const showHardware = useEditor((s) => s.showHardware);
+  const showBanding = useEditor((s) => s.showBanding);
   const setShowHardware = useEditor((s) => s.setShowHardware);
   const [resetKey, setResetKey] = useState(0);
 
@@ -113,6 +115,15 @@ export function Preview3D() {
             />
           ))}
         </group>
+        {showBanding && (
+          <group>
+            {result.parts
+              .filter((p) => p.bandedEdges?.length || p.rawEdges?.length)
+              .map((p) => (
+                <BandingStrips key={p.id} part={p} offset={offsets?.get(p.id)} />
+              ))}
+          </group>
+        )}
         {showHardware && (
           <group>
             {result.hardware.map((h) => (
@@ -149,6 +160,7 @@ export function Preview3D() {
           <input type="checkbox" checked={showHardware} onChange={(e) => setShowHardware(e.target.checked)} />
           Hardware
         </label>
+        <BandingToggle />
         <button onClick={() => setResetKey((k) => k + 1)}>Reset view</button>
         <ExportMenu run={run} result={result} />
       </div>
@@ -226,6 +238,65 @@ const PartMesh = memo(function PartMesh({
       )}
       <Edges threshold={15} color={highlighted ? HIGHLIGHT : mode === 'wireframe' ? '#4d3f2f' : '#6f5e4a'} />
     </mesh>
+  );
+});
+
+/** How far a banding highlight stands off its edge (inches), so it reads as a strip on the edge. */
+const BAND_PROUD = 0.04;
+
+/** Edge highlights: a thin, unlit strip on each banded face of a part, and on each exposed raw stretch. */
+const BandingStrips = memo(function BandingStrips({ part, offset }: { part: Part; offset?: [number, number, number] }) {
+  const b = part.bounds;
+  const x0 = I(b.x);
+  const y0 = I(b.y);
+  const z0 = I(b.z);
+  const x1 = x0 + I(b.width);
+  const y1 = y0 + I(b.height);
+  const z1 = z0 + I(b.depth);
+  const t = BAND_PROUD;
+  const e = 0.005; // tucked into the edge a hair, so there's no gap
+  const box = (ax: number, bx: number, ay: number, by: number, az: number, bz: number) => ({
+    position: [(ax + bx) / 2, (ay + by) / 2, (az + bz) / 2] as [number, number, number],
+    size: [Math.max(bx - ax, 0.001), Math.max(by - ay, 0.001), Math.max(bz - az, 0.001)] as [number, number, number],
+  });
+  const faceStrip = (face: EdgeFace) => {
+    switch (face) {
+      case 'front':
+        return box(x0, x1, y0, y1, z1 - e, z1 + t);
+      case 'back':
+        return box(x0, x1, y0, y1, z0 - t, z0 + e);
+      case 'left':
+        return box(x0 - t, x0 + e, y0, y1, z0, z1);
+      case 'right':
+        return box(x1 - e, x1 + t, y0, y1, z0, z1);
+      case 'bottom':
+        return box(x0, x1, y0 - t, y0 + e, z0, z1);
+      case 'top':
+        return box(x0, x1, y1 - e, y1 + t, z0, z1);
+    }
+  };
+  const strips = (part.bandedEdges ?? []).map((face) => ({ ...faceStrip(face), color: BANDING_COLOR }));
+  for (const raw of part.rawEdges ?? []) {
+    // The same strip, cut to the exposed stretch along the edge.
+    const s = faceStrip(raw.face);
+    const k = raw.axis === 'x' ? 0 : raw.axis === 'y' ? 1 : 2;
+    const a = I(raw.from);
+    const b2 = I(raw.to);
+    const position = [...s.position] as [number, number, number];
+    const size = [...s.size] as [number, number, number];
+    position[k] = (a + b2) / 2;
+    size[k] = Math.max(b2 - a, 0.001);
+    strips.push({ position, size, color: RAW_EDGE_COLOR });
+  }
+  return (
+    <group position={offset ?? [0, 0, 0]}>
+      {strips.map((s, i) => (
+        <mesh key={i} position={s.position} raycast={() => null}>
+          <boxGeometry args={s.size} />
+          <meshBasicMaterial color={s.color} />
+        </mesh>
+      ))}
+    </group>
   );
 });
 

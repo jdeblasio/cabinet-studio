@@ -164,7 +164,7 @@ export const DEFAULT_SETTINGS: ConstructionSettings = {
     fixedSetback: inches(1 / 4),
   },
   ceilingScribe: inches(0.5),
-  edgeBanding: { enabled: true, thickness: 0 },
+  edgeBanding: { enabled: true, thickness: 0, exposed: false },
   splitOversize: false,
 };
 

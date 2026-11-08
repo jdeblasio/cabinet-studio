@@ -256,7 +256,14 @@ step or two off its siblings. Hold Alt/Option to drag freely.
 
 - Toe kick: integral, or separate leveling base/platform, plus kick boards
 - Scribe strips and fillers (derived from measurements and per-edge choices)
-- Edge banding / solid edging, including its effect on part dimensions
+- Edge banding / solid edging, including its effect on part dimensions. Parts record which
+  faces are banded (`bandedEdges`). **Exposed raw edges** of sheet goods are found too
+  (`rawEdges`): an unbanded edge is hidden if just outside it there's another part (within a
+  1/16" clearance), the inside of another box or the closed space behind a toe kick, the wall,
+  floor (undersides below 6"), the ceiling gap, or a wall-end scribe gap; anything else is
+  exposed and noted per box. A **Band exposed edges** setting bands them instead. The
+  elevation and 3D view highlight banded (magenta) and raw (orange) edges on demand; box
+  sheets list banded edges per part.
 - Crown molding, base molding, countertops/top panels with overhangs
 
 ## 7. Materials and hardware

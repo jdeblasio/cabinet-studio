@@ -323,6 +323,18 @@ button.link:hover {
   stroke-width: 2;
   pointer-events: none;
 }
+.elevation-svg .banded-face,
+.elevation-svg .raw-face {
+  stroke: none;
+  fill-opacity: 0.9;
+  pointer-events: none;
+}
+.elevation-svg .banded-edge,
+.elevation-svg .raw-edge {
+  stroke-width: 3;
+  stroke-linecap: square;
+  pointer-events: none;
+}
 .elevation-svg .snap-guide {
   stroke: #e0368f;
   stroke-width: 1;
@@ -348,10 +360,27 @@ button.link:hover {
   position: absolute;
   top: 10px;
   right: 10px;
+  /* Wraps onto more rows (right-aligned) in a narrow pane; clicks pass through the gaps. */
+  left: 10px;
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 8px;
   align-items: center;
+  pointer-events: none;
 }
+.elevation-controls > *,
+.preview-controls > * {
+  pointer-events: auto;
+  white-space: nowrap;
+}
+.banding-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+.elevation-controls .toggle,
 .preview-controls .toggle {
   background: white;
   border: 1px solid var(--line-strong);
