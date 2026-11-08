@@ -1,6 +1,10 @@
 import {
   addBox,
   addMaterial,
+  setMolding,
+  DEFAULT_CROWN,
+  DEFAULT_BASE_MOLDING,
+  type Molding,
   addRun,
   removeRun,
   addStyle,
@@ -94,6 +98,38 @@ export function Inspector() {
 // ---------------------------------------------------------------------------
 // Run + project
 // ---------------------------------------------------------------------------
+
+/** Crown or base molding along a run: on/off, height and projection. */
+function MoldingFields({ run, which }: { run: Run; which: 'crown' | 'base' }) {
+  const editRun = useEditRun();
+  const m = run.trim?.[which];
+  const label = which === 'crown' ? 'Crown molding' : 'Base molding';
+  const set = (next: Molding | undefined) => editRun((r) => setMolding(r, which, next));
+  return (
+    <>
+      <Field
+        label={label}
+        tip={
+          which === 'crown'
+            ? 'Crown along the front of the top tier, up against the ceiling. At open ends it returns along the side to the wall. Shown as a simplified profile.'
+            : 'Base molding along the front of the bottom tier at the floor (for runs without a toe kick). Returns along open ends.'
+        }
+      >
+        <input type="checkbox" aria-label={label} checked={!!m} onChange={(e) => set(e.target.checked ? { ...(which === 'crown' ? DEFAULT_CROWN : DEFAULT_BASE_MOLDING) } : undefined)} />
+      </Field>
+      {m && (
+        <>
+          <Field label="Molding height" tip="Height of the molding's profile on the wall.">
+            <LengthInput value={m.height} min={inches(1 / 4)} onCommit={(height) => set({ ...m, height })} ariaLabel={`${label} height`} />
+          </Field>
+          <Field label="Projection" tip="How far the molding projects from the face it's applied to.">
+            <LengthInput value={m.projection} min={inches(1 / 8)} onCommit={(projection) => set({ ...m, projection })} ariaLabel={`${label} projection`} />
+          </Field>
+        </>
+      )}
+    </>
+  );
+}
 
 /** Pick, add and remove wall runs (e.g. one per wall of a room). */
 function RunPicker({ run }: { run: Run }) {
@@ -189,6 +225,8 @@ function RunPanel({ run, result }: { run: Run; result: RunResult }) {
             />
           </Field>
         ))}
+        <MoldingFields run={run} which="crown" />
+        <MoldingFields run={run} which="base" />
         {runCount > 1 && (
           <div className="actions">
             <button

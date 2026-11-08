@@ -5,6 +5,9 @@ export function newId(): Id {
   return globalThis.crypto.randomUUID();
 }
 
+export const DEFAULT_CROWN = { height: inches(3.5), projection: inches(2.5) };
+export const DEFAULT_BASE_MOLDING = { height: inches(3.5), projection: inches(0.75) };
+
 export const DEFAULT_COUNTERTOP = { thickness: inches(1.5), frontOverhang: inches(1), endOverhang: inches(1) };
 
 export const DEFAULT_MATERIALS: Material[] = [
@@ -40,6 +43,13 @@ export const DEFAULT_MATERIALS: Material[] = [
     color: '#e9e0c4',
   },
   {
+    id: 'molding',
+    name: 'Molding (bought by length)',
+    kind: 'lumber',
+    thickness: inches(3 / 4),
+    color: '#ede4cc',
+  },
+  {
     id: 'hardwood-top',
     name: 'Hardwood top 1 1/2"',
     kind: 'lumber',
@@ -64,6 +74,7 @@ export const DEFAULT_SETTINGS: ConstructionSettings = {
     drawerBottom: 'ply-7-32',
     frontFrame: 'poplar-3-4',
     frontPanel: 'ply-7-32',
+    molding: 'molding',
   },
   back: 'applied',
   carcass: { top: 'panel', bottom: 'panel' },

@@ -6,6 +6,7 @@ import { deriveCountertops } from './countertop';
 import { makeCtx } from './context';
 import { deriveFrames } from './frame';
 import { deriveScribeStrips } from './scribe';
+import { deriveTrim } from './trim';
 import { layoutRun } from './layout';
 import { deriveToeKick } from './toeKick';
 
@@ -37,7 +38,7 @@ export function deriveRun(project: Project, runId: Id): RunResult {
     boxes.push({ id: placed.id, source: placed.source, tierId: placed.tierId, carcass: placed.carcass, sections });
   }
   const { frames, parts: stiles } = deriveFrames(ctx, layout.boxes, layout.width, layout.gaps, layout.lengthVariance);
-  parts.push(...stiles, ...deriveToeKick(ctx, layout), ...deriveCountertops(ctx, layout, stiles), ...deriveScribeStrips(ctx, layout));
+  parts.push(...stiles, ...deriveToeKick(ctx, layout), ...deriveCountertops(ctx, layout, stiles), ...deriveScribeStrips(ctx, layout), ...deriveTrim(ctx, layout));
 
   for (const id of ctx.offGridMaterials) {
     const m = project.materials.find((mat) => mat.id === id);

@@ -809,3 +809,45 @@ describe('deriveRun: measured irregularity', () => {
     expect(result.issues.map((i) => i.code)).toContain('ceiling-varies');
   });
 });
+
+describe('deriveRun: moldings', () => {
+  const CROWN = { height: inches(3.5), projection: inches(2.5) };
+
+  it('runs crown wall to wall along the top tier, up against the ceiling', () => {
+    const { result } = setup((_, r) => {
+      r.trim = { crown: CROWN };
+    });
+    const crown = result.parts.filter((p) => p.role === 'molding');
+    expect(crown.map((p) => p.name)).toEqual(['Crown']);
+    expect(crown[0]!.bounds).toEqual({ x: 0, y: inches(92.5), z: inches(12.75), width: inches(120), height: inches(3.5), depth: inches(2.5) });
+    expect(crown[0]!.length).toBe(inches(120));
+  });
+
+  it('returns along the side at an open end', () => {
+    const { result } = setup((_, r) => {
+      r.trim = { crown: CROWN };
+      r.ends.right = 'open';
+    });
+    const front = result.parts.find((p) => p.name === 'Crown')!;
+    const ret = result.parts.find((p) => p.name === 'Crown return')!;
+    // Open right end: the boxes reach the end of the run; the front miters around the corner.
+    expect(front.bounds.x + front.bounds.width).toBe(inches(120 + 2.5));
+    expect(ret.bounds).toMatchObject({ x: inches(120), z: 0, depth: inches(12.75), width: inches(2.5) });
+    expect(ret.length).toBe(inches(12.75 + 2.5));
+  });
+
+  it('puts base molding at the floor only without a toe kick', () => {
+    const base = { height: inches(3.5), projection: inches(0.75) };
+    const withKick = setup((_, r) => {
+      r.trim = { base };
+    }).result;
+    expect(withKick.parts.some((p) => p.role === 'molding')).toBe(false);
+    expect(withKick.issues.map((i) => i.code)).toContain('base-molding-ignored');
+    const noKick = setup((_, r) => {
+      r.trim = { base };
+      delete tier(r, 0).toeKick;
+    }).result;
+    const m = noKick.parts.find((p) => p.name === 'Base molding')!;
+    expect(m.bounds).toMatchObject({ y: 0, z: inches(16.75), height: inches(3.5), depth: inches(0.75) });
+  });
+});

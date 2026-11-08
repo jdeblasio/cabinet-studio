@@ -136,6 +136,7 @@ const SETTINGS: SettingDef[] = [
   { path: 'materials.fronts', label: 'Door/drawer material', tip: 'Material for slab doors and drawer fronts.', type: 'material' },
   { path: 'materials.toeKick', label: 'Toe kick material', tip: 'Material for the toe kick platform and kick boards.', type: 'material' },
   { path: 'materials.countertop', label: 'Countertop material', tip: 'Material (species and color) for countertops. Thickness is set on the tier.', type: 'material' },
+  { path: 'materials.molding', label: 'Molding material', tip: 'Stock for crown and base molding (bought by length).', type: 'material' },
   { path: 'materials.drawerBox', label: 'Drawer box material', tip: 'Material for drawer box sides, fronts and backs.', type: 'material' },
   { path: 'materials.drawerBottom', label: 'Drawer bottom material', tip: 'Material for drawer bottoms.', type: 'material' },
   { path: 'materials.frontFrame', label: '5-piece frame material', tip: 'Lumber for the stiles and rails of five-piece doors and drawer fronts.', type: 'material' },

@@ -56,7 +56,9 @@ export type PartRole =
   | 'drawerBottom'
   /** Stiles and rails of five-piece fronts. */
   | 'frontFrame'
-  | 'frontPanel';
+  | 'frontPanel'
+  /** Crown and base molding (simplified profiles). */
+  | 'molding';
 
 /** A single rectangular piece of material, placed in run space. */
 export interface Part {

@@ -94,6 +94,8 @@ export interface ConstructionSettings {
     frontFrame: Id;
     /** Panels of five-piece doors and drawer fronts. */
     frontPanel: Id;
+    /** Crown and base molding stock. */
+    molding: Id;
   };
   back: 'applied' | 'none';
   carcass: { top: CarcassEnd; bottom: CarcassEnd };
@@ -190,6 +192,16 @@ export interface Run extends SettingsScope {
   tiers: Tier[];
   /** Run-level elements that span one or more tiers (tall boxes, floor gaps such as doorways). */
   spans: Span[];
+  /** Moldings along the run, as simplified profiles (bounding boxes). */
+  trim?: { crown?: Molding; base?: Molding };
+}
+
+/** A molding's profile, simplified to its bounding box. */
+export interface Molding {
+  /** Height on the wall. */
+  height: Ticks;
+  /** How far it projects from the face it's applied to. */
+  projection: Ticks;
 }
 
 export interface WallSegment {

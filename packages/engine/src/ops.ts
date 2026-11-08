@@ -14,6 +14,7 @@ import type {
   Front,
   Id,
   Material,
+  Molding,
   NamedStyle,
   Opening,
   Project,
@@ -531,6 +532,15 @@ export function setSpanGeometry(
 // ---------------------------------------------------------------------------
 // Run / wall
 // ---------------------------------------------------------------------------
+
+/** Set or remove a run's crown or base molding. */
+export function setMolding(run: Run, which: 'crown' | 'base', molding: Molding | undefined): void {
+  const trim = { ...run.trim };
+  if (molding) trim[which] = molding;
+  else delete trim[which];
+  if (trim.crown || trim.base) run.trim = trim;
+  else delete run.trim;
+}
 
 /** Add a wall run (default tiers) named "Wall N". Returns its id. */
 export function addRun(project: Project, name?: string): Id {
