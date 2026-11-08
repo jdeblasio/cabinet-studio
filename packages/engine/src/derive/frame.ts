@@ -47,6 +47,8 @@ export function deriveFrames(
   boxes: readonly PlacedBox[],
   runWidth: Ticks,
   gaps: readonly { spanId: Id; rect: Rect }[] = [],
+  /** Extra width to cut on scribe stiles so they reach the wall where it measures longer. */
+  scribeExtra: Ticks = 0,
 ): { frames: FrameGroup[]; parts: Part[] } {
   // Frameless boxes have no face frame.
   const edges: Edges[] = boxes.filter((b) => b.settings.construction !== 'frameless').map((b) => ({
@@ -134,6 +136,7 @@ export function deriveFrames(
             grain: 'vertical',
             thicknessAxis: 'z',
             ownerId: owner.box.id as Id,
+            ...(name === 'Scribe stile' && scribeExtra > 0 ? { width: width + scribeExtra, note: `+${ctx.fmt(scribeExtra)} wide to scribe to the wall` } : {}),
           }),
         );
         if (left.kind === 'full') {

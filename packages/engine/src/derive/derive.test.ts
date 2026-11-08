@@ -777,3 +777,35 @@ describe('deriveRun: joinery presets', () => {
     expect(sizes('confirmat')).toEqual([inches(29.75) - 2 * T, undefined]);
   });
 });
+
+describe('deriveRun: measured irregularity', () => {
+  it('fits boxes to the tightest length and cuts scribe stiles wide enough for the widest', () => {
+    const { run, result } = setup((_, r) => {
+      r.wall[0]!.measuredLengths = [inches(119.5), inches(120.25)];
+    });
+    expect(result.width).toBe(inches(119.5));
+    const note = result.issues.find((i) => i.code === 'wall-varies')!;
+    expect(note.severity).toBe('info');
+    expect(note.message).toContain('3/4"');
+    const left = part(result, `${boxesOf(tier(run, 0))[0]!.id}/stile-left`);
+    expect(left.name).toBe('Scribe stile');
+    expect(left.width).toBe(left.bounds.width + inches(0.75));
+    expect(left.note).toBe('+3/4" wide to scribe to the wall');
+  });
+
+  it('warns when the variance is more than the scribe allowance can take up', () => {
+    const { result } = setup((_, r) => {
+      r.wall[0]!.measuredLengths = [inches(118.5)];
+    });
+    expect(result.issues.find((i) => i.code === 'wall-varies')!.severity).toBe('warning');
+  });
+
+  it('fits tiers under the lowest ceiling measurement', () => {
+    const { result } = setup((_, r) => {
+      r.wall[0]!.measuredCeilings = [inches(95.5), inches(96.25)];
+    });
+    expect(result.ceilingHeight).toBe(inches(95.5));
+    expect(result.tiers[1]!.height).toBe(inches(65));
+    expect(result.issues.map((i) => i.code)).toContain('ceiling-varies');
+  });
+});

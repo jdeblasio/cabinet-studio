@@ -138,6 +138,41 @@ export function LengthInput({
   );
 }
 
+/** A comma-separated list of lengths (e.g. extra wall measurements). Empty means none. */
+export function LengthListInput({
+  value,
+  onCommit,
+  placeholder = 'none',
+  ariaLabel,
+}: {
+  value: readonly Ticks[] | undefined;
+  onCommit: (t: Ticks[] | undefined) => void;
+  placeholder?: string;
+  ariaLabel?: string;
+}) {
+  const { fmt, parse } = useFormatter();
+  return (
+    <CommitInput<readonly Ticks[] | undefined>
+      value={value}
+      format={(list) => (list ?? []).map((t) => fmt(t)).join(', ')}
+      parse={(s) => {
+        if (s === '') return undefined;
+        const out: Ticks[] = [];
+        for (const piece of s.split(/[,;]/)) {
+          if (piece.trim() === '') continue;
+          const t = parse(piece.trim());
+          if (t === null || t <= 0) return null;
+          out.push(t);
+        }
+        return out.length ? out : undefined;
+      }}
+      onCommit={(list) => onCommit(list ? [...list] : undefined)}
+      placeholder={placeholder}
+      ariaLabel={ariaLabel}
+    />
+  );
+}
+
 export function OptionalLengthInput({
   value,
   onCommit,

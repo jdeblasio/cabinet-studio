@@ -33,6 +33,8 @@ export interface RunLayoutResult {
   gaps: { spanId: Id; rect: Rect }[];
   /** Bottom tier's toe kick, if any. */
   toeKick?: { tierId: Id; height: Ticks; setback: Ticks; settings: ConstructionSettings };
+  /** How much longer the wall measures somewhere than the tightest length the boxes fit. */
+  lengthVariance: Ticks;
 }
 
 interface SpanPlacement {
@@ -45,8 +47,11 @@ interface SpanPlacement {
 export function layoutRun(ctx: Ctx): RunLayoutResult {
   const { run, grid } = ctx;
   const seg = run.wall[0]!;
-  const W = seg.length;
-  const H = seg.ceilingHeight;
+  // Measured irregularity: boxes fit the tightest length and the lowest ceiling.
+  const lengths = [seg.length, ...(seg.measuredLengths ?? [])].filter((l) => l > 0);
+  const ceilings = [seg.ceilingHeight, ...(seg.measuredCeilings ?? [])].filter((h) => h > 0);
+  const W = Math.min(...lengths);
+  const H = Math.min(...ceilings);
   const runSettings = resolveSettings(ctx.project, [run]);
 
   // ---- Vertical: tier bands, remainder to the ceiling gap ----
@@ -339,7 +344,26 @@ export function layoutRun(ctx: Ctx): RunLayoutResult {
     b.bottomExposed = covered < x1;
   }
 
-  return { width: W, ceilingHeight: H, ceilingGap, tiers, boxes, gaps, toeKick };
+  // ---- Report measured irregularity ----
+  const lengthVariance = Math.max(...lengths) - W;
+  if (lengthVariance > 0) {
+    const ends = (run.ends.left === 'wall' ? 1 : 0) + (run.ends.right === 'wall' ? 1 : 0);
+    const capacity = ends * runSettings.faceFrame.scribeAllowance;
+    ctx.issue(
+      lengthVariance > capacity ? 'warning' : 'info',
+      'wall-varies',
+      run.id,
+      lengthVariance > capacity
+        ? `The wall's length varies by ${ctx.fmt(lengthVariance)}, more than the scribe allowance can take up (${ctx.fmt(capacity)}). Increase the scribe allowance or add a filler.`
+        : `The wall's length varies by ${ctx.fmt(lengthVariance)}; boxes fit the tightest (${ctx.fmt(W)}) and the scribe stiles are cut wide enough to scribe to the rest.`,
+    );
+  }
+  const ceilingVariance = Math.max(...ceilings) - H;
+  if (ceilingVariance > 0) {
+    ctx.issue('info', 'ceiling-varies', run.id, `The ceiling height varies by ${ctx.fmt(ceilingVariance)}; tiers fit the lowest point (${ctx.fmt(H)}). Cover the gap above with a scribe molding or crown.`);
+  }
+
+  return { width: W, ceilingHeight: H, ceilingGap, tiers, boxes, gaps, toeKick, lengthVariance };
 }
 
 function spanName(span: Span): string {

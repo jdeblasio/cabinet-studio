@@ -57,7 +57,7 @@ import { useEffect, useState } from 'react';
 import { useFormatter } from '../../lib/units';
 import { useRunResult } from '../../store/derived';
 import { useActiveRun, useEditor } from '../../store/store';
-import { Field, LengthInput, NumberInput, Section, Segmented, Select, SizeSpecEditor, TextInput } from './fields';
+import { Field, LengthInput, LengthListInput, NumberInput, Section, Segmented, Select, SizeSpecEditor, TextInput } from './fields';
 import { SettingsSection } from './SettingsSection';
 
 function useEditRun() {
@@ -142,6 +142,40 @@ function RunPanel({ run, result }: { run: Run; result: RunResult }) {
         </Field>
         <Field label="Ceiling height" tip="Floor-to-ceiling height along this wall.">
           <LengthInput value={seg.ceilingHeight} min={inches(12)} onCommit={(t) => editRun((r) => setCeilingHeight(r, t))} ariaLabel="Ceiling height" />
+        </Field>
+        <Field
+          label="Other lengths"
+          tip="If the wall isn't straight or square, enter more length measurements (e.g. at the floor, middle and ceiling), separated by commas. Boxes fit the tightest; the scribe stiles are cut wide enough for the widest."
+          hint={seg.measuredLengths?.length ? `Fits ${fmt(Math.min(seg.length, ...seg.measuredLengths))}` : undefined}
+        >
+          <LengthListInput
+            value={seg.measuredLengths}
+            ariaLabel="Other wall length measurements"
+            onCommit={(list) =>
+              editRun((r) => {
+                const w = r.wall[0]!;
+                if (list) w.measuredLengths = list;
+                else delete w.measuredLengths;
+              })
+            }
+          />
+        </Field>
+        <Field
+          label="Other ceilings"
+          tip="More ceiling height measurements along the wall, separated by commas. Tiers fit under the lowest."
+          hint={seg.measuredCeilings?.length ? `Fits ${fmt(Math.min(seg.ceilingHeight, ...seg.measuredCeilings))}` : undefined}
+        >
+          <LengthListInput
+            value={seg.measuredCeilings}
+            ariaLabel="Other ceiling height measurements"
+            onCommit={(list) =>
+              editRun((r) => {
+                const w = r.wall[0]!;
+                if (list) w.measuredCeilings = list;
+                else delete w.measuredCeilings;
+              })
+            }
+          />
         </Field>
         {(['left', 'right'] as const).map((side) => (
           <Field key={side} label={side === 'left' ? 'Left end' : 'Right end'}>

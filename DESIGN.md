@@ -116,6 +116,11 @@ step or two off its siblings. Hold Alt/Option to drag freely.
   - face-frame overhang (stile wider than the box)
   - trim/molding cover
 - Floor out-of-level defaults to being absorbed by the leveling base / toe kick **(assumed)**.
+- **Implemented so far:** each wall takes extra length and ceiling measurements. Layout fits
+  the tightest length and lowest ceiling; scribe stiles are cut wider by the length variance
+  (with a note) so they can be scribed to the widest point. Lint reports the variance and
+  warns when it's more than the wall ends' scribe allowance can take up. Per-edge fit choices
+  beyond scribe stiles (and frameless wall fillers) are still to come.
 
 ## 6. Construction
 

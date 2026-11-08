@@ -36,7 +36,7 @@ export function deriveRun(project: Project, runId: Id): RunResult {
     parts.push(...boxParts);
     boxes.push({ id: placed.id, source: placed.source, tierId: placed.tierId, carcass: placed.carcass, sections });
   }
-  const { frames, parts: stiles } = deriveFrames(ctx, layout.boxes, layout.width, layout.gaps);
+  const { frames, parts: stiles } = deriveFrames(ctx, layout.boxes, layout.width, layout.gaps, layout.lengthVariance);
   parts.push(...stiles, ...deriveToeKick(ctx, layout), ...deriveCountertops(ctx, layout, stiles), ...deriveScribeStrips(ctx, layout));
 
   for (const id of ctx.offGridMaterials) {

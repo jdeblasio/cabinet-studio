@@ -194,9 +194,16 @@ export interface Run extends SettingsScope {
 
 export interface WallSegment {
   id: Id;
-  /** Nominal wall length (inside corner to inside corner). Measured irregularity arrives in milestone 3. */
+  /** Wall length (inside corner to inside corner). */
   length: Ticks;
   ceilingHeight: Ticks;
+  /**
+   * Extra measurements of a wall that isn't straight or square (e.g. its length at the floor,
+   * middle and ceiling; the ceiling height at each end). Boxes fit the tightest; scribe stiles
+   * are cut wide enough to scribe to the widest.
+   */
+  measuredLengths?: Ticks[];
+  measuredCeilings?: Ticks[];
   /** Angle to the next segment in degrees (for future corners). Unused while runs are straight. */
   angleToNext?: number;
 }
