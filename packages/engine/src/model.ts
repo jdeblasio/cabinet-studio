@@ -30,6 +30,8 @@ export interface Project {
   materials: Material[];
   /** Hardware library; the built-in seed catalog when missing. */
   hardware?: HardwareLibrary;
+  /** Paints and finishes; the built-in seed list when missing. */
+  finishes?: Finish[];
   /** Cut list / optimizer options that differ from the defaults (kerf, trim, stock lengths, ...). */
   cutList?: DeepPartial<CutListOptions>;
   runs: Run[];
@@ -86,6 +88,11 @@ export interface ConstructionSettings {
   joinery: Joinery;
   /** Depth of dados and rabbets. */
   joineryDepth: Ticks;
+  /**
+   * Paint or other finish per material slot: a Finish id from the project's finishes, or
+   * 'natural' for the material's own look. Shown in the 3D view, elevation and cut list.
+   */
+  finishes: Record<MaterialSlot, Id>;
   /** Material ids by part role. */
   materials: {
     carcass: Id;
@@ -181,6 +188,17 @@ export interface ConstructionSettings {
    * shelves. Banded parts are cut smaller by `thickness` per banded edge (0 for veneer tape).
    */
   edgeBanding: { enabled: boolean; thickness: Ticks };
+}
+
+/** A slot in `ConstructionSettings.materials` (which material, and finish, a kind of part uses). */
+export type MaterialSlot = keyof ConstructionSettings['materials'];
+
+/** A paint or other finish applied over a material where it's used (see settings.finishes). */
+export interface Finish {
+  id: Id;
+  name: string;
+  /** Display color (#rrggbb). */
+  color: string;
 }
 
 export type DeepPartial<T> = { [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K] };

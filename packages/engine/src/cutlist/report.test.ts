@@ -3,7 +3,9 @@ import { createDefaultProject, DEFAULT_COUNTERTOP, flexBox, opening } from '../d
 import { deriveProject } from '../derive/index';
 import type { Project } from '../model';
 import { inches } from '../units';
+import { buildCutList } from './cutlist';
 import { buildCutReport, resolveCutListOptions } from './index';
+import { DEFAULT_CUTLIST_OPTIONS } from './options';
 
 /** One wide base box, like a 146" window seat: its top and bottom are ~144 9/16" long. */
 function wideBoxProject(): Project {
@@ -137,5 +139,18 @@ describe('buildCutReport', () => {
     expect(back.sheets).toEqual([]);
     expect(back.unplaced.every((u) => u.reason === 'no-sheet-size')).toBe(true);
     expect(r.cutList.unknown.map((g) => g.materialId)).toEqual(['poplar-3-4']);
+  });
+});
+
+describe('cut list finishes', () => {
+  it('keeps painted and natural parts in separate rows, naming the finish', () => {
+    const p = createDefaultProject();
+    const base = p.runs[0]!.tiers[0]!;
+    const first = base.items[0]!;
+    if (first.kind === 'box') first.overrides = { finishes: { fronts: 'paint-white' } };
+    const cl = buildCutList(p, deriveProject(p), DEFAULT_CUTLIST_OPTIONS);
+    const doorRows = cl.sheetGoods.flatMap((g) => g.rows).filter((r) => r.roles.includes('door'));
+    expect(doorRows.map((r) => r.finish?.name ?? 'natural').sort()).toEqual(['White paint', 'natural']);
+    expect(doorRows.find((r) => r.finish)!.qty).toBe(2);
   });
 });

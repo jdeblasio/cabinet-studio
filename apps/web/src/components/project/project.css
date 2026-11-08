@@ -42,3 +42,17 @@
 .project-card .material-row {
   grid-template-columns: 26px minmax(0, 1fr) 80px 92px 18px;
 }
+.finish-row {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) auto 18px;
+  align-items: center;
+  gap: 6px;
+}
+.finish-row .input {
+  width: 100%;
+  min-width: 0;
+}
+.finish-row > span {
+  display: flex;
+  min-width: 0;
+}

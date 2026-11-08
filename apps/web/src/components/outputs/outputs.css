@@ -227,6 +227,13 @@
 .cl-names {
   min-width: 120px;
 }
+.cl-finish {
+  white-space: nowrap;
+}
+.cl-finish .out-swatch {
+  margin-right: 5px;
+  vertical-align: -1px;
+}
 .cl-grain {
   white-space: nowrap;
   color: var(--muted);

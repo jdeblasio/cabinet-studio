@@ -17,7 +17,7 @@ describe('project tab', () => {
 
   it('holds the project-wide settings', () => {
     const html = renderToStaticMarkup(<ProjectView />);
-    for (const title of ['Project', 'Materials', 'Styles', 'Hardware', 'Construction defaults']) expect(html).toContain(`<h3>${title}</h3>`);
+    for (const title of ['Project', 'Materials', 'Paints and finishes', 'Styles', 'Hardware', 'Construction defaults']) expect(html).toContain(`<h3>${title}</h3>`);
     // Every default is listed (no "show all" toggle at the project level).
     expect(html).not.toContain('settings-toggle');
   });

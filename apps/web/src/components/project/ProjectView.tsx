@@ -3,8 +3,13 @@
  * hardware libraries, named styles and the construction defaults every run inherits).
  */
 import {
+  addFinish,
   addMaterial,
   addStyle,
+  finishesOf,
+  finishUsage,
+  removeFinish,
+  updateFinish,
   DEFAULT_GRID,
   hardwareOf,
   inches,
@@ -41,6 +46,9 @@ export function ProjectView() {
           </div>
           <div className="project-card">
             <MaterialsSection />
+          </div>
+          <div className="project-card">
+            <FinishesSection />
           </div>
           <div className="project-card">
             <StylesSection />
@@ -203,6 +211,55 @@ function ColorInput({ value, onCommit, ariaLabel }: { value: string; onCommit: (
       onChange={(e) => setDraft(e.target.value)}
       onBlur={() => draft !== value && onCommit(draft)}
     />
+  );
+}
+
+/** Paints and finishes: applied over a material where it's used (Construction › finish rows). */
+function FinishesSection() {
+  const project = useEditor((s) => s.project);
+  const edit = useEditor((s) => s.edit);
+  const finishes = finishesOf(project);
+  return (
+    <Section
+      title="Paints and finishes"
+      actions={
+        <button title="Add a paint or finish" onClick={() => edit((d) => void addFinish(d, { name: `Paint ${finishesOf(d).length + 1}`, color: '#b9c4c9' }))}>
+          + Paint
+        </button>
+      }
+    >
+      <p className="muted small">
+        Paint a kind of part (e.g. face frames, doors) instead of making a material per color: choose a finish for each under Construction, here for the whole project or for any run,
+        tier or box.
+      </p>
+      <div className="materials">
+        {finishes.map((f) => {
+          const used = finishUsage(project, f.id);
+          return (
+            <div key={f.id} className="finish-row">
+              <span title="Display color in the drawings and 3D view" className="material-color">
+                <ColorInput value={f.color} ariaLabel={`${f.name} color`} onCommit={(color) => edit((d) => void updateFinish(d, f.id, { color }))} />
+              </span>
+              <span className="material-name" title="Paint or finish name (shown in the cut list)">
+                <TextInput value={f.name} ariaLabel="Finish name" onCommit={(name) => edit((d) => void updateFinish(d, f.id, { name: name || f.name }))} />
+              </span>
+              <span className="muted small-inline" title="Settings that use this finish">
+                {used} use{used === 1 ? '' : 's'}
+              </span>
+              <button
+                className="link"
+                disabled={used > 0}
+                title={used > 0 ? 'In use; set those parts back to Natural (or another finish) first' : 'Remove this finish'}
+                aria-label={`Remove ${f.name}`}
+                onClick={() => edit((d) => void removeFinish(d, f.id))}
+              >
+                ×
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </Section>
   );
 }
 

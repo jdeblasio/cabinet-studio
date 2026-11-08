@@ -1,4 +1,4 @@
-import { SCHEMA_VERSION, type Box, type ConstructionSettings, type Front, type HardwareLibrary, type Id, type Material, type Project, type Run, type Section } from './model';
+import { SCHEMA_VERSION, type Box, type ConstructionSettings, type Finish, type Front, type HardwareLibrary, type Id, type Material, type Project, type Run, type Section } from './model';
 import { DEFAULT_GRID, inches, mm } from './units';
 
 export function newId(): Id {
@@ -83,10 +83,38 @@ export const DEFAULT_MATERIALS: Material[] = [
   },
 ];
 
+/** A finish value meaning "no finish: the material's own look". */
+export const NATURAL = 'natural';
+
+/** Seed paints, copied into a project when it edits them. */
+export const DEFAULT_FINISHES: Finish[] = [
+  { id: 'paint-white', name: 'White paint', color: '#f1eee6' },
+  { id: 'paint-black', name: 'Black paint', color: '#2f2f2f' },
+];
+
+/** The project's paints and finishes (the seed list when it has none). */
+export function finishesOf(project: Pick<Project, 'finishes'>): Finish[] {
+  return project.finishes ?? DEFAULT_FINISHES;
+}
+
 export const DEFAULT_SETTINGS: ConstructionSettings = {
   construction: 'faceFrame',
   joinery: 'butt',
   joineryDepth: inches(1 / 4),
+  finishes: {
+    carcass: NATURAL,
+    back: NATURAL,
+    shelves: NATURAL,
+    faceFrame: NATURAL,
+    fronts: NATURAL,
+    toeKick: NATURAL,
+    countertop: NATURAL,
+    drawerBox: NATURAL,
+    drawerBottom: NATURAL,
+    frontFrame: NATURAL,
+    frontPanel: NATURAL,
+    molding: NATURAL,
+  },
   materials: {
     carcass: 'ply-23-32',
     back: 'ply-7-32',

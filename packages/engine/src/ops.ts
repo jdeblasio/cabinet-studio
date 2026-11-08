@@ -6,11 +6,12 @@
  * that return false/undefined so the editor can call them speculatively.
  */
 import type { RunResult } from './derived';
-import { createDefaultRun, hardwareOf, newId } from './defaults';
+import { createDefaultRun, finishesOf, hardwareOf, newId } from './defaults';
 import { deriveRun } from './derive/index';
 import type {
   Box,
   EndCondition,
+  Finish,
   Front,
   HardwareLibrary,
   Id,
@@ -646,10 +647,14 @@ export function setProjectSetting(project: Project, path: string, value: unknown
 // Materials
 // ---------------------------------------------------------------------------
 
-/** Every material assignment in the project: project settings, styles, and run/tier/box/span overrides. */
-function materialSlots(project: Project): Partial<Record<string, Id>>[] {
-  const slots: Partial<Record<string, Id>>[] = [project.settings.materials];
-  for (const style of project.styles) if (style.settings.materials) slots.push(style.settings.materials);
+/**
+ * Every material (or finish) assignment in the project: project settings, styles, and
+ * run/tier/box/span overrides.
+ */
+function materialSlots(project: Project, key: 'materials' | 'finishes' = 'materials'): Partial<Record<string, Id>>[] {
+  const slots: Partial<Record<string, Id>>[] = [];
+  if (project.settings[key]) slots.push(project.settings[key]);
+  for (const style of project.styles) if (style.settings[key]) slots.push(style.settings[key]);
   const scopes: SettingsScope[] = [];
   for (const run of project.runs) {
     scopes.push(run, ...run.spans);
@@ -658,7 +663,10 @@ function materialSlots(project: Project): Partial<Record<string, Id>>[] {
       for (const item of tier.items) if (item.kind === 'box') scopes.push(item);
     }
   }
-  for (const scope of scopes) if (scope.overrides?.materials) slots.push(scope.overrides.materials);
+  for (const scope of scopes) {
+    const v = scope.overrides?.[key];
+    if (v) slots.push(v);
+  }
   return slots;
 }
 
@@ -686,6 +694,42 @@ export function removeMaterial(project: Project, id: Id): boolean {
   const i = project.materials.findIndex((m) => m.id === id);
   if (i < 0 || materialUsage(project, id) > 0) return false;
   project.materials.splice(i, 1);
+  return true;
+}
+
+// ---------------------------------------------------------------------------
+// Finishes (paints)
+// ---------------------------------------------------------------------------
+
+/** How many finish assignments (anywhere in the settings cascade) use a finish. */
+export function finishUsage(project: Project, id: Id): number {
+  return materialSlots(project, 'finishes').reduce((n, slot) => n + Object.values(slot).filter((v) => v === id).length, 0);
+}
+
+/** Add a finish (copying the seed list into the project first). Returns its id. */
+export function addFinish(project: Project, finish: Omit<Finish, 'id'>): Id {
+  if (!project.finishes) project.finishes = structuredClone(finishesOf(project));
+  const id = newId();
+  project.finishes.push({ ...finish, id });
+  return id;
+}
+
+export function updateFinish(project: Project, id: Id, patch: Partial<Omit<Finish, 'id'>>): boolean {
+  if (!project.finishes) project.finishes = structuredClone(finishesOf(project));
+  const finish = project.finishes.find((f) => f.id === id);
+  if (!finish) return false;
+  Object.assign(finish, patch);
+  return true;
+}
+
+/** Remove a finish nothing uses. Returns false if it's in use or missing. */
+export function removeFinish(project: Project, id: Id): boolean {
+  if (finishUsage(project, id) > 0) return false;
+  const list = structuredClone(finishesOf(project));
+  const i = list.findIndex((f) => f.id === id);
+  if (i < 0) return false;
+  list.splice(i, 1);
+  project.finishes = list;
   return true;
 }
 

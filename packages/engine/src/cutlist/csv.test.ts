@@ -73,16 +73,16 @@ describe('cutListCsv', () => {
     const custom = parseCsv(cutListCsv(cl, (t) => (t / inches(1)).toFixed(3)));
     const first = cl.sheetGoods[0]!.rows[0]!;
     const f = (t: number, system: 'imperial' | 'metric') => formatLength(t, system);
-    expect(imperial[1]!.slice(0, 7)).toEqual([first.label, 'Sheet', cl.sheetGoods[0]!.name, String(first.qty), f(first.length, 'imperial'), f(first.width, 'imperial'), '23/32"']);
-    expect(metric[1]![4]).toBe(f(first.length, 'metric'));
-    expect(metric[1]![4]).toMatch(/ mm$/);
-    expect(custom[1]![6]).toBe('0.719');
+    expect(imperial[1]!.slice(0, 8)).toEqual([first.label, 'Sheet', cl.sheetGoods[0]!.name, '', String(first.qty), f(first.length, 'imperial'), f(first.width, 'imperial'), '23/32"']);
+    expect(metric[1]![5]).toBe(f(first.length, 'metric'));
+    expect(metric[1]![5]).toMatch(/ mm$/);
+    expect(custom[1]![7]).toBe('0.719');
   });
 
   it('lists names, owners and notes, including part notes', () => {
     const project = projectWith();
     const parts = [{ ...fakePart({ length: 20, width: 10, name: 'Top', ownerId: 'x' }), note: 'Cut +1/4" for dados' }, fakePart({ length: 20, width: 10, name: 'Bottom', ownerId: 'x' })];
     const rows = parseCsv(cutListCsv(buildCutList(project, [fakeResult(parts)], DEFAULT_CUTLIST_OPTIONS)));
-    expect(rows[1]!.slice(8)).toEqual(['Top; Bottom', 'x', 'Cut +1/4" for dados']);
+    expect(rows[1]!.slice(9)).toEqual(['Top; Bottom', 'x', 'Cut +1/4" for dados']);
   });
 });

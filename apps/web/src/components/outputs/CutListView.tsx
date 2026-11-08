@@ -21,7 +21,7 @@ function download(filename: string, text: string, type: string): void {
 
 const safeName = (s: string) => s.trim().replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, ' ') || 'project';
 
-function Row({ row }: { row: CutListRow }) {
+function Row({ row, showFinish }: { row: CutListRow; showFinish: boolean }) {
   const { fmt } = useOutputFormat();
   const mismatch = row.notes.some((n) => n.kind === 'thicknessMismatch');
   const problem = row.notes.some((n) => PROBLEM_NOTES.has(n.kind));
@@ -35,6 +35,18 @@ function Row({ row }: { row: CutListRow }) {
       <td className="cl-label">{row.label}</td>
       <td className="num">{row.qty}</td>
       <td className="cl-names">{row.names.join(', ')}</td>
+      {showFinish && (
+        <td className="cl-finish">
+          {row.finish ? (
+            <>
+              <Swatch color={row.finish.color} />
+              {row.finish.name}
+            </>
+          ) : (
+            <span className="muted">Natural</span>
+          )}
+        </td>
+      )}
       <td className="num len">{fmt(row.length)}</td>
       <td className="num len">{fmt(row.width)}</td>
       <td className={`num len${mismatch ? ' warn' : ''}`}>{fmt(row.thickness)}</td>
@@ -71,6 +83,7 @@ function Row({ row }: { row: CutListRow }) {
 
 function GroupTable({ group }: { group: CutListGroup }) {
   const f = useOutputFormat();
+  const showFinish = group.rows.some((r) => r.finish);
   const summary =
     group.kind === 'sheet'
       ? `${plural(group.parts, 'part')} · ${f.area(group.area)}`
@@ -91,6 +104,7 @@ function GroupTable({ group }: { group: CutListGroup }) {
             <th className="cl-label" title="Reference used on the sheet layouts">#</th>
             <th className="num">Qty</th>
             <th>Part</th>
+            {showFinish && <th title="Paint or finish (Construction › finish rows)">Finish</th>}
             <th className="num" title="Along the grain">Length</th>
             <th className="num" title="Across the grain">Width</th>
             <th className="num">Thick</th>
@@ -101,7 +115,7 @@ function GroupTable({ group }: { group: CutListGroup }) {
         </thead>
         <tbody>
           {group.rows.map((r) => (
-            <Row key={r.label} row={r} />
+            <Row key={r.label} row={r} showFinish={showFinish} />
           ))}
         </tbody>
       </table>

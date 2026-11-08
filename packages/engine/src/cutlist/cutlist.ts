@@ -3,7 +3,8 @@
  * grouped into rows, sheet goods separate from lumber.
  */
 import type { PartRole, RunResult } from '../derived';
-import type { Id, Material, Project } from '../model';
+import { finishOf } from '../derive/finish';
+import type { Finish, Id, Material, Project } from '../model';
 import { snap, type Ticks } from '../units';
 import { fitsSheet, usableRect } from './guillotine';
 import type { CutListOptions, LumberOptions, SheetOptions } from './options';
@@ -49,6 +50,8 @@ export interface CutListRow {
   notes: RowNote[];
   /** Distinct notes carried by the parts themselves (e.g. "+1/4\" each end into dados"). */
   partNotes: string[];
+  /** Paint or finish on these parts (rows don't mix finishes). */
+  finish?: Finish;
 }
 
 export interface CutListGroup {
@@ -141,7 +144,7 @@ export function buildCutList(project: Project, results: readonly RunResult[], op
   for (const p of parts) {
     let g = groups.get(p.materialId);
     if (!g) groups.set(p.materialId, (g = new Map()));
-    const key = `${p.thickness}|${p.length}|${p.width}${BY_LENGTH_ROLES.has(p.role) ? '|by-length' : ''}`;
+    const key = `${p.thickness}|${p.length}|${p.width}${BY_LENGTH_ROLES.has(p.role) ? '|by-length' : ''}|${p.finishId ?? ''}`;
     const list = g.get(key);
     if (list) list.push(p);
     else g.set(key, [p]);
@@ -186,6 +189,7 @@ export function buildCutList(project: Project, results: readonly RunResult[], op
         byLength,
         notes,
         partNotes: [...new Set(list.flatMap((p) => (p.note ? [p.note] : [])))],
+        ...(first.finishId ? { finish: finishOf(project, first.finishId) ?? { id: first.finishId, name: '(missing finish)', color: '#cccccc' } } : {}),
       });
     }
     rows.sort((a, b) => b.thickness - a.thickness || b.length - a.length || b.width - a.width);

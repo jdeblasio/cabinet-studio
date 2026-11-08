@@ -2,8 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { createDefaultProject } from './defaults';
 import type { Box, Opening, Project, Run, Split } from './model';
 import { deriveRun } from './derive/index';
+import { partColor } from './derive/finish';
 import {
   addBox,
+  addFinish,
+  finishUsage,
+  removeFinish,
+  updateFinish,
   addMaterial,
   addRun,
   removeRun,
@@ -377,5 +382,22 @@ describe('runs', () => {
     expect(removeRun(project, run.id)).toBe(true);
     expect(project.runs.map((r) => r.id)).toEqual([id]);
     expect(removeRun(project, id)).toBe(false);
+  });
+});
+
+describe('finishes', () => {
+  it('copies the seed list on first edit, and only removes unused finishes', () => {
+    const p = createDefaultProject();
+    expect(p.finishes).toBeUndefined();
+    const id = addFinish(p, { name: 'Sage', color: '#9aa88f' });
+    expect(p.finishes!.map((f) => f.name)).toEqual(['White paint', 'Black paint', 'Sage']);
+    p.settings.finishes.fronts = id;
+    expect(finishUsage(p, id)).toBe(1);
+    expect(removeFinish(p, id)).toBe(false);
+    p.settings.finishes.fronts = 'natural';
+    expect(removeFinish(p, id)).toBe(true);
+    expect(updateFinish(p, 'paint-white', { color: '#ffffff' })).toBe(true);
+    expect(partColor(p, { materialId: 'ply-23-32', finishId: 'paint-white' })).toBe('#ffffff');
+    expect(partColor(p, { materialId: 'ply-23-32' })).toBe(p.materials.find((m) => m.id === 'ply-23-32')!.color);
   });
 });

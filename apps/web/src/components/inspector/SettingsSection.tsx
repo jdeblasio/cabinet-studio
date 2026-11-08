@@ -5,6 +5,8 @@ import {
   findTier,
   getPath,
   hardwareOf,
+  finishesOf,
+  NATURAL,
   resolveSettings,
   clearStyleSetting,
   saveOverridesAsStyle,
@@ -26,6 +28,7 @@ type SettingDef =
   | { path: string; label: string; tip: string; type: 'length' }
   | { path: string; label: string; tip: string; type: 'number'; unit: string; min: number }
   | { path: string; label: string; tip: string; type: 'material' }
+  | { path: string; label: string; tip: string; type: 'finish' }
   | { path: string; label: string; tip: string; type: 'hardware'; kind: 'slides' | 'hinges' | 'shelfPins' }
   | { path: string; label: string; tip: string; type: 'select'; options: readonly (readonly [string, string])[] };
 
@@ -156,17 +159,29 @@ const SETTINGS: SettingDef[] = [
   { path: 'ceilingScribe', label: 'Ceiling scribe', tip: 'Space left at the ceiling above the top tier, for scribing to an uneven ceiling.', type: 'length' },
   // Which material (and so which thickness) each kind of part uses.
   { path: 'materials.carcass', label: 'Carcass material', tip: 'Material for box sides, tops, bottoms, partitions and end panels. Its thickness sets theirs.', type: 'material' },
+  { path: 'finishes.carcass', label: 'Carcass finish', tip: 'Paint or finish over the carcass material: one of the project\'s paints and finishes (Project tab), or Natural for the material\'s own look.', type: 'finish' },
   { path: 'materials.back', label: 'Back material', tip: 'Material for box backs.', type: 'material' },
+  { path: 'finishes.back', label: 'Back finish', tip: 'Paint or finish over the back material: one of the project\'s paints and finishes (Project tab), or Natural for the material\'s own look.', type: 'finish' },
   { path: 'materials.shelves', label: 'Shelf material', tip: 'Material for fixed and adjustable shelves.', type: 'material' },
+  { path: 'finishes.shelves', label: 'Shelf finish', tip: 'Paint or finish over the shelf material: one of the project\'s paints and finishes (Project tab), or Natural for the material\'s own look.', type: 'finish' },
   { path: 'materials.faceFrame', label: 'Face frame material', tip: 'Lumber for face frame stiles and rails.', type: 'material' },
+  { path: 'finishes.faceFrame', label: 'Face frame finish', tip: 'Paint or finish over the face frame material: one of the project\'s paints and finishes (Project tab), or Natural for the material\'s own look.', type: 'finish' },
   { path: 'materials.fronts', label: 'Door/drawer material', tip: 'Material for slab doors and drawer fronts.', type: 'material' },
+  { path: 'finishes.fronts', label: 'Door/drawer finish', tip: 'Paint or finish over the door/drawer material: one of the project\'s paints and finishes (Project tab), or Natural for the material\'s own look.', type: 'finish' },
   { path: 'materials.toeKick', label: 'Toe kick material', tip: 'Material for the toe kick platform and kick boards.', type: 'material' },
+  { path: 'finishes.toeKick', label: 'Toe kick finish', tip: 'Paint or finish over the toe kick material: one of the project\'s paints and finishes (Project tab), or Natural for the material\'s own look.', type: 'finish' },
   { path: 'materials.countertop', label: 'Countertop material', tip: 'Material (species and color) for countertops. Thickness is set on the tier.', type: 'material' },
+  { path: 'finishes.countertop', label: 'Countertop finish', tip: 'Paint or finish over the countertop material: one of the project\'s paints and finishes (Project tab), or Natural for the material\'s own look.', type: 'finish' },
   { path: 'materials.molding', label: 'Molding material', tip: 'Stock for crown and base molding (bought by length).', type: 'material' },
+  { path: 'finishes.molding', label: 'Molding finish', tip: 'Paint or finish over the molding material: one of the project\'s paints and finishes (Project tab), or Natural for the material\'s own look.', type: 'finish' },
   { path: 'materials.drawerBox', label: 'Drawer box material', tip: 'Material for drawer box sides, fronts and backs.', type: 'material' },
+  { path: 'finishes.drawerBox', label: 'Drawer box finish', tip: 'Paint or finish over the drawer box material: one of the project\'s paints and finishes (Project tab), or Natural for the material\'s own look.', type: 'finish' },
   { path: 'materials.drawerBottom', label: 'Drawer bottom material', tip: 'Material for drawer bottoms.', type: 'material' },
+  { path: 'finishes.drawerBottom', label: 'Drawer bottom finish', tip: 'Paint or finish over the drawer bottom material: one of the project\'s paints and finishes (Project tab), or Natural for the material\'s own look.', type: 'finish' },
   { path: 'materials.frontFrame', label: '5-piece frame material', tip: 'Lumber for the stiles and rails of five-piece doors and drawer fronts.', type: 'material' },
+  { path: 'finishes.frontFrame', label: '5-piece frame finish', tip: 'Paint or finish over the 5-piece frame material: one of the project\'s paints and finishes (Project tab), or Natural for the material\'s own look.', type: 'finish' },
   { path: 'materials.frontPanel', label: '5-piece panel material', tip: 'Material for the panels of five-piece doors and drawer fronts.', type: 'material' },
+  { path: 'finishes.frontPanel', label: '5-piece panel finish', tip: 'Paint or finish over the 5-piece panel material: one of the project\'s paints and finishes (Project tab), or Natural for the material\'s own look.', type: 'finish' },
 ];
 
 /** Where a settings edit lands: the project root, an override on a run/tier/box/span, or a named style. */
@@ -248,6 +263,10 @@ export function SettingsSection({ scope, title }: { scope: ScopeRef; title?: str
   const materialOptions = (current: string): (readonly [string, string])[] => {
     const opts = project.materials.map((m) => [m.id, `${m.name} · ${fmt(m.thickness)}`] as const);
     return opts.some(([id]) => id === current) ? opts : [[current, '(missing material)'], ...opts];
+  };
+  const finishOptions = (current: string): (readonly [string, string])[] => {
+    const opts: (readonly [string, string])[] = [[NATURAL, 'Natural'], ...finishesOf(project).map((f) => [f.id, f.name] as const)];
+    return opts.some(([id]) => id === current) || current === undefined ? opts : [[current, '(missing finish)'], ...opts];
   };
   const here = chain.length - 1;
 
@@ -368,6 +387,8 @@ export function SettingsSection({ scope, title }: { scope: ScopeRef; title?: str
                     onChange={(v) => setValue(def.path, v)}
                     ariaLabel={def.label}
                   />
+                ) : def.type === 'finish' ? (
+                  <Select value={value as string} options={finishOptions(value as string)} onChange={(v) => setValue(def.path, v)} ariaLabel={def.label} />
                 ) : def.type === 'material' ? (
                   <Select value={value as string} options={materialOptions(value as string)} onChange={(v) => setValue(def.path, v)} ariaLabel={def.label} />
                 ) : typeof value === 'boolean' ? (

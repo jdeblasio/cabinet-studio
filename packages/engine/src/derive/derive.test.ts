@@ -1145,3 +1145,33 @@ describe('deriveRun: fixed shelves', () => {
     expect(result.parts.some((p) => p.role === 'fixedShelf' && p.id.includes('fixed-shelf'))).toBe(false);
   });
 });
+
+describe('deriveRun: finishes', () => {
+  const paintFrames = (p: Project) => {
+    p.settings = { ...p.settings, finishes: { ...p.settings.finishes, faceFrame: 'paint-white' } };
+  };
+
+  it('paints the parts of a material slot, wherever that material is used', () => {
+    const { result } = setup(paintFrames);
+    const frames = result.parts.filter((p) => p.role === 'stile' || p.role === 'rail');
+    expect(frames.length).toBeGreaterThan(0);
+    expect(frames.every((p) => p.finishId === 'paint-white')).toBe(true);
+    // The same poplar elsewhere (5-piece frames) and the plywood carcass stay natural.
+    expect(result.parts.filter((p) => p.role === 'side').every((p) => p.finishId === undefined)).toBe(true);
+  });
+
+  it('lets a box override back to natural, and tiers paint their toe kicks', () => {
+    const { run, result } = setup((p, r) => {
+      paintFrames(p);
+      const b = boxesOf(tier(r, 0))[0]!;
+      b.overrides = { finishes: { faceFrame: 'natural' } };
+      tier(r, 0).overrides = { finishes: { toeKick: 'paint-black' } };
+    });
+    const b = boxesOf(tier(run, 0))[0]!;
+    expect(part(result, `${b.id}/rail-top`).finishId).toBeUndefined();
+    expect(part(result, `${boxesOf(tier(run, 0))[1]!.id}/rail-top`).finishId).toBe('paint-white');
+    const kicks = result.parts.filter((p) => p.role === 'toeKick');
+    expect(kicks.length).toBeGreaterThan(0);
+    expect(kicks.every((p) => p.finishId === 'paint-black')).toBe(true);
+  });
+});

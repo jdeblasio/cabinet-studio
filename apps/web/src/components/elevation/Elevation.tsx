@@ -1,5 +1,6 @@
 import { inches, TICKS_PER_INCH, type Part, type Rect, type RunResult, type Ticks } from '@built-in-planner/engine';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { usePartColor } from '../../lib/colors';
 import { useFormatter } from '../../lib/units';
 import { useRunResult } from '../../store/derived';
 import { sameSelection, selectionKey, type Selection } from '../../store/selection';
@@ -39,7 +40,6 @@ function rectToSvg(r: Rect) {
 export function Elevation() {
   const run = useActiveRun();
   const result = useRunResult();
-  const materials = useEditor((s) => s.project.materials);
   const selection = useEditor((s) => s.selection);
   const select = useEditor((s) => s.select);
   const { fmt } = useFormatter();
@@ -151,7 +151,7 @@ export function Elevation() {
       ),
     [result.parts],
   );
-  const colors = useMemo(() => new Map(materials.map((m) => [m.id, m.color])), [materials]);
+  const colorOf = usePartColor();
   const handles = useMemo(() => computeHandles(run, result, MIN_SIZE), [run, result]);
 
   const W = I(result.width);
@@ -188,7 +188,7 @@ export function Elevation() {
         {/* Parts, back to front */}
         <g className="parts">
           {parts.map((p) => (
-            <PartRect key={p.id} part={p} color={colors.get(p.materialId) ?? '#ccc'} />
+            <PartRect key={p.id} part={p} color={colorOf(p)} />
           ))}
         </g>
 

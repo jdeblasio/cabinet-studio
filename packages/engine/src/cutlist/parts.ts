@@ -21,6 +21,8 @@ export interface PartRef {
   thickness: Ticks;
   /** Why the cut size differs from the visible size (Part.note). */
   note?: string;
+  /** Paint or finish (Part.finishId). */
+  finishId?: Id;
 }
 
 /** A model element that owns parts, with a readable label. */
@@ -50,6 +52,7 @@ export function partRef(runId: Id, p: Part): PartRef {
     width: Math.round(p.width),
     thickness: Math.round(p.thickness),
     ...(p.note ? { note: p.note } : {}),
+    ...(p.finishId ? { finishId: p.finishId } : {}),
   };
 }
 

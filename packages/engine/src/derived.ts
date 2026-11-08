@@ -82,6 +82,8 @@ export interface Part {
   banding?: Ticks;
   /** Machining: holes drilled into this part (shelf pins, hinge cups). */
   features?: PartFeature[];
+  /** Paint or finish over the material (a Finish id); none for the material's own look. */
+  finishId?: Id;
 }
 
 /** A hole drilled into a part, in run space: centered at (x, y, z) on the part's face, along `axis`. */

@@ -14,7 +14,7 @@ export function csvField(value: string | number): string {
   return /[",\r\n]|^\s|\s$/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
-export const CSV_COLUMNS = ['Label', 'Type', 'Material', 'Qty', 'Length', 'Width', 'Thickness', 'Grain', 'Parts', 'Boxes', 'Notes'] as const;
+export const CSV_COLUMNS = ['Label', 'Type', 'Material', 'Finish', 'Qty', 'Length', 'Width', 'Thickness', 'Grain', 'Parts', 'Boxes', 'Notes'] as const;
 
 /** The cut list as CSV text, one row per cut list row. */
 export function cutListCsv(cutList: CutList, format: LengthFormat = 'imperial'): string {
@@ -28,6 +28,7 @@ export function cutListCsv(cutList: CutList, format: LengthFormat = 'imperial'):
         r.label,
         type,
         g.name,
+        r.finish?.name ?? '',
         r.qty,
         fmt(r.length),
         fmt(r.width),

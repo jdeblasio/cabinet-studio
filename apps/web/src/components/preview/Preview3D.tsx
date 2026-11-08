@@ -1,8 +1,9 @@
-import { findBox, findSpan, TICKS_PER_INCH, toGLTF, toOBJ, toSTL, type HardwareItem, type HardwareShape, type Id, type Part, type Run, type RunResult, type Ticks } from '@built-in-planner/engine';
+import { findBox, findSpan, finishesOf, TICKS_PER_INCH, toGLTF, toOBJ, toSTL, type HardwareItem, type HardwareShape, type Id, type Part, type Run, type RunResult, type Ticks } from '@built-in-planner/engine';
 import { Edges, OrbitControls } from '@react-three/drei';
 import { Canvas, useThree, type ThreeEvent } from '@react-three/fiber';
 import { memo, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { PerspectiveCamera, Vector3 } from 'three';
+import { usePartColor } from '../../lib/colors';
 import { downloadFile, fileSlug } from '../../lib/download';
 import { useRunResult } from '../../store/derived';
 import { selectionForId, type Selection } from '../../store/selection';
@@ -52,7 +53,6 @@ function highlightedParts(run: Run, result: RunResult, selection: Selection | nu
 export function Preview3D() {
   const run = useActiveRun();
   const result = useRunResult();
-  const materials = useEditor((s) => s.project.materials);
   const selection = useEditor((s) => s.selection);
   const select = useEditor((s) => s.select);
   const mode = useEditor((s) => s.view3d);
@@ -61,7 +61,7 @@ export function Preview3D() {
   const setShowHardware = useEditor((s) => s.setShowHardware);
   const [resetKey, setResetKey] = useState(0);
 
-  const colors = useMemo(() => new Map(materials.map((m) => [m.id, m.color])), [materials]);
+  const colorOf = usePartColor();
   const offsets = useMemo(() => (mode === 'exploded' ? explodeOffsets(result) : null), [mode, result]);
   const highlighted = useMemo(() => highlightedParts(run, result, selection), [run, result, selection]);
   const partsById = useMemo(() => new Map(result.parts.map((p) => [p.id, p])), [result]);
@@ -105,7 +105,7 @@ export function Preview3D() {
             <PartMesh
               key={p.id}
               part={p}
-              color={colors.get(p.materialId) ?? '#cccccc'}
+              color={colorOf(p)}
               mode={mode}
               offset={offsets?.get(p.id)}
               highlighted={highlighted.has(p.id)}
@@ -291,7 +291,7 @@ function ExportMenu({ run, result }: { run: Run; result: RunResult }) {
   const exportAs = (format: string) => {
     const name = `${fileSlug(project.name)}-${fileSlug(run.name, 'run')}`;
     const title = `${project.name}: ${run.name}`;
-    if (format === 'gltf') downloadFile(`${name}.gltf`, toGLTF(result.parts, project.materials, title), 'model/gltf+json');
+    if (format === 'gltf') downloadFile(`${name}.gltf`, toGLTF(result.parts, project.materials, title, finishesOf(project)), 'model/gltf+json');
     else if (format === 'obj') downloadFile(`${name}.obj`, toOBJ(result.parts, project.units.system, title), 'text/plain');
     else if (format === 'stl') downloadFile(`${name}.stl`, toSTL(result.parts), 'model/stl');
   };

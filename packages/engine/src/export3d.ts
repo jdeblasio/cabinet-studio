@@ -7,7 +7,7 @@
  *  - STL (.stl, binary): all parts as one solid, in millimeters (the usual STL convention).
  */
 import type { Part } from './derived';
-import type { Material } from './model';
+import type { Finish, Material } from './model';
 import { TICKS_PER_INCH, TICKS_PER_MM, type Ticks, type UnitSystem } from './units';
 
 /** The 8 corners of a part's bounds, in the given unit (ticks per unit). */
@@ -112,7 +112,7 @@ function colorOf(hex: string): [number, number, number, number] {
  * glTF 2.0 JSON (embedded buffer). A unit cube (flat-shaded: 24 vertices, 36 indices) is shared
  * by one mesh per material; each part is a node that scales and places it. Meters, y up.
  */
-export function toGLTF(parts: readonly Part[], materials: readonly Material[], title = 'Built-in Planner export'): string {
+export function toGLTF(parts: readonly Part[], materials: readonly Material[], title = 'Built-in Planner export', finishes: readonly Finish[] = []): string {
   // Unit cube from 0 to 1 on each axis.
   const positions: number[] = [];
   const normals: number[] = [];
@@ -143,8 +143,19 @@ export function toGLTF(parts: readonly Part[], materials: readonly Material[], t
   bin.set(new Uint8Array(normBytes.buffer), posBytes.byteLength);
   bin.set(new Uint8Array(idxBytes.buffer), posBytes.byteLength + normBytes.byteLength);
 
-  const usedMaterials = [...new Set(parts.map((p) => p.materialId))];
+  // One glTF material per look: a painted part takes its finish, the rest their material.
+  const finishById = new Map(finishes.map((f) => [f.id, f]));
+  const lookOf = (p: Part) => (p.finishId && finishById.has(p.finishId) ? `finish:${p.finishId}` : p.materialId);
+  const usedMaterials = [...new Set(parts.map(lookOf))];
   const matIndex = new Map(usedMaterials.map((id, i) => [id, i]));
+  const describe = (look: string) => {
+    if (look.startsWith('finish:')) {
+      const f = finishById.get(look.slice('finish:'.length))!;
+      return { name: f.name, color: f.color };
+    }
+    const m = materials.find((mm) => mm.id === look);
+    return { name: m?.name ?? look, color: m?.color ?? '#cccccc' };
+  };
   const toMeters = (t: Ticks) => (t / TICKS_PER_INCH) * 0.0254;
 
   const gltf = {
@@ -153,18 +164,18 @@ export function toGLTF(parts: readonly Part[], materials: readonly Material[], t
     scenes: [{ name: title, nodes: parts.map((_, i) => i) }],
     nodes: parts.map((p) => ({
       name: p.name,
-      mesh: matIndex.get(p.materialId) ?? 0,
+      mesh: matIndex.get(lookOf(p)) ?? 0,
       translation: [toMeters(p.bounds.x), toMeters(p.bounds.y), toMeters(p.bounds.z)],
       scale: [Math.max(toMeters(p.bounds.width), 1e-6), Math.max(toMeters(p.bounds.height), 1e-6), Math.max(toMeters(p.bounds.depth), 1e-6)],
       extras: { partId: p.id, role: p.role },
     })),
     meshes: usedMaterials.map((id, i) => ({
-      name: materials.find((m) => m.id === id)?.name ?? id,
+      name: describe(id).name,
       primitives: [{ attributes: { POSITION: 0, NORMAL: 1 }, indices: 2, material: i }],
     })),
     materials: usedMaterials.map((id) => {
-      const m = materials.find((mm) => mm.id === id);
-      return { name: m?.name ?? id, pbrMetallicRoughness: { baseColorFactor: colorOf(m?.color ?? '#cccccc'), metallicFactor: 0, roughnessFactor: 0.85 } };
+      const d = describe(id);
+      return { name: d.name, pbrMetallicRoughness: { baseColorFactor: colorOf(d.color), metallicFactor: 0, roughnessFactor: 0.85 } };
     }),
     accessors: [
       { bufferView: 0, componentType: 5126, count: positions.length / 3, type: 'VEC3', min: [0, 0, 0], max: [1, 1, 1] },
