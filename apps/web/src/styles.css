@@ -163,12 +163,9 @@ button.link:hover {
   letter-spacing: -0.01em;
   white-space: nowrap;
 }
-.toolbar .project-name .input {
-  width: 140px;
-  font-weight: 500;
-}
 .toolbar .project-picker {
-  width: 130px;
+  width: 200px;
+  font-weight: 500;
 }
 .toolbar-group {
   display: flex;
