@@ -1,14 +1,17 @@
-import { inches, resizeBoundary, TICKS_PER_INCH, type Part, type Rect, type RunResult, type Ticks } from '@built-in-planner/engine';
+import { inches, TICKS_PER_INCH, type Part, type Rect, type RunResult, type Ticks } from '@built-in-planner/engine';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { useFormatter } from '../../lib/units';
 import { useRunResult } from '../../store/derived';
 import { sameSelection, selectionKey, type Selection } from '../../store/selection';
 import { useActiveRun, useEditor } from '../../store/store';
 import { computeHandles, hitChain, selectionRect, type BoundaryHandle } from './geometry';
+import { solveDrag, type SnapGuide } from './snap';
 
 /** World units in the SVG are inches; y is flipped (svg y = -world y). */
 const I = (t: Ticks) => t / TICKS_PER_INCH;
 const MIN_SIZE = inches(2);
+/** Screen distance within which a dragged boundary snaps to an alignment target. */
+const SNAP_PX = 8;
 const FRONT_ROLES = new Set(['door', 'drawerFront']);
 
 interface View {
@@ -46,6 +49,7 @@ export function Elevation() {
   const [size, setSize] = useState({ w: 0, h: 0 });
   const [view, setView] = useState<View | null>(null);
   const [hover, setHover] = useState<Selection | null>(null);
+  const [guide, setGuide] = useState<SnapGuide | null>(null);
 
   useLayoutEffect(() => {
     const el = wrapRef.current;
@@ -197,9 +201,16 @@ export function Elevation() {
         {hoverRect && <rect {...rectToSvg(hoverRect)} className="hover-outline" />}
         {selRect && <rect key={selection ? selectionKey(selection) : ''} {...rectToSvg(selRect)} className="selection-outline" />}
 
+        {guide &&
+          (guide.axis === 'x' ? (
+            <line className="snap-guide" x1={I(guide.pos)} x2={I(guide.pos)} y1={0} y2={-H} />
+          ) : (
+            <line className="snap-guide" x1={0} x2={W} y1={-I(guide.pos)} y2={-I(guide.pos)} />
+          ))}
+
         <g className="handles">
           {handles.map((h) => (
-            <HandleView key={h.key} handle={h} px={px} />
+            <HandleView key={h.key} handle={h} px={px} runId={run.id} onGuide={setGuide} />
           ))}
         </g>
       </svg>
@@ -279,9 +290,19 @@ function Dimensions({ result, fmt, font, px }: { result: RunResult; fmt: (t: Tic
   );
 }
 
-function HandleView({ handle, px }: { handle: BoundaryHandle; px: number }) {
+function HandleView({
+  handle,
+  px,
+  runId,
+  onGuide,
+}: {
+  handle: BoundaryHandle;
+  px: number;
+  runId: string;
+  onGuide: (guide: SnapGuide | null) => void;
+}) {
   const beginDrag = useEditor((s) => s.beginDrag);
-  const dragTo = useEditor((s) => s.dragTo);
+  const dragToProject = useEditor((s) => s.dragToProject);
   const endDrag = useEditor((s) => s.endDrag);
   const cancelDrag = useEditor((s) => s.cancelDrag);
   const grid = useEditor((s) => s.project.units.grid);
@@ -303,12 +324,13 @@ function HandleView({ handle, px }: { handle: BoundaryHandle; px: number }) {
       if (e.key === 'Escape') {
         drag.current = null;
         setActive(false);
+        onGuide(null);
         cancelDrag();
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [active, cancelDrag]);
+  }, [active, cancelDrag, onGuide]);
 
   return (
     <rect
@@ -328,21 +350,29 @@ function HandleView({ handle, px }: { handle: BoundaryHandle; px: number }) {
         e.stopPropagation();
         const screen = isX ? e.clientX - d.startX : -(e.clientY - d.startY);
         const world = screen * d.upp * TICKS_PER_INCH;
-        const res = resizeBoundary(d.handle.a, d.handle.b, d.handle.sign * world, { grid, minSize: d.handle.minSize });
-        dragTo((draft) => d.handle.apply(draft, res.a, res.b));
+        const base = useEditor.getState().dragBase;
+        if (!base) return;
+        // Hold Alt/Option to drag freely without snapping.
+        const sol = solveDrag(base, runId, d.handle, world, { grid, threshold: SNAP_PX * d.upp * TICKS_PER_INCH, snap: !e.altKey });
+        dragToProject(sol.project);
+        onGuide(sol.guide ?? null);
       }}
       onPointerUp={(e) => {
         if (!drag.current) return;
         e.stopPropagation();
         drag.current = null;
         setActive(false);
+        onGuide(null);
         endDrag();
       }}
       onPointerCancel={() => {
         drag.current = null;
         setActive(false);
+        onGuide(null);
         cancelDrag();
       }}
-    />
+    >
+      {handle.snap && <title>Drag to resize. Snaps to edges in other tiers; hold Alt/Option to drag freely.</title>}
+    </rect>
   );
 }

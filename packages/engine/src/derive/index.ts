@@ -36,7 +36,7 @@ export function deriveRun(project: Project, runId: Id): RunResult {
     parts.push(...boxParts);
     boxes.push({ id: placed.id, source: placed.source, tierId: placed.tierId, carcass: placed.carcass, sections });
   }
-  const { frames, parts: stiles } = deriveFrames(ctx, layout.boxes, layout.width);
+  const { frames, parts: stiles } = deriveFrames(ctx, layout.boxes, layout.width, layout.gaps);
   parts.push(...stiles, ...deriveToeKick(ctx, layout));
 
   if (frameless) {

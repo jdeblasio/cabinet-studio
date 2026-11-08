@@ -94,6 +94,13 @@ is redistributed in proportion to the new sizes, so the run still re-flows when 
 changes. Fixed + flex changes only the fixed one. The same rule applies to tier heights and
 to split children.
 
+**Alignment snapping (implemented).** Box boundaries and split lines snap, within a few
+pixels, to box edges, gap edges and split lines elsewhere in the run (a box's own tier is
+excluded, since its edges move with the drag). A dashed guide shows the alignment. Flex
+sizes round down to the grid, so a naive snap can land a grid step off. The editor tries
+nearby grid steps and keeps the one whose derived boundary lands exactly on the target.
+Hold Alt/Option to drag freely.
+
 ## 5. Fitting to measured walls
 
 **Tightest + user choice.**
@@ -139,7 +146,12 @@ to split children.
 - Split child sizes are **clear face-opening sizes** (inside the frame).
 - Stiles are derived per frame group at every vertical boundary: shared stiles cover both
   sides; an end stile at a wall runs to the wall (scribe space); an end stile elsewhere
-  (open end, beside a gap or a set-back box) is flush with the side.
+  (open end, beside a gap or a set-back box) is flush with the side by default. The
+  `faceFrame.endStiles.left/right` setting (cascades like any other) can make it
+  **full width** instead: as wide as a shared stile and centered on the box edge,
+  overhanging the side, so it lines up with shared stiles in a tier above or below. Lint
+  notes how far it overhangs into a gap, and warns if it would run into a box with a
+  different face plane.
 - A shared stile between a base box and a flush tall box runs the tall box's full height,
   so above the base it stands proud of the tall box's side by one side thickness.
 - Rails are per box. Where two same-plane tiers stack, each box keeps its own top/bottom

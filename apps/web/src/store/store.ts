@@ -26,6 +26,8 @@ export interface EditorState {
   beginDrag: () => void;
   /** Re-apply `recipe` to the project as it was at drag start. */
   dragTo: (recipe: (draft: Draft<Project>) => void) => void;
+  /** Like dragTo, with a project already derived from the drag-start project. */
+  dragToProject: (project: Project) => void;
   endDrag: () => void;
   cancelDrag: () => void;
   undo: () => void;
@@ -90,6 +92,11 @@ export const useEditor = create<EditorState>()((set, get) => {
       const base = get().dragBase;
       if (!base) return;
       set({ project: produce(base, recipe) });
+    },
+
+    dragToProject: (project) => {
+      if (!get().dragBase) return;
+      set({ project });
     },
 
     endDrag: () => {

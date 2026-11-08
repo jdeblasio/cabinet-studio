@@ -228,6 +228,12 @@ button.link:hover {
   stroke-width: 2;
   pointer-events: none;
 }
+.elevation-svg .snap-guide {
+  stroke: #e0368f;
+  stroke-width: 1;
+  stroke-dasharray: 6 4;
+  pointer-events: none;
+}
 .elevation-svg .handle {
   fill: transparent;
 }

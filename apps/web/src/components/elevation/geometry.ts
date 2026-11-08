@@ -81,6 +81,13 @@ export interface BoundaryHandle {
   b: { spec: SizeSpec; size: Ticks };
   minSize: Ticks;
   apply: (draft: Project, a: SizeSpec, b: SizeSpec) => void;
+  /** Present when the handle snaps to other boxes while dragged (see snap.ts). */
+  snap?: {
+    /** Boxes whose edges and splits move with this handle, so they are not snap targets. */
+    exclude: readonly Id[];
+    /** Where this boundary sits in a derived result. */
+    measure: (result: RunResult) => Ticks | undefined;
+  };
 }
 
 const inRun = (draft: Project, runId: Id): Run | undefined => draft.runs.find((r) => r.id === runId);
@@ -115,6 +122,14 @@ export function computeHandles(run: Run, result: RunResult, minSize: Ticks): Bou
           if (!r) return;
           setBoxWidth(r, ia.id, a);
           setBoxWidth(r, ib.id, b);
+        },
+        snap: {
+          // Every box in the tier can shift when the flex remainder moves between the scribes.
+          exclude: tl.items.filter((it) => it.kind === 'box').map((it) => it.id),
+          measure: (r) => {
+            const it = r.tiers.find((t) => t.tierId === tl.tierId)?.items.find((i) => i.id === ia.id);
+            return it && it.x + it.width;
+          },
         },
       });
     }
@@ -177,6 +192,16 @@ export function computeHandles(run: Run, result: RunResult, minSize: Ticks): Bou
             if (!r) return;
             setSplitChildSize(r, splitId, i, a);
             setSplitChildSize(r, splitId, i + 1, b);
+          },
+          snap: {
+            exclude: [bl.id],
+            measure: (r) => {
+              const secs = r.boxes.find((b) => b.id === bl.id)?.sections;
+              const na = secs?.find((x) => x.sectionId === ca.section.id)?.rect;
+              const nb = secs?.find((x) => x.sectionId === cb.section.id)?.rect;
+              if (!na || !nb) return undefined;
+              return rows ? (na.y + nb.y + nb.height) / 2 : (na.x + na.width + nb.x) / 2;
+            },
           },
         });
       }

@@ -20,6 +20,11 @@ type SettingDef =
   | { path: string; label: string; type: 'length' }
   | { path: string; label: string; type: 'select'; options: readonly (readonly [string, string])[] };
 
+const END_STILE_OPTIONS = [
+  ['flush', 'Flush stile'],
+  ['full', 'Full-width stile'],
+] as const;
+
 const SETTINGS: SettingDef[] = [
   {
     path: 'construction',
@@ -47,6 +52,9 @@ const SETTINGS: SettingDef[] = [
   { path: 'faceFrame.bottomRailWidth', label: 'Bottom rail', type: 'length' },
   { path: 'faceFrame.midRailWidth', label: 'Mid rail', type: 'length' },
   { path: 'faceFrame.midStileWidth', label: 'Mid stile', type: 'length' },
+  // Only affects edges with no neighbor and no wall (beside a gap, at an open end).
+  { path: 'faceFrame.endStiles.left', label: 'Open left end', type: 'select', options: END_STILE_OPTIONS },
+  { path: 'faceFrame.endStiles.right', label: 'Open right end', type: 'select', options: END_STILE_OPTIONS },
   { path: 'faceFrame.lip', label: 'Frame lip', type: 'length' },
   { path: 'faceFrame.scribeAllowance', label: 'Scribe allowance', type: 'length' },
   {

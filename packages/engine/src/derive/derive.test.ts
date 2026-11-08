@@ -207,6 +207,78 @@ describe('deriveRun: spans', () => {
     expect(result.parts.filter((p) => p.name === 'Toe kick (front)')).toHaveLength(2);
   });
 
+  describe('full-width end stiles', () => {
+    const centeredGap = (r: Run) =>
+      addSpan(r, { kind: 'gap', name: 'Fireplace', x: { anchor: 'center', offset: 0 }, width: inches(36), tiers: { from: tier(r, 0).id, to: tier(r, 0).id } }, () => 2);
+
+    it('centers the stile on the box edge, overhanging into the gap like a shared stile', () => {
+      const { result } = setup((_, r) => {
+        centeredGap(r);
+        boxesOf(tier(r, 0))[1]!.overrides = { faceFrame: { endStiles: { right: 'full' } } };
+      });
+      const items = result.tiers[0]!.items;
+      const stile = part(result, `${items[1]!.id}/stile-right`);
+      expect(stile.name).toBe('End stile');
+      expect([stile.bounds.x, stile.width]).toEqual([inches(42) - T, 2 * T]);
+      // The other side of the gap is untouched.
+      expect(part(result, `${items[3]!.id}/stile-left`).width).toBe(T);
+      expect(nonInfo(result)).toEqual([]);
+      const note = result.issues.find((i) => i.code === 'end-stile-in-gap')!;
+      expect(note).toMatchObject({ severity: 'info', sourceId: items[1]!.id });
+      expect(note.message).toContain('23/32"');
+      expect(note.message).toContain('"Fireplace"');
+    });
+
+    it('cascades from the tier to every open edge, leaving wall and shared stiles alone', () => {
+      const { result } = setup((_, r) => {
+        centeredGap(r);
+        tier(r, 0).overrides = { faceFrame: { endStiles: { left: 'full', right: 'full' } } };
+      });
+      const items = result.tiers[0]!.items;
+      expect(part(result, `${items[1]!.id}/stile-right`).width).toBe(2 * T);
+      expect(part(result, `${items[3]!.id}/stile-left`)).toMatchObject({ width: 2 * T, bounds: expect.objectContaining({ x: inches(78) - T }) });
+      expect(part(result, `${items[0]!.id}/stile-left`)).toMatchObject({ name: 'Scribe stile', width: inches(0.5) + T });
+      expect(part(result, `${items[1]!.id}/stile-left`)).toMatchObject({ name: 'Shared stile', width: 2 * T });
+      expect(result.issues.filter((i) => i.code === 'end-stile-in-gap')).toHaveLength(2);
+    });
+
+    it('lines up with a shared stile in a shallower tier above', () => {
+      // Gap at the right end of the base tier only; the 12"-deep uppers run full width above it.
+      const gapAtRight = (r: Run) => {
+        addSpan(r, { kind: 'gap', x: { anchor: 'right', offset: 0 }, width: inches(30), tiers: { from: tier(r, 0).id, to: tier(r, 0).id } }, (t) => t.items.length);
+        const base = boxesOf(tier(r, 0));
+        base[base.length - 1]!.overrides = { faceFrame: { endStiles: { right: 'full' } } };
+      };
+      const gapX = setup((_, r) => gapAtRight(r)).result.gaps[0]!.rect.x;
+      // Put an upper boundary exactly at the gap edge: a fixed first box, then a flex box.
+      let upperIds!: string[];
+      const { result: aligned } = setup((_, r) => {
+        gapAtRight(r);
+        const up = tier(r, 1);
+        up.items = [flexBox(opening(), 1), flexBox(opening(), 1)];
+        (up.items[0] as Box).width = { kind: 'fixed', size: gapX - inches(0.5) };
+        upperIds = boxesOf(up).map((b) => b.id);
+      });
+      expect(nonInfo(aligned)).toEqual([]);
+      const baseItems = aligned.tiers[0]!.items.filter((i) => i.kind === 'box');
+      const lower = part(aligned, `${baseItems[baseItems.length - 1]!.id}/stile-right`);
+      const upper = part(aligned, `${upperIds[1]}/stile-left`);
+      expect(upper.name).toBe('Shared stile');
+      expect([lower.bounds.x, lower.width]).toEqual([upper.bounds.x, upper.width]);
+      // Different face planes: two frames, not one.
+      expect(lower.bounds.z).not.toBe(upper.bounds.z);
+    });
+
+    it('warns when the overhang would run into a box with a different face plane', () => {
+      const { result } = setup((_, r) => {
+        addSpan(r, { kind: 'box', x: { anchor: 'right', offset: 0 }, width: inches(24), depth: inches(12), tiers: { from: tier(r, 0).id, to: tier(r, 1).id } }, (t) => t.items.length);
+        const base = boxesOf(tier(r, 0));
+        base[base.length - 1]!.overrides = { faceFrame: { endStiles: { right: 'full' } } };
+      });
+      expect(result.issues.map((i) => i.code)).toContain('end-stile-overlap');
+    });
+  });
+
   it('flags a missing slot', () => {
     const { result } = setup((_, r) => {
       r.spans.push({ id: newId(), kind: 'box', x: { anchor: 'left', offset: 0 }, width: inches(24), tiers: { from: tier(r, 0).id, to: tier(r, 0).id }, content: opening() });

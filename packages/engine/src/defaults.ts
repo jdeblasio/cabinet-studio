@@ -50,6 +50,7 @@ export const DEFAULT_SETTINGS: ConstructionSettings = {
     midRailWidth: inches(1.5),
     midStileWidth: inches(1.5),
     scribeAllowance: inches(0.5),
+    endStiles: { left: 'flush', right: 'flush' },
   },
   fronts: {
     mounting: 'partialOverlay',

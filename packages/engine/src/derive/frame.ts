@@ -3,10 +3,12 @@
  * stacked) form one frame group. Stiles are derived per group at each vertical boundary:
  *  - Shared stile between two boxes: covers both sides (side thickness + lip on each).
  *  - End stile at a wall: runs from the wall (scribe space) to the box's inside face.
- *  - End stile elsewhere (open end, next to a gap or a set-back box): flush with the side.
+ *  - End stile elsewhere (open end, next to a gap or a set-back box): flush with the side by
+ *    default; with `faceFrame.endStiles.<side> = 'full'` it is as wide as a shared stile and
+ *    centered on the box edge, overhanging the side (so it lines up with stiles above/below).
  * Rails are per box (see box.ts).
  */
-import type { FrameGroup, Part } from '../derived';
+import type { FrameGroup, Part, Rect } from '../derived';
 import type { Id } from '../model';
 import { snap, type Ticks } from '../units';
 import { makePart, type Ctx } from './context';
@@ -23,7 +25,27 @@ interface Edges {
   tf: Ticks;
 }
 
-export function deriveFrames(ctx: Ctx, boxes: readonly PlacedBox[], runWidth: Ticks): { frames: FrameGroup[]; parts: Part[] } {
+type CoverKind = 'box' | 'wall' | 'full' | 'flush';
+
+const maxCover = (ms: readonly Edges[]): Ticks => Math.max(...ms.map((m) => m.cover));
+
+/**
+ * How far a stile on a vertical line extends to one `side` of it. `near` are the boxes on that
+ * side of the line; `far` are the boxes on the other side, whose `side` edge is on the line.
+ */
+function sideCover(near: readonly Edges[], far: readonly Edges[], side: 'left' | 'right', toWall: Ticks): { cover: Ticks; kind: CoverKind } {
+  if (near.length) return { cover: maxCover(near), kind: 'box' };
+  if (far.some((m) => (side === 'left' ? m.box.atLeftWall : m.box.atRightWall))) return { cover: toWall, kind: 'wall' };
+  if (far.some((m) => m.box.settings.faceFrame.endStiles[side] === 'full')) return { cover: maxCover(far), kind: 'full' };
+  return { cover: 0, kind: 'flush' };
+}
+
+export function deriveFrames(
+  ctx: Ctx,
+  boxes: readonly PlacedBox[],
+  runWidth: Ticks,
+  gaps: readonly { spanId: Id; rect: Rect }[] = [],
+): { frames: FrameGroup[]; parts: Part[] } {
   const edges: Edges[] = boxes.map((b) => ({
     box: b,
     x0: b.carcass.x,
@@ -90,37 +112,52 @@ export function deriveFrames(ctx: Ctx, boxes: readonly PlacedBox[], runWidth: Ti
       for (const run of runs) {
         const leftBoxes = run.filter((m) => m.x1 === x);
         const rightBoxes = run.filter((m) => m.x0 === x);
-        const leftCover = leftBoxes.length
-          ? Math.max(...leftBoxes.map((m) => m.cover))
-          : rightBoxes.some((m) => m.box.atLeftWall)
-            ? x
-            : 0;
-        const rightCover = rightBoxes.length
-          ? Math.max(...rightBoxes.map((m) => m.cover))
-          : leftBoxes.some((m) => m.box.atRightWall)
-            ? runWidth - x
-            : 0;
+        const left = sideCover(leftBoxes, rightBoxes, 'left', x);
+        const right = sideCover(rightBoxes, leftBoxes, 'right', runWidth - x);
         const y0 = Math.min(...run.map((m) => m.y0));
         const y1 = Math.max(...run.map((m) => m.y1));
-        const width = snap(leftCover + rightCover, ctx.grid);
+        const width = snap(left.cover + right.cover, ctx.grid);
         const owner = rightBoxes[0] ?? leftBoxes[0]!;
         const side = rightBoxes[0] ? 'left' : 'right';
-        const atWall = (!leftBoxes.length && leftCover > 0) || (!rightBoxes.length && rightCover > 0);
-        const shared = leftBoxes.length > 0 && rightBoxes.length > 0;
+        const name =
+          left.kind === 'box' && right.kind === 'box' ? 'Shared stile' : left.kind === 'wall' || right.kind === 'wall' ? 'Scribe stile' : 'End stile';
         parts.push(
           makePart({
             id: `${owner.box.id}/stile-${side}`,
-            name: shared ? 'Shared stile' : atWall ? 'Scribe stile' : 'End stile',
+            name,
             role: 'stile',
             materialId: owner.box.settings.materials.faceFrame,
-            bounds: { x: x - leftCover, y: y0, z: owner.front, width, height: y1 - y0, depth: owner.tf },
+            bounds: { x: x - left.cover, y: y0, z: owner.front, width, height: y1 - y0, depth: owner.tf },
             grain: 'vertical',
             thicknessAxis: 'z',
             ownerId: owner.box.id as Id,
           }),
         );
+        if (left.kind === 'full') checkOverhang(ctx, edges, gaps, owner.box.id, { x0: x - left.cover, x1: x, y0, y1 });
+        if (right.kind === 'full') checkOverhang(ctx, edges, gaps, owner.box.id, { x0: x, x1: x + right.cover, y0, y1 });
       }
     }
   }
   return { frames, parts };
+}
+
+/** Lint a full-width end stile's overhang: it must not run into another box, and narrows any gap it reaches. */
+function checkOverhang(
+  ctx: Ctx,
+  edges: readonly Edges[],
+  gaps: readonly { spanId: Id; rect: Rect }[],
+  boxId: Id,
+  o: { x0: Ticks; x1: Ticks; y0: Ticks; y1: Ticks },
+): void {
+  const hits = (x0: Ticks, x1: Ticks, y0: Ticks, y1: Ticks) => x0 < o.x1 && o.x0 < x1 && y0 < o.y1 && o.y0 < y1;
+  if (edges.some((e) => hits(e.x0, e.x1, e.y0, e.y1))) {
+    ctx.issue('warning', 'end-stile-overlap', boxId, 'A full-width end stile overhangs a neighboring box with a different face plane. Use a flush end stile here.');
+  }
+  for (const g of gaps) {
+    const r = g.rect;
+    if (!hits(r.x, r.x + r.width, r.y, r.y + r.height)) continue;
+    const name = ctx.run.spans.find((sp) => sp.id === g.spanId)?.name;
+    const into = Math.min(o.x1, r.x + r.width) - Math.max(o.x0, r.x);
+    ctx.issue('info', 'end-stile-in-gap', boxId, `A full-width end stile overhangs ${ctx.fmt(into)} into ${name ? `"${name}"` : 'the gap'}.`);
+  }
 }

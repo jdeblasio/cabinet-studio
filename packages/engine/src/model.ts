@@ -47,6 +47,15 @@ export type Mounting = 'partialOverlay' | 'fullOverlay' | 'inset';
 /** Milestone 1 supports butt joints only. */
 export type Joinery = 'butt';
 
+/**
+ * Face frame stile at a box's open edge (no neighbor in the same frame, not at a wall —
+ * e.g. beside a gap, at an open run end, or next to a box with a different face plane).
+ *  - 'flush': the stile stops at the outside of the box side (side thickness + lip wide).
+ *  - 'full': the stile is as wide as a shared stile and centered on the box edge, overhanging
+ *    the side by side thickness + lip, so it lines up with shared stiles above or below.
+ */
+export type EndStile = 'flush' | 'full';
+
 export interface ConstructionSettings {
   construction: ConstructionStyle;
   joinery: Joinery;
@@ -73,6 +82,8 @@ export interface ConstructionSettings {
     midStileWidth: Ticks;
     /** Minimum space between a wall and the first/last carcass; the end stile covers it and gets scribed. */
     scribeAllowance: Ticks;
+    /** Stile style at each box's open left/right edge. Edges at a wall or shared with a neighbor are unaffected. */
+    endStiles: { left: EndStile; right: EndStile };
   };
   fronts: {
     mounting: Mounting;
