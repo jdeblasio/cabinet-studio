@@ -416,6 +416,25 @@ step or two off its siblings. Hold Alt/Option to drag freely.
   shelf pins sit under each adjustable shelf corner. Not yet in drawings or 3D exports; pulls
   and knobs aren't modeled.
 
+### Build steps
+
+- A **Build steps** tab generates step-by-step instructions from the derived design and its cut
+  report (engine: `buildInstructions`), printable on portrait pages:
+  - **Before you start:** check the room (wall length, ceiling, studs, floor level, a level line
+    at the top of the bottom tier), buy the materials (from the shopping list), gather tools
+    (by what the design uses: dados, pocket holes, hinge cups, shelf pins, banding, miters, ...).
+  - **Cut and prepare:** cut each sheet material and lumber width (by cut list letter, in the
+    sheet layouts' order), glue-ups, joints (dados, rabbets, rabbeted backs, miters), drilling
+    (shelf pins, hinge cups), edge banding, optional pre-finishing.
+  - **Each tier, bottom to top** (tall boxes with the tier they stand on): the toe kick platform,
+    each box's carcass (identical boxes merged into one step; the wording follows the joinery
+    and corner joints), setting and fastening the boxes, then each face frame once all its
+    boxes are in place (frames can span tiers), and the tier's countertop.
+  - **Trim**, then **doors, drawers and shelves** (five-piece fronts, drawer boxes and slides,
+    hinges, drawer fronts, shelf pins and nosings), then **finish** and final checks.
+- Parts are listed by cut list letter with finished sizes; each step links back to the design.
+  Steps can be checked off on screen (remembered per project in the browser).
+
 ### Exports
 
 - PDF drawing set (drawings, cut list, sheet layouts)

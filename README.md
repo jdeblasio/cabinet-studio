@@ -34,6 +34,7 @@ Free and open source under the AGPL-3.0.
   - Guillotine sheet layouts and lumber cutting lists.
   - Shopping list (quantities only).
   - Printable drawing set: elevations, plans, sections and box sheets.
+  - Printable step-by-step build instructions, bottom to top.
   - 3D export (glTF, OBJ, STL).
 - **Local-first:** projects live in the browser (switch, duplicate, delete), with JSON
   export and import. No accounts.

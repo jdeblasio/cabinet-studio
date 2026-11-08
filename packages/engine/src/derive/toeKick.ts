@@ -94,13 +94,13 @@ export function deriveToeKick(ctx: Ctx, layout: RunLayoutResult): Part[] {
       if (isReturn) {
         // Full depth, from the wall to the front face, mitered with the front board at the corner.
         parts.push(
-          makePart({ ...common, id: `${base}-return-${ci === 0 ? 'left' : 'right'}`, name: 'Toe kick (return)', bounds: { x: cx, y: 0, z: 0, width: tk, height: h, depth: platformDepth }, grain: 'horizontal', thicknessAxis: 'x', length: ctx.down(platformDepth), note: '45° miter at the front end, with the front board' }),
+          makePart({ ...common, id: `${base}-return-${ci === 0 ? 'left' : 'right'}`, name: 'Toe kick (return)', bounds: { x: cx, y: 0, z: 0, width: tk, height: h, depth: platformDepth }, grain: 'horizontal', thicknessAxis: 'x', length: ctx.down(platformDepth), width: h, note: '45° miter at the front end, with the front board' }),
         );
         parts[parts.length - 1] = { ...parts[parts.length - 1]!, mitres: [{ face: 'front', outer: ci === 0 ? 'left' : 'right' }] };
         return;
       }
       parts.push(
-        makePart({ ...common, id: `${base}-cross-${ci}`, name: 'Toe kick (cross)', bounds: { x: cx, y: 0, z: tk, width: tk, height: h, depth: cross }, grain: 'horizontal', thicknessAxis: 'x', length: ctx.down(cross) }),
+        makePart({ ...common, id: `${base}-cross-${ci}`, name: 'Toe kick (cross)', bounds: { x: cx, y: 0, z: tk, width: tk, height: h, depth: cross }, grain: 'horizontal', thicknessAxis: 'x', length: ctx.down(cross), width: h }),
       );
     });
   });

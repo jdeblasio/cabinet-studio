@@ -7,7 +7,7 @@ const HISTORY_LIMIT = 200;
 
 export type View3D = 'shaded' | 'wireframe' | 'exploded';
 /** Top-level views: the design editor, and outputs derived from the design. */
-export type AppView = 'design' | 'project' | 'cutlist' | 'sheets' | 'shopping' | 'drawings';
+export type AppView = 'design' | 'project' | 'cutlist' | 'sheets' | 'shopping' | 'drawings' | 'build';
 
 export interface EditorState {
   project: Project;

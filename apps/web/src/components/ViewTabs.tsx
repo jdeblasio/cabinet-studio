@@ -7,6 +7,7 @@ const TABS: readonly (readonly [AppView, string, string])[] = [
   ['sheets', 'Sheet layouts', 'How the parts nest on sheets and boards'],
   ['shopping', 'Shopping list', 'Sheets, lumber and hardware to buy (quantities only)'],
   ['drawings', 'Drawings', 'Printable elevations, plan, sections and box sheets'],
+  ['build', 'Build steps', 'Step-by-step build and install instructions, bottom to top (printable)'],
 ];
 
 /** Switch between the design editor and the outputs derived from it. */

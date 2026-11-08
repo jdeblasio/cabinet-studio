@@ -10,3 +10,4 @@ export * from './ops';
 export * from './cutlist/index';
 export * from './export3d';
 export { finishOf, partColor, slotOf } from './derive/finish';
+export * from './build/instructions';

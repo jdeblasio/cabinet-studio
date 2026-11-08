@@ -1,5 +1,6 @@
 import { findBox, findSpan, removeBox, removeSpan } from '@built-in-planner/engine';
 import { useEffect, useRef } from 'react';
+import { BuildView } from './components/build/BuildView';
 import { DrawingsView } from './components/drawings/DrawingsView';
 import { Elevation } from './components/elevation/Elevation';
 import { Inspector } from './components/inspector/Inspector';
@@ -74,6 +75,8 @@ function OutputView() {
       return <ShoppingView />;
     case 'drawings':
       return <DrawingsView />;
+    case 'build':
+      return <BuildView />;
     default:
       return null;
   }
