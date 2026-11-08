@@ -178,6 +178,16 @@ step or two off its siblings. Hold Alt/Option to drag freely.
   Fronts stop half a reveal short of an open edge instead of overlaying a rail that isn't
   there. Uses: open shelves over a countertop (the counter is the bottom shelf), or shelving
   that continues into the box above.
+- **Fronts:** each door or drawer front is a **slab** (front material) or **five-piece**
+  (`fronts.doorStyle` / `fronts.drawerStyle`): two full-height stiles, two rails between them
+  whose cut length adds a stub tenon (the groove depth) at each end, and a panel that fills
+  the grooves less a clearance per side, centered in the frame's thickness. A front too small
+  for its frame stays a slab (lint info). Frame and panel materials are their own roles.
+- **Drawer boxes** (side-mount slides): width = clear opening − 2 × slide clearance; height =
+  opening − top and bottom clearances; depth = the longest standard slide that fits between
+  the back of the drawer front and the back panel less a rear clearance (lint warns when none
+  fits). Sides run full depth; the box front and back sit between them (butt joints); the
+  bottom is captured in grooves 1/2" up. The box front sits against the back of the front.
 - **Countertop** (per tier: thickness, front overhang, end overhang): sits inside the tier's
   height, so the carcasses get shorter and the counter surface stays put. One slab per
   contiguous run of boxes, from the wall to the face of the face frame plus the front

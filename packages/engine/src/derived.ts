@@ -50,7 +50,13 @@ export type PartRole =
   | 'toeKick'
   | 'countertop'
   /** Scribe strips and fillers. */
-  | 'filler';
+  | 'filler'
+  /** Drawer box sides, front and back. */
+  | 'drawerBox'
+  | 'drawerBottom'
+  /** Stiles and rails of five-piece fronts. */
+  | 'frontFrame'
+  | 'frontPanel';
 
 /** A single rectangular piece of material, placed in run space. */
 export interface Part {

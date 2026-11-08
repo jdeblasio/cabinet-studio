@@ -12,7 +12,7 @@ const I = (t: Ticks) => t / TICKS_PER_INCH;
 const MIN_SIZE = inches(2);
 /** Screen distance within which a dragged boundary snaps to an alignment target. */
 const SNAP_PX = 8;
-const FRONT_ROLES = new Set(['door', 'drawerFront']);
+const FRONT_ROLES = new Set(['door', 'drawerFront', 'frontFrame', 'frontPanel']);
 
 interface View {
   /** SVG-space coordinates of the top-left corner. */

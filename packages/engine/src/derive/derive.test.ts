@@ -610,3 +610,81 @@ describe('deriveRun: exposed bottoms', () => {
     expect(result.parts.filter((p) => p.role === 'filler')).toEqual([]);
   });
 });
+
+describe('deriveRun: drawer boxes', () => {
+  const T2 = inches(15 / 32); // default drawer box plywood
+  const withDrawer = (depth?: number) =>
+    setup((_, r) => {
+      if (depth) tier(r, 0).depth = inches(depth);
+      boxesOf(tier(r, 0))[0]!.content = opening({ type: 'drawer' });
+    });
+  const drawerParts = (r: RunResult, opId: string) => r.parts.filter((p) => p.id.startsWith(`${opId}/`) && (p.role === 'drawerBox' || p.role === 'drawerBottom'));
+
+  it('sizes a box on side-mount slides from the opening, with the longest slide that fits', () => {
+    const { run, result } = withDrawer();
+    const op = boxesOf(tier(run, 0))[0]!.content;
+    expect(nonInfo(result)).toEqual([]);
+    const parts = drawerParts(result, op.id);
+    expect(parts.map((p) => p.name).sort()).toEqual(['Drawer bottom', 'Drawer box back', 'Drawer box front', 'Drawer side', 'Drawer side']);
+    const side = parts.find((p) => p.id.endsWith('-side-left'))!;
+    // 16" slide (the opening has 16 1/32" in front of the back after 1/2" rear clearance).
+    expect([side.length, side.width, side.thickness]).toEqual([inches(16), inches(22.5), T2]);
+    const front = parts.find((p) => p.id.endsWith('-box-front'))!;
+    // 28 5/16" clear opening − 2 × 1/2" slide clearance = 27 5/16" box, front between the sides.
+    expect([front.length, front.width]).toEqual([inches(27 + 5 / 16) - 2 * T2, inches(22.5)]);
+    // The box front sits against the back of the overlay drawer front.
+    const df = result.parts.find((p) => p.id === `${op.id}/drawer-front`)!;
+    expect(front.bounds.z + front.bounds.depth).toBe(df.bounds.z);
+    const bottom = parts.find((p) => p.role === 'drawerBottom')!;
+    expect([bottom.length, bottom.width, bottom.thickness]).toEqual([inches(26 + 27 / 32), inches(15 + 17 / 32), inches(7 / 32)]);
+  });
+
+  it('warns when no slide fits', () => {
+    const { result } = withDrawer(9);
+    expect(result.issues.map((i) => i.code)).toContain('drawer-too-shallow');
+    expect(result.parts.some((p) => p.role === 'drawerBox')).toBe(false);
+  });
+});
+
+describe('deriveRun: five-piece fronts', () => {
+  it('builds doors from stiles, rails with stub tenons and a floating panel', () => {
+    const { run, result } = setup((p) => {
+      p.settings = { ...p.settings, fronts: { ...p.settings.fronts, doorStyle: 'fivePiece' } };
+    });
+    expect(nonInfo(result)).toEqual([]);
+    expect(result.parts.some((p) => p.role === 'door')).toBe(false);
+    const op = boxesOf(tier(run, 0))[0]!.content;
+    const piece = (suffix: string) => part(result, `${op.id}/door-left-${suffix}`);
+    const doorW = inches(14 + 19 / 32);
+    const stile = piece('stile-left');
+    expect([stile.length, stile.width, stile.thickness, stile.role]).toEqual([inches(24.5), inches(2.25), inches(0.75), 'frontFrame']);
+    const rail = piece('rail-top');
+    expect([rail.length, rail.width]).toEqual([doorW - inches(4.5) + inches(0.75), inches(2.25)]);
+    const panel = piece('panel');
+    // Panel fills the grooves (3/8" deep) less 1/16" clearance per side, grain vertical.
+    expect([panel.length, panel.width, panel.thickness, panel.role]).toEqual([inches(20 + 5 / 8), doorW - inches(4.5) + inches(5 / 8), inches(7 / 32), 'frontPanel']);
+    // The door's outline matches a slab door's.
+    expect(stile.bounds.z).toBe(inches(16.75));
+    expect(piece('stile-right').bounds.x + inches(2.25) - stile.bounds.x).toBe(doorW);
+  });
+
+  it('falls back to a slab when a front is too small for a frame', () => {
+    const { run, result } = setup((p, r) => {
+      p.settings = { ...p.settings, fronts: { ...p.settings.fronts, drawerStyle: 'fivePiece' } };
+      const s: Split = {
+        kind: 'split',
+        id: newId(),
+        direction: 'rows',
+        divider: 'frameOnly',
+        children: [
+          { size: { kind: 'fixed', size: inches(3) }, section: opening({ type: 'drawer' }) },
+          { size: { kind: 'flex', ratio: 1 }, section: opening({ type: 'doorPair' }, 1) },
+        ],
+      };
+      boxesOf(tier(r, 0))[0]!.content = s;
+    });
+    expect(result.issues.map((i) => i.code)).toContain('front-too-small-for-five-piece');
+    expect(result.parts.some((p) => p.role === 'drawerFront')).toBe(true);
+    void run;
+  });
+});

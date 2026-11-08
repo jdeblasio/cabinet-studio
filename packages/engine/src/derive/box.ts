@@ -194,6 +194,94 @@ export function deriveBox(ctx: Ctx, box: PlacedBox): { parts: Part[]; sections: 
     }
   };
 
+  /**
+   * One door or drawer front in rect F (elevation): a slab, or a five-piece frame (two stiles, two
+   * rails with stub tenons, a panel in grooves). Returns the z of the front's back face, where a
+   * drawer box attaches.
+   */
+  const addFront = (op: Opening, base: string, name: string, isDoor: boolean, F: Rect): { backZ: Ticks } => {
+    const fr = s.fronts;
+    const style = isDoor ? fr.doorStyle : fr.drawerStyle;
+    const fp = fr.fivePiece;
+    const fivePiece = style === 'fivePiece' && F.width > 2 * fp.stileWidth + inches(1) && F.height > 2 * fp.railWidth + inches(1);
+    if (style === 'fivePiece' && !fivePiece) {
+      ctx.issue('info', 'front-too-small-for-five-piece', op.id, `${name} is too small for a five-piece front; it's a slab instead.`);
+    }
+    const thick = fivePiece ? ctx.thickness(s.materials.frontFrame, id) : tfr;
+    const fz = fr.mounting === 'inset' ? zFrame + tf - thick : zFrame + tf;
+    if (!fivePiece) {
+      add({ id: base, name, role: isDoor ? 'door' : 'drawerFront', materialId: s.materials.fronts, bounds: { x: F.x, y: F.y, z: fz, width: F.width, height: F.height, depth: tfr }, grain: isDoor ? 'vertical' : 'horizontal', thicknessAxis: 'z', ownerId: id });
+      return { backZ: fz };
+    }
+    const sw = fp.stileWidth;
+    const rw = fp.railWidth;
+    const g = fp.panelGroove;
+    const fm = s.materials.frontFrame;
+    const pm = s.materials.frontPanel;
+    const tp = ctx.thickness(pm, id);
+    const innerW = F.width - 2 * sw;
+    const innerH = F.height - 2 * rw;
+    const common = { materialId: fm, thicknessAxis: 'z' as const, ownerId: id };
+    add({ ...common, id: `${base}-stile-left`, name: `${name} stile`, role: 'frontFrame', bounds: { x: F.x, y: F.y, z: fz, width: sw, height: F.height, depth: thick }, grain: 'vertical' });
+    add({ ...common, id: `${base}-stile-right`, name: `${name} stile`, role: 'frontFrame', bounds: { x: F.x + F.width - sw, y: F.y, z: fz, width: sw, height: F.height, depth: thick }, grain: 'vertical' });
+    // Rails run between the stiles; their cut length includes a stub tenon into each stile's groove.
+    add({ ...common, id: `${base}-rail-top`, name: `${name} rail`, role: 'frontFrame', bounds: { x: F.x + sw, y: F.y + F.height - rw, z: fz, width: innerW, height: rw, depth: thick }, grain: 'horizontal', length: innerW + 2 * g });
+    add({ ...common, id: `${base}-rail-bottom`, name: `${name} rail`, role: 'frontFrame', bounds: { x: F.x + sw, y: F.y, z: fz, width: innerW, height: rw, depth: thick }, grain: 'horizontal', length: innerW + 2 * g });
+    // The panel floats in the grooves, centered in the frame's thickness; its cut size fills the grooves less the clearance.
+    add({
+      id: `${base}-panel`,
+      name: `${name} panel`,
+      role: 'frontPanel',
+      materialId: pm,
+      bounds: { x: F.x + sw, y: F.y + rw, z: fz + (thick - tp) / 2, width: innerW, height: innerH, depth: tp },
+      grain: isDoor ? 'vertical' : 'horizontal',
+      thicknessAxis: 'z',
+      ownerId: id,
+      ...(isDoor ? { length: down(innerH + 2 * (g - fp.panelClearance)), width: down(innerW + 2 * (g - fp.panelClearance)) } : { length: down(innerW + 2 * (g - fp.panelClearance)), width: down(innerH + 2 * (g - fp.panelClearance)) }),
+    });
+    return { backZ: fz };
+  };
+
+  /**
+   * A drawer box on side-mount slides behind a drawer front: butt-jointed sides, front and back
+   * (front and back between the sides) and a bottom captured in grooves. Width leaves slide
+   * clearance on each side; depth is the longest standard slide that fits in front of the back.
+   */
+  const deriveDrawerBox = (op: Opening, r: Rect, inner: Interior, frontZ: Ticks): void => {
+    const dr = s.drawers;
+    const bm = s.materials.drawerBox;
+    const btm = s.materials.drawerBottom;
+    const t = ctx.thickness(bm, id);
+    const tbot = ctx.thickness(btm, id);
+    const groove = Math.min(inches(1 / 4), t / 2);
+    const available = frontZ - tb - dr.rearClearance;
+    const depth = [...dr.slideLengths].sort((a, b) => b - a).find((l) => l <= available);
+    if (depth === undefined) {
+      ctx.issue('warning', 'drawer-too-shallow', op.id, `No drawer slide fits: only ${ctx.fmt(Math.max(0, available))} of depth behind the front.`);
+      return;
+    }
+    const w = down(Math.min(r.width, inner.x1 - inner.x0) - 2 * dr.slideClearance);
+    const h = down(r.height - dr.topClearance - dr.bottomClearance);
+    if (w <= 2 * t + inches(1) || h < inches(2)) {
+      ctx.issue('warning', 'drawer-too-small', op.id, 'The opening is too small for a drawer box.');
+      return;
+    }
+    const x0 = r.x + (r.width - w) / 2;
+    const y0 = r.y + dr.bottomClearance;
+    const z0 = frontZ - depth;
+    const base = `${op.id}/drawer`;
+    const common = { materialId: bm, role: 'drawerBox' as const, ownerId: id };
+    // Sides run the full depth: length front to back, width = box height.
+    add({ ...common, id: `${base}-side-left`, name: 'Drawer side', bounds: { x: x0, y: y0, z: z0, width: t, height: h, depth }, grain: 'horizontal', thicknessAxis: 'x', length: depth, width: h });
+    add({ ...common, id: `${base}-side-right`, name: 'Drawer side', bounds: { x: x0 + w - t, y: y0, z: z0, width: t, height: h, depth }, grain: 'horizontal', thicknessAxis: 'x', length: depth, width: h });
+    add({ ...common, id: `${base}-box-front`, name: 'Drawer box front', bounds: { x: x0 + t, y: y0, z: frontZ - t, width: w - 2 * t, height: h, depth: t }, grain: 'horizontal', thicknessAxis: 'z' });
+    add({ ...common, id: `${base}-box-back`, name: 'Drawer box back', bounds: { x: x0 + t, y: y0, z: z0, width: w - 2 * t, height: h, depth: t }, grain: 'horizontal', thicknessAxis: 'z' });
+    // Bottom sits in a groove 1/2" up from the bottom edge, captured on all four sides.
+    const bw = w - 2 * t + 2 * groove;
+    const bd = depth - 2 * t + 2 * groove;
+    add({ id: `${base}-bottom`, name: 'Drawer bottom', role: 'drawerBottom', materialId: btm, bounds: { x: x0 + t - groove, y: y0 + inches(1 / 2), z: z0 + t - groove, width: bw, height: tbot, depth: bd }, grain: 'horizontal', thicknessAxis: 'y', ownerId: id, length: down(bw), width: down(bd) });
+  };
+
   const deriveOpening = (op: Opening, r: Rect, inner: Interior, edge: EdgeCover): void => {
     // ---- Fronts ----
     const fr = s.fronts;
@@ -213,34 +301,24 @@ export function deriveBox(ctx: Ctx, box: PlacedBox): { parts: Part[]; sections: 
         const bt = edge.bottom - fr.reveal / 2;
         F = { x: r.x - l, y: r.y - bt, width: r.width + l + rr, height: r.height + tp + bt };
       }
-      const fz = fr.mounting === 'inset' ? zFrame + tf - tfr : zFrame + tf;
       const fh = down(F.height);
       const fy = F.y + (F.height - fh) / 2;
-      const fmId = s.materials.fronts;
       if (F.width <= 0 || F.height <= 0) {
         ctx.issue('error', 'front-too-small', op.id, 'Opening is too small for a front.');
       } else if (op.front.type === 'door' || op.front.type === 'drawer') {
         const fw = down(F.width);
         const isDoor = op.front.type === 'door';
-        add({
-          id: `${op.id}/${isDoor ? 'door' : 'drawer-front'}`,
-          name: isDoor ? 'Door' : 'Drawer front',
-          role: isDoor ? 'door' : 'drawerFront',
-          materialId: fmId,
-          bounds: { x: F.x + (F.width - fw) / 2, y: fy, z: fz, width: fw, height: fh, depth: tfr },
-          grain: isDoor ? 'vertical' : 'horizontal',
-          thicknessAxis: 'z',
-          ownerId: id,
-        });
+        const front = addFront(op, isDoor ? `${op.id}/door` : `${op.id}/drawer-front`, isDoor ? 'Door' : 'Drawer front', isDoor, { x: F.x + (F.width - fw) / 2, y: fy, width: fw, height: fh });
         if (isDoor && fw > inches(24)) {
           ctx.issue('warning', 'door-wide', op.id, `Door is ${ctx.fmt(fw)} wide; consider a pair of doors.`);
         }
+        if (!isDoor) deriveDrawerBox(op, r, inner, front.backZ);
       } else {
         const dw = down((F.width - fr.pairGap) / 2);
         const slack = F.width - 2 * dw - fr.pairGap;
         const lx = F.x + slack / 2;
-        add({ id: `${op.id}/door-left`, name: 'Left door', role: 'door', materialId: fmId, bounds: { x: lx, y: fy, z: fz, width: dw, height: fh, depth: tfr }, grain: 'vertical', thicknessAxis: 'z', ownerId: id });
-        add({ id: `${op.id}/door-right`, name: 'Right door', role: 'door', materialId: fmId, bounds: { x: lx + dw + fr.pairGap, y: fy, z: fz, width: dw, height: fh, depth: tfr }, grain: 'vertical', thicknessAxis: 'z', ownerId: id });
+        addFront(op, `${op.id}/door-left`, 'Left door', true, { x: lx, y: fy, width: dw, height: fh });
+        addFront(op, `${op.id}/door-right`, 'Right door', true, { x: lx + dw + fr.pairGap, y: fy, width: dw, height: fh });
         if (dw > inches(24)) {
           ctx.issue('warning', 'door-wide', op.id, `Doors are ${ctx.fmt(dw)} wide each.`);
         }

@@ -63,6 +63,9 @@ export type EndStile = 'flush' | 'full';
  */
 export type CarcassEnd = 'panel' | 'open';
 
+/** Slab: one flat panel. Five-piece (Shaker): two stiles, two rails and a panel in grooves. */
+export type FrontStyle = 'slab' | 'fivePiece';
+
 export interface ConstructionSettings {
   construction: ConstructionStyle;
   joinery: Joinery;
@@ -75,6 +78,13 @@ export interface ConstructionSettings {
     fronts: Id;
     toeKick: Id;
     countertop: Id;
+    /** Drawer box sides, front and back. */
+    drawerBox: Id;
+    drawerBottom: Id;
+    /** Stiles and rails of five-piece doors and drawer fronts (lumber). */
+    frontFrame: Id;
+    /** Panels of five-piece doors and drawer fronts. */
+    frontPanel: Id;
   };
   back: 'applied' | 'none';
   carcass: { top: CarcassEnd; bottom: CarcassEnd };
@@ -106,6 +116,28 @@ export interface ConstructionSettings {
     reveal: Ticks;
     /** Gap between the two doors of a pair. */
     pairGap: Ticks;
+    doorStyle: FrontStyle;
+    drawerStyle: FrontStyle;
+    fivePiece: {
+      stileWidth: Ticks;
+      railWidth: Ticks;
+      /** Depth of the panel groove; rails get stub tenons this long on each end. */
+      panelGroove: Ticks;
+      /** Gap per side between the panel and the bottom of its groove (for seasonal movement). */
+      panelClearance: Ticks;
+    };
+  };
+  /** Drawer boxes on side-mount slides, sized from the opening. */
+  drawers: {
+    /** Space per side for the slide (between the box and the carcass side). */
+    slideClearance: Ticks;
+    /** Space between the box and the top / bottom of the frame opening. */
+    topClearance: Ticks;
+    bottomClearance: Ticks;
+    /** Minimum space behind the box. */
+    rearClearance: Ticks;
+    /** Available slide lengths; the box depth is the longest that fits. */
+    slideLengths: Ticks[];
   };
   shelves: {
     /** Adjustable shelf clearance per side (to the carcass side / partition). */

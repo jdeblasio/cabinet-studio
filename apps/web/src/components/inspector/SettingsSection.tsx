@@ -28,6 +28,11 @@ const END_STILE_OPTIONS = [
   ['full', 'Full-width stile'],
 ] as const;
 
+const FRONT_STYLE_OPTIONS = [
+  ['slab', 'Slab'],
+  ['fivePiece', 'Five-piece (Shaker)'],
+] as const;
+
 const CARCASS_END_OPTIONS = [
   ['panel', 'Panel'],
   ['open', 'Open (no panel or rail)'],
@@ -58,6 +63,28 @@ const SETTINGS: SettingDef[] = [
   { path: 'fronts.overlay', label: 'Overlay', tip: 'Partial overlay: how far each door or drawer front laps onto the face frame on each side.', type: 'length' },
   { path: 'fronts.reveal', label: 'Reveal', tip: 'Inset: the gap around each front. Full overlay: the gap between neighboring fronts.', type: 'length' },
   { path: 'fronts.pairGap', label: 'Pair gap', tip: 'The gap between the two doors of a pair.', type: 'length' },
+  {
+    path: 'fronts.doorStyle',
+    label: 'Door style',
+    tip: 'Slab: one flat panel. Five-piece (Shaker): two stiles and two rails around a floating panel.',
+    type: 'select',
+    options: FRONT_STYLE_OPTIONS,
+  },
+  {
+    path: 'fronts.drawerStyle',
+    label: 'Drawer front style',
+    tip: 'Slab: one flat panel. Five-piece (Shaker): a frame and panel; fronts too short for a frame stay slab.',
+    type: 'select',
+    options: FRONT_STYLE_OPTIONS,
+  },
+  { path: 'fronts.fivePiece.stileWidth', label: '5-piece stile', tip: 'Width of the stiles (vertical frame pieces) of five-piece fronts.', type: 'length' },
+  { path: 'fronts.fivePiece.railWidth', label: '5-piece rail', tip: 'Width of the rails (horizontal frame pieces) of five-piece fronts.', type: 'length' },
+  { path: 'fronts.fivePiece.panelGroove', label: 'Panel groove', tip: 'Depth of the groove that holds the panel. Rails get stub tenons this long on each end.', type: 'length' },
+  { path: 'fronts.fivePiece.panelClearance', label: 'Panel clearance', tip: 'Gap per side between the panel and the bottom of its groove, for seasonal movement.', type: 'length' },
+  { path: 'drawers.slideClearance', label: 'Slide clearance', tip: 'Space per side between the drawer box and the cabinet side, for side-mount slides (usually 1/2").', type: 'length' },
+  { path: 'drawers.topClearance', label: 'Drawer top gap', tip: 'Space between the top of the drawer box and the top of the frame opening.', type: 'length' },
+  { path: 'drawers.bottomClearance', label: 'Drawer bottom gap', tip: 'Space between the bottom of the drawer box and the bottom of the frame opening.', type: 'length' },
+  { path: 'drawers.rearClearance', label: 'Drawer rear gap', tip: 'Minimum space behind the drawer box. The box depth is the longest standard slide (10" to 24") that fits.', type: 'length' },
   { path: 'faceFrame.topRailWidth', label: 'Top rail', tip: 'Height of the face frame rail along the top of each box.', type: 'length' },
   { path: 'faceFrame.bottomRailWidth', label: 'Bottom rail', tip: 'Height of the face frame rail along the bottom of each box. The bottom panel sits flush with its top edge.', type: 'length' },
   { path: 'faceFrame.midRailWidth', label: 'Mid rail', tip: 'Height of the rail between stacked openings (e.g. a drawer over a door).', type: 'length' },
@@ -89,6 +116,10 @@ const SETTINGS: SettingDef[] = [
   { path: 'materials.fronts', label: 'Door/drawer material', tip: 'Material for slab doors and drawer fronts.', type: 'material' },
   { path: 'materials.toeKick', label: 'Toe kick material', tip: 'Material for the toe kick platform and kick boards.', type: 'material' },
   { path: 'materials.countertop', label: 'Countertop material', tip: 'Material (species and color) for countertops. Thickness is set on the tier.', type: 'material' },
+  { path: 'materials.drawerBox', label: 'Drawer box material', tip: 'Material for drawer box sides, fronts and backs.', type: 'material' },
+  { path: 'materials.drawerBottom', label: 'Drawer bottom material', tip: 'Material for drawer bottoms.', type: 'material' },
+  { path: 'materials.frontFrame', label: '5-piece frame material', tip: 'Lumber for the stiles and rails of five-piece doors and drawer fronts.', type: 'material' },
+  { path: 'materials.frontPanel', label: '5-piece panel material', tip: 'Material for the panels of five-piece doors and drawer fronts.', type: 'material' },
 ];
 
 /** Where a settings edit lands: the project root, or an override on a run/tier/box/span. */
