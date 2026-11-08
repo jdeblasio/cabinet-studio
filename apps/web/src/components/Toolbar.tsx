@@ -119,7 +119,7 @@ export function Toolbar() {
         </button>
       </span>
       <span className="spacer" />
-      <label className="toggle" title={`Show lengths in ${other} (approximate). The project's own unit system is set in the inspector.`}>
+      <label className="toggle" title={`Show lengths in ${other} (approximate). The project's own unit system is set on the Project tab.`}>
         <input type="checkbox" checked={showOtherUnits} onChange={(e) => setShowOtherUnits(e.target.checked)} />
         Show {other === 'metric' ? 'mm' : 'inches'} (≈)
       </label>

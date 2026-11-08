@@ -9,6 +9,7 @@ import { ShoppingView } from './components/outputs/ShoppingView';
 import { ViewTabs } from './components/ViewTabs';
 import { Preview3D } from './components/preview/Preview3D';
 import { Problems } from './components/Problems';
+import { ProjectView } from './components/project/ProjectView';
 import { Splitter, useSplit } from './components/Splitter';
 import { Toolbar } from './components/Toolbar';
 import { loadInitialProject, startAutosave } from './store/persistence';
@@ -63,6 +64,8 @@ function useKeyboard() {
 function OutputView() {
   const view = useEditor((s) => s.view);
   switch (view) {
+    case 'project':
+      return <ProjectView />;
     case 'cutlist':
       return <CutListView />;
     case 'sheets':

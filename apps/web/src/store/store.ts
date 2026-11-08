@@ -7,7 +7,7 @@ const HISTORY_LIMIT = 200;
 
 export type View3D = 'shaded' | 'wireframe' | 'exploded';
 /** Top-level views: the design editor, and outputs derived from the design. */
-export type AppView = 'design' | 'cutlist' | 'sheets' | 'shopping' | 'drawings';
+export type AppView = 'design' | 'project' | 'cutlist' | 'sheets' | 'shopping' | 'drawings';
 
 export interface EditorState {
   project: Project;
@@ -22,6 +22,8 @@ export interface EditorState {
   view3d: View3D;
   /** Draw hardware (slides, hinges, shelf pins) in the 3D preview. */
   showHardware: boolean;
+  /** Inspector Construction sections list every setting, not just this level's overrides. */
+  showAllSettings: boolean;
   view: AppView;
   loaded: boolean;
 
@@ -45,6 +47,7 @@ export interface EditorState {
   setShowOtherUnits: (v: boolean) => void;
   setView3d: (v: View3D) => void;
   setShowHardware: (v: boolean) => void;
+  setShowAllSettings: (v: boolean) => void;
   setView: (v: AppView) => void;
 }
 
@@ -75,6 +78,7 @@ const editorState: StateCreator<EditorState> = (set, get) => {
     showOtherUnits: false,
     view3d: 'shaded',
     showHardware: true,
+    showAllSettings: false,
     view: 'design',
     loaded: false,
 
@@ -170,6 +174,7 @@ const editorState: StateCreator<EditorState> = (set, get) => {
     setShowOtherUnits: (showOtherUnits) => set({ showOtherUnits }),
     setView3d: (view3d) => set({ view3d }),
     setShowHardware: (showHardware) => set({ showHardware }),
+    setShowAllSettings: (showAllSettings) => set({ showAllSettings }),
     setView: (view) => set({ view }),
   };
 };

@@ -643,3 +643,7 @@ button.link:hover {
 .hardware-item:last-child {
   border-bottom: none;
 }
+
+.settings-toggle {
+  margin-top: 6px;
+}

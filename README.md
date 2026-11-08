@@ -50,6 +50,8 @@ Free and open source under the AGPL-3.0.
   - `ops.ts`: model edit helpers used by the editor.
 - `apps/web`: the browser editor (React, react-three-fiber, zustand).
   - `components/elevation`, `inspector`, `preview`: the design view.
+  - `components/project`: the Project tab (units, materials, hardware, styles, construction
+    defaults).
   - `components/outputs`: cut list, sheet layouts and shopping list views.
   - `components/drawings`: the printable drawing set.
   - `store/`: editor state, undo, the project library (IndexedDB) and derived results.

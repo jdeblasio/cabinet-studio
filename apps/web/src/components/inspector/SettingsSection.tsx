@@ -221,9 +221,14 @@ function scopeInDraft(draft: Project, ref: ScopeRef): SettingsScope | undefined 
   }
 }
 
+/** "a", "a or b", "a, b or c". */
+const orList = (items: string[]) => (items.length <= 1 ? (items[0] ?? '') : `${items.slice(0, -1).join(', ')} or ${items.at(-1)}`);
+
 export function SettingsSection({ scope, title }: { scope: ScopeRef; title?: string }) {
   const project = useEditor((s) => s.project);
   const edit = useEditor((s) => s.edit);
+  const showAllSetting = useEditor((s) => s.showAllSettings);
+  const setShowAll = useEditor((s) => s.setShowAllSettings);
   const { fmt } = useFormatter();
   const info = chainFor(project, scope);
   if (!info) return null;
@@ -307,10 +312,26 @@ export function SettingsSection({ scope, title }: { scope: ScopeRef; title?: str
     </span>
   ) : undefined;
 
+  // Runs, tiers and boxes list only their own overrides unless asked for everything; the project
+  // defaults and styles (on the Project tab) always list every setting.
+  const collapsible = scope.kind !== 'project' && scope.kind !== 'style';
+  const showAll = !collapsible || showAllSetting;
+  const isOverride = (path: string) => {
+    const src = sourceOf(path);
+    return src.level === here && !src.style;
+  };
+  const overrideCount = collapsible ? SETTINGS.filter((def) => isOverride(def.path)).length : 0;
+  const rows = showAll ? SETTINGS : SETTINGS.filter((def) => isOverride(def.path));
+
   return (
     <Section title={title ?? `Construction (${LEVEL_NAMES[scope.kind]})`} actions={styleControls}>
+      {collapsible && !showAll && overrideCount === 0 && (
+        <p className="muted small">
+          {current?.styleId ? 'Uses its style; no other overrides here.' : `Everything is inherited from the ${orList([...names.slice(0, here), 'project'])}.`}
+        </p>
+      )}
       <div className="settings-grid">
-        {SETTINGS.map((def) => {
+        {rows.map((def) => {
           const value = getPath(effective, def.path);
           const src = scope.kind === 'project' ? { level: -1 } : sourceOf(def.path);
           const overridden = scope.kind !== 'project' && src.level === here && !src.style;
@@ -359,6 +380,17 @@ export function SettingsSection({ scope, title }: { scope: ScopeRef; title?: str
           );
         })}
       </div>
+      {collapsible && (
+        <div className="settings-toggle">
+          <button
+            className="link"
+            title={showAll ? 'List only the settings overridden here' : 'List every construction setting, to override any of them here'}
+            onClick={() => setShowAll(!showAll)}
+          >
+            {showAll ? (overrideCount ? `Show only the ${overrideCount} override${overrideCount === 1 ? '' : 's'}` : 'Show overrides only') : `Show all ${SETTINGS.length} settings`}
+          </button>
+        </div>
+      )}
     </Section>
   );
 }
