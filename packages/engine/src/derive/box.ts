@@ -77,15 +77,19 @@ export function deriveBox(ctx: Ctx, box: PlacedBox): { parts: Part[]; sections: 
 
   // ---- Carcass ----
   const cm = s.materials.carcass;
+  // Dado/rabbet joinery: captured parts are cut longer by the joint depth at each captured end.
+  const jd = s.joinery === 'dado' || s.joinery === 'rabbet' ? s.joineryDepth : 0;
+  const jointNote = (into: string) => (jd > 0 ? { note: `+${ctx.fmt(jd)} each end into ${into}` } : {});
+  const captured = (n: Ticks) => n + 2 * jd;
   const innerW = W - 2 * t;
   const exposedRecess = !openBottom && box.bottomExposed && bottomRail > t;
   const doubledBottom = exposedRecess && bottomRail >= 2 * t;
   const floorTop = openBottom ? y : exposedRecess && !doubledBottom ? y + t : y + Math.max(bottomRail, t);
   add({ id: `${id}/side-left`, name: 'Left side', role: 'side', materialId: cm, bounds: { x, y, z: tb, width: t, height: H, depth: Ds }, grain: 'vertical', thicknessAxis: 'x', ownerId: id });
   add({ id: `${id}/side-right`, name: 'Right side', role: 'side', materialId: cm, bounds: { x: x + W - t, y, z: tb, width: t, height: H, depth: Ds }, grain: 'vertical', thicknessAxis: 'x', ownerId: id });
-  if (!openTop) add({ id: `${id}/top`, name: 'Top', role: 'top', materialId: cm, bounds: { x: x + t, y: top - t, z: tb, width: innerW, height: t, depth: Ds }, grain: 'horizontal', thicknessAxis: 'y', ownerId: id, length: down(innerW), width: down(Ds) });
-  if (!openBottom) add({ id: `${id}/bottom`, name: 'Bottom', role: 'bottom', materialId: cm, bounds: { x: x + t, y: floorTop - t, z: tb, width: innerW, height: t, depth: Ds }, grain: 'horizontal', thicknessAxis: 'y', ownerId: id, length: down(innerW), width: down(Ds) });
-  if (doubledBottom) add({ id: `${id}/bottom-finish`, name: 'Finished bottom', role: 'bottom', materialId: cm, bounds: { x: x + t, y, z: tb, width: innerW, height: t, depth: Ds }, grain: 'horizontal', thicknessAxis: 'y', ownerId: id, length: down(innerW), width: down(Ds) });
+  if (!openTop) add({ id: `${id}/top`, name: 'Top', role: 'top', materialId: cm, bounds: { x: x + t, y: top - t, z: tb, width: innerW, height: t, depth: Ds }, grain: 'horizontal', thicknessAxis: 'y', ownerId: id, length: captured(down(innerW)), width: down(Ds), ...jointNote(s.joinery === 'rabbet' ? 'rabbets' : 'dados') });
+  if (!openBottom) add({ id: `${id}/bottom`, name: 'Bottom', role: 'bottom', materialId: cm, bounds: { x: x + t, y: floorTop - t, z: tb, width: innerW, height: t, depth: Ds }, grain: 'horizontal', thicknessAxis: 'y', ownerId: id, length: captured(down(innerW)), width: down(Ds), ...jointNote('dados') });
+  if (doubledBottom) add({ id: `${id}/bottom-finish`, name: 'Finished bottom', role: 'bottom', materialId: cm, bounds: { x: x + t, y, z: tb, width: innerW, height: t, depth: Ds }, grain: 'horizontal', thicknessAxis: 'y', ownerId: id, length: captured(down(innerW)), width: down(Ds), ...jointNote(s.joinery === 'rabbet' ? 'rabbets' : 'dados') });
   if (tb > 0) {
     add({ id: `${id}/back`, name: 'Back', role: 'back', materialId: s.materials.back, bounds: { x, y, z: 0, width: W, height: H, depth: tb }, grain: 'vertical', thicknessAxis: 'z', ownerId: id });
   }
@@ -171,7 +175,7 @@ export function deriveBox(ctx: Ctx, box: PlacedBox): { parts: Part[]; sections: 
           if (!frameless) add({ id: `${sec.id}/rail-${i}`, name: 'Mid rail', role: 'rail', materialId: fm, bounds: { x: r.x, y: railY, z: zFrame, width: r.width, height: member, depth: tf }, grain: 'horizontal', thicknessAxis: 'z', ownerId: id, length: down(r.width) });
           if (sec.divider === 'panel') {
             const w = inner.x1 - inner.x0;
-            add({ id: `${sec.id}/shelf-${i}`, name: 'Fixed shelf', role: 'fixedShelf', materialId: s.materials.shelves, bounds: { x: inner.x0, y: cy - tsh, z: tb, width: w, height: tsh, depth: Ds }, grain: 'horizontal', thicknessAxis: 'y', ownerId: id, length: down(w), width: down(Ds) });
+            add({ id: `${sec.id}/shelf-${i}`, name: 'Fixed shelf', role: 'fixedShelf', materialId: s.materials.shelves, bounds: { x: inner.x0, y: cy - tsh, z: tb, width: w, height: tsh, depth: Ds }, grain: 'horizontal', thicknessAxis: 'y', ownerId: id, length: captured(down(w)), width: down(Ds), ...jointNote('dados') });
             checkShelfSag(ctx, s, sec.id, 'Fixed shelf', s.materials.shelves, w, Ds, tsh);
             iy0 = cy;
             nextIy1 = cy - tsh;
@@ -200,7 +204,7 @@ export function deriveBox(ctx: Ctx, box: PlacedBox): { parts: Part[]; sections: 
           const c = sx + member / 2;
           if (sec.divider === 'panel') {
             const h = inner.y1 - inner.y0;
-            add({ id: `${sec.id}/partition-${i}`, name: 'Partition', role: 'partition', materialId: cm, bounds: { x: c - t / 2, y: inner.y0, z: tb, width: t, height: h, depth: Ds }, grain: 'vertical', thicknessAxis: 'x', ownerId: id, length: down(h), width: down(Ds) });
+            add({ id: `${sec.id}/partition-${i}`, name: 'Partition', role: 'partition', materialId: cm, bounds: { x: c - t / 2, y: inner.y0, z: tb, width: t, height: h, depth: Ds }, grain: 'vertical', thicknessAxis: 'x', ownerId: id, length: captured(down(h)), width: down(Ds), ...jointNote('dados') });
             ix1 = c - t / 2;
             nextIx0 = c + t / 2;
           } else {

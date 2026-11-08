@@ -68,6 +68,7 @@ export function makePart(args: {
   /** Override the computed length/width (e.g. snapped cut sizes). */
   length?: Ticks;
   width?: Ticks;
+  note?: string;
 }): Part {
   const { bounds: b, thicknessAxis: ta } = args;
   const thickness = ta === 'x' ? b.width : ta === 'y' ? b.height : b.depth;
@@ -93,5 +94,6 @@ export function makePart(args: {
     thickness,
     bounds: b,
     ownerId: args.ownerId,
+    ...(args.note ? { note: args.note } : {}),
   };
 }

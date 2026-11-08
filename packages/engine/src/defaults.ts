@@ -51,6 +51,7 @@ export const DEFAULT_MATERIALS: Material[] = [
 export const DEFAULT_SETTINGS: ConstructionSettings = {
   construction: 'faceFrame',
   joinery: 'butt',
+  joineryDepth: inches(1 / 4),
   materials: {
     carcass: 'ply-23-32',
     back: 'ply-7-32',

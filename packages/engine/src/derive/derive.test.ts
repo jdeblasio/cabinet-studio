@@ -740,3 +740,40 @@ describe('deriveRun: frameless construction', () => {
     expect(result.parts.some((p) => p.role === 'fixedShelf')).toBe(false);
   });
 });
+
+describe('deriveRun: joinery presets', () => {
+  it('cuts captured parts longer by the dado depth at each end and says why', () => {
+    let split!: Split;
+    const { run, result } = setup((p, r) => {
+      p.settings = { ...p.settings, joinery: 'dado', joineryDepth: inches(1 / 4) };
+      split = {
+        kind: 'split',
+        id: newId(),
+        direction: 'columns',
+        divider: 'panel',
+        children: [0, 1].map(() => ({ size: { kind: 'flex' as const, ratio: 1 }, section: opening() })),
+      };
+      tier(r, 1).items[0] = flexBox(split);
+    });
+    const b0 = boxesOf(tier(run, 0))[0]!.id;
+    const top = part(result, `${b0}/top`);
+    expect(top.length).toBe(inches(29.75) - 2 * T + inches(0.5));
+    expect(top.note).toBe('+1/4" each end into dados');
+    // Visible geometry is unchanged: the panel still spans between the sides.
+    expect(top.bounds.width).toBe(inches(29.75) - 2 * T);
+    const partition = part(result, `${split.id}/partition-0`);
+    expect(partition.length).toBe(partition.bounds.height + inches(0.5));
+  });
+
+  it('leaves sizes alone for butt, dowel and confirmat joints', () => {
+    const sizes = (joinery: 'butt' | 'dowel' | 'confirmat') => {
+      const { run, result } = setup((p) => {
+        p.settings = { ...p.settings, joinery };
+      });
+      const top = part(result, `${boxesOf(tier(run, 0))[0]!.id}/top`);
+      return [top.length, top.note];
+    };
+    expect(sizes('dowel')).toEqual(sizes('butt'));
+    expect(sizes('confirmat')).toEqual([inches(29.75) - 2 * T, undefined]);
+  });
+});

@@ -74,6 +74,8 @@ export interface Part {
   bounds: Bounds;
   /** Model element this part belongs to (box id, span id, tier id for toe kicks, frame group id). */
   ownerId: Id;
+  /** Why the cut size differs from what's visible, e.g. "+1/4" each end into dados". */
+  note?: string;
 }
 
 export interface RunResult {

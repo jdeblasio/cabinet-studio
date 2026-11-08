@@ -47,7 +47,12 @@ export interface Material {
 export type ConstructionStyle = 'faceFrame' | 'frameless';
 export type Mounting = 'partialOverlay' | 'fullOverlay' | 'inset';
 /** Milestone 1 supports butt joints only. */
-export type Joinery = 'butt';
+/**
+ * Carcass joinery preset. Butt, dowel and confirmat joints don't change part sizes. Dado and
+ * rabbet joints capture tops, bottoms, fixed shelves and partitions in grooves `joineryDepth`
+ * deep, so those parts are cut that much longer at each captured end.
+ */
+export type Joinery = 'butt' | 'dowel' | 'confirmat' | 'dado' | 'rabbet';
 
 /**
  * Face frame stile at a box's open edge (no neighbor in the same frame, not at a wall —
@@ -71,6 +76,8 @@ export type FrontStyle = 'slab' | 'fivePiece';
 export interface ConstructionSettings {
   construction: ConstructionStyle;
   joinery: Joinery;
+  /** Depth of dados and rabbets. */
+  joineryDepth: Ticks;
   /** Material ids by part role. */
   materials: {
     carcass: Id;

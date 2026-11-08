@@ -140,7 +140,7 @@ step or two off its siblings. Hold Alt/Option to drag freely.
 - Default lip: **flush inside** (frame inner edges line up with box side inner faces, so
   drawer slides mount without spacers). A shared stile is then exactly 2 × side thickness.
 
-### Derivation conventions (face frame and frameless, butt joints)
+### Derivation conventions (face frame and frameless)
 
 - Sides run full height; top and bottom are captured between the sides.
 - An applied back covers the full rear of the box; sides/top/bottom are (depth − back) deep.
@@ -178,6 +178,10 @@ step or two off its siblings. Hold Alt/Option to drag freely.
   Fronts stop half a reveal short of an open edge instead of overlaying a rail that isn't
   there. Uses: open shelves over a countertop (the counter is the bottom shelf), or shelving
   that continues into the box above.
+- **Joinery presets** (`joinery`, `joineryDepth`): butt, dowel and confirmat don't change
+  sizes. Dado and rabbet capture tops, bottoms, fixed shelves and partitions in grooves, so
+  their cut length grows by the joint depth at each end; visible geometry is unchanged and the
+  part carries a note ("+1/4" each end into dados").
 - **Frameless** (per project or per box): no face frame. The face opening is the box
   interior, fronts sit on the carcass edges (full overlay covers the side less half the
   reveal; between openings, half a shelf/partition edge each), the bottom panel is flush with

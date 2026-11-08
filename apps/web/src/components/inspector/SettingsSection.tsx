@@ -51,6 +51,20 @@ const SETTINGS: SettingDef[] = [
     ],
   },
   {
+    path: 'joinery',
+    label: 'Carcass joints',
+    tip: 'How tops, bottoms, fixed shelves and partitions join the sides. Butt, dowel and confirmat: parts meet flat (no size change). Dado and rabbet: parts sit in grooves, so they are cut longer by the joint depth at each end.',
+    type: 'select',
+    options: [
+      ['butt', 'Butt (screws/pocket)'],
+      ['dowel', 'Dowel'],
+      ['confirmat', 'Confirmat'],
+      ['dado', 'Dado'],
+      ['rabbet', 'Rabbet (top/bottom)'],
+    ],
+  },
+  { path: 'joineryDepth', label: 'Joint depth', tip: 'Depth of dados and rabbets: how far captured parts extend into the sides.', type: 'length' },
+  {
     path: 'fronts.mounting',
     label: 'Front mounting',
     tip: 'How doors and drawer fronts sit. Partial overlay: lapped onto the face frame. Full overlay: covering nearly all of the frame. Inset: inside the frame openings, flush with the frame.',
