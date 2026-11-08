@@ -49,3 +49,52 @@ describe('3D exports', () => {
     expect(gltf.nodes[0].extras.partId).toBe(p0.id);
   });
 });
+
+describe('3D exports of mitered parts', () => {
+  // A doorway in the base tier with the toe kick mitered around its open ends.
+  const p = createDefaultProject();
+  const run = p.runs[0]!;
+  const gap = { id: 'door', kind: 'gap' as const, x: { anchor: 'center' as const, offset: 0 }, width: inches(36), tiers: { from: run.tiers[0]!.id, to: run.tiers[0]!.id }, content: { kind: 'opening' as const, id: 'o', front: { type: 'none' as const }, adjustableShelves: 0 } };
+  run.spans.push(gap);
+  run.tiers[0]!.items.splice(2, 0, { kind: 'slot', spanId: 'door' });
+  run.tiers[0]!.toeKick = { ...run.tiers[0]!.toeKick!, mitreOpenEnds: true };
+  const all = deriveRun(p, run.id).parts;
+  const mitred = all.filter((q) => q.mitres?.length);
+  const front = mitred.find((q) => q.id.endsWith('kick-0-front'))!;
+
+  it('has mitered toe kick parts to export', () => {
+    expect(mitred.length).toBe(4); // two front board ends, two returns
+  });
+
+  it('cuts the miter in OBJ vertices', () => {
+    const obj = toOBJ([front], 'imperial');
+    const xs = obj.split('\n').filter((l) => l.startsWith('v ')).map((l) => Number(l.split(' ')[1]));
+    const b = front.bounds;
+    const x1 = (b.x + b.width) / inches(1);
+    // The outer (front) corners reach the end; the inner (back) corners stop a board thickness short.
+    expect(xs.filter((x) => Math.abs(x - x1) < 1e-4)).toHaveLength(2);
+    expect(xs.filter((x) => Math.abs(x - (x1 - b.depth / inches(1))) < 1e-4)).toHaveLength(2);
+  });
+
+  it('gives the STL miter face a diagonal normal', () => {
+    const view = new DataView(toSTL([front]));
+    const normals = Array.from({ length: 12 }, (_, t) => [0, 1, 2].map((k) => view.getFloat32(84 + t * 50 + k * 4, true)));
+    // The miter face faces the return: back and to the right.
+    expect(normals.some(([x, y, z]) => Math.abs(x! - Math.SQRT1_2) < 1e-4 && Math.abs(y!) < 1e-6 && Math.abs(z! + Math.SQRT1_2) < 1e-4)).toBe(true);
+  });
+
+  it('gives mitered parts their own glTF mesh, in place', () => {
+    const gltf = JSON.parse(toGLTF(all, p.materials));
+    const looks = new Set(all.map((q) => q.materialId)).size;
+    expect(gltf.meshes).toHaveLength(looks + mitred.length);
+    const i = all.indexOf(front);
+    const node = gltf.nodes[i];
+    expect(node.scale).toBeUndefined();
+    expect(node.mesh).toBeGreaterThanOrEqual(looks);
+    const pos = gltf.accessors[gltf.meshes[node.mesh].primitives[0].attributes.POSITION];
+    expect(pos.count).toBe(24);
+    expect(pos.max[0]).toBeCloseTo(((front.bounds.x + front.bounds.width) / inches(1)) * 0.0254, 5);
+    const uri: string = gltf.buffers[0].uri;
+    expect(atob(uri.slice(uri.indexOf(',') + 1)).length).toBe(gltf.buffers[0].byteLength);
+  });
+});

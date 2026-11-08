@@ -50,6 +50,10 @@ export function deriveToeKick(ctx: Ctx, layout: RunLayoutResult): Part[] {
     }
     const base = `${kick.tierId}/kick-${si}`;
     const cross = platformDepth - 2 * tk;
+    // Miter the kick around open ends: a full-depth return instead of the end cross piece.
+    const mitre = !!ctx.run.tiers.find((t) => t.id === kick.tierId)?.toeKick?.mitreOpenEnds;
+    const mitreL = mitre && !first.atLeftWall;
+    const mitreR = mitre && !lastBox.atRightWall;
     const common = { role: 'toeKick' as const, materialId: s.materials.toeKick, ownerId: kick.tierId };
     // Cross pieces at both ends and under every joint between boxes.
     const xs = [xa, ...seg.slice(1).map((b) => b.carcass.x - tk / 2), xb - tk];
@@ -72,9 +76,29 @@ export function deriveToeKick(ctx: Ctx, layout: RunLayoutResult): Part[] {
         );
       });
     };
+    const frontStart = parts.length;
     boards('front', fa, fb, platformDepth - tk, 'Toe kick (front)');
-    boards('back', xa, xb, 0, 'Toe kick (back)');
+    // The front board's mitered ends (its first and last piece).
+    const fronts = parts.slice(frontStart);
+    const mark = (p: Part | undefined, face: 'left' | 'right') => {
+      if (!p) return;
+      const i = parts.indexOf(p);
+      parts[i] = { ...p, mitres: [...(p.mitres ?? []), { face, outer: 'front' }], note: [p.note, `45° miter at the ${face} end, with the return`].filter(Boolean).join('; ') };
+    };
+    if (mitreL) mark(fronts[0], 'left');
+    if (mitreR) mark(parts[frontStart + fronts.length - 1], 'right');
+    // The back board stops against a return.
+    boards('back', xa + (mitreL ? tk : 0), xb - (mitreR ? tk : 0), 0, 'Toe kick (back)');
     xs.forEach((cx, ci) => {
+      const isReturn = (ci === 0 && mitreL) || (ci === xs.length - 1 && mitreR);
+      if (isReturn) {
+        // Full depth, from the wall to the front face, mitered with the front board at the corner.
+        parts.push(
+          makePart({ ...common, id: `${base}-return-${ci === 0 ? 'left' : 'right'}`, name: 'Toe kick (return)', bounds: { x: cx, y: 0, z: 0, width: tk, height: h, depth: platformDepth }, grain: 'horizontal', thicknessAxis: 'x', length: ctx.down(platformDepth), note: '45° miter at the front end, with the front board' }),
+        );
+        parts[parts.length - 1] = { ...parts[parts.length - 1]!, mitres: [{ face: 'front', outer: ci === 0 ? 'left' : 'right' }] };
+        return;
+      }
       parts.push(
         makePart({ ...common, id: `${base}-cross-${ci}`, name: 'Toe kick (cross)', bounds: { x: cx, y: 0, z: tk, width: tk, height: h, depth: cross }, grain: 'horizontal', thicknessAxis: 'x', length: ctx.down(cross) }),
       );

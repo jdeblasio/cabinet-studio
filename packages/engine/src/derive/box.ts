@@ -25,7 +25,7 @@ import type { Bounds, HardwareItem, Part, PartFeature, Rect, SectionLayout } fro
 import type { ConstructionSettings, Opening, Section } from '../model';
 import { inches, mm, snap, type Ticks } from '../units';
 import { DEFAULT_HARDWARE, hardwareOf } from '../defaults';
-import { checkShelfSag } from './checks';
+import { checkShelfSag, stripEI } from './checks';
 import { makePart, type Ctx } from './context';
 import type { PlacedBox } from './layout';
 import { solveLine } from './solveLine';
@@ -45,7 +45,35 @@ interface EdgeCover {
   bottom: Ticks;
 }
 
-export function deriveBox(ctx: Ctx, box: PlacedBox): { parts: Part[]; sections: SectionLayout[]; hardware: HardwareItem[] } {
+/** Which parts a carcass panel runs past at its ends: e.g. a bottom under the left side and the back. */
+export interface CornerPlan {
+  left: boolean;
+  right: boolean;
+  back: boolean;
+}
+
+/**
+ * How the box's corners are joined: whether the bottom (the panel at the carcass bottom) runs
+ * under the sides and back, and whether the top runs over them. Default: neither (the sides run
+ * full height and the back covers everything).
+ */
+export interface CarcassJoints {
+  bottom: CornerPlan;
+  top: CornerPlan;
+}
+
+export const NO_CORNERS: CornerPlan = { left: false, right: false, back: false };
+const ALL_CORNERS: CornerPlan = { left: true, right: true, back: true };
+
+/** The joints a box's settings ask for ('auto' corners start as standard; the run picks them). */
+export function settingsJoints(s: ConstructionSettings): CarcassJoints {
+  return {
+    bottom: s.carcass.bottomJoint === 'under' ? ALL_CORNERS : NO_CORNERS,
+    top: s.carcass.topJoint === 'over' ? ALL_CORNERS : NO_CORNERS,
+  };
+}
+
+export function deriveBox(ctx: Ctx, box: PlacedBox, joints: CarcassJoints = settingsJoints(box.settings)): { parts: Part[]; sections: SectionLayout[]; hardware: HardwareItem[] } {
   const s = box.settings;
   const id = box.id;
   const parts: Part[] = [];
@@ -54,7 +82,9 @@ export function deriveBox(ctx: Ctx, box: PlacedBox): { parts: Part[]; sections: 
   const add = (p: Parameters<typeof makePart>[0]) => parts.push(makePart(p));
 
   const t = ctx.thickness(s.materials.carcass, id);
-  const tb = s.back === 'applied' ? ctx.thickness(s.materials.back, id) : 0;
+  const tb = s.back === 'none' ? 0 : ctx.thickness(s.materials.back, id);
+  // A rabbeted back sits in rabbets in the sides, top and bottom, which then run full depth.
+  const rabbeted = s.back === 'rabbeted' && tb > 0;
   const frameless = s.construction === 'frameless';
   // Frameless boxes have no face frame: fronts sit right on the carcass front (zFrame + 0).
   const tf = frameless ? 0 : ctx.thickness(s.materials.faceFrame, id);
@@ -87,13 +117,93 @@ export function deriveBox(ctx: Ctx, box: PlacedBox): { parts: Part[]; sections: 
   const exposedRecess = !openBottom && box.bottomExposed && bottomRail > t;
   const doubledBottom = exposedRecess && bottomRail >= 2 * t;
   const floorTop = openBottom ? y : exposedRecess && !doubledBottom ? y + t : y + Math.max(bottomRail, t);
-  add({ id: `${id}/side-left`, name: 'Left side', role: 'side', materialId: cm, bounds: { x, y, z: tb, width: t, height: H, depth: Ds }, grain: 'vertical', thicknessAxis: 'x', ownerId: id });
-  add({ id: `${id}/side-right`, name: 'Right side', role: 'side', materialId: cm, bounds: { x: x + W - t, y, z: tb, width: t, height: H, depth: Ds }, grain: 'vertical', thicknessAxis: 'x', ownerId: id });
-  if (!openTop) add({ id: `${id}/top`, name: 'Top', role: 'top', materialId: cm, bounds: { x: x + t, y: top - t, z: tb, width: innerW, height: t, depth: Ds }, grain: 'horizontal', thicknessAxis: 'y', ownerId: id, length: captured(down(innerW)), width: down(Ds), ...jointNote(s.joinery === 'rabbet' ? 'rabbets' : 'dados') });
-  if (!openBottom) add({ id: `${id}/bottom`, name: 'Bottom', role: 'bottom', materialId: cm, bounds: { x: x + t, y: floorTop - t, z: tb, width: innerW, height: t, depth: Ds }, grain: 'horizontal', thicknessAxis: 'y', ownerId: id, length: captured(down(innerW)), width: down(Ds), ...jointNote('dados') });
-  if (doubledBottom) add({ id: `${id}/bottom-finish`, name: 'Finished bottom', role: 'bottom', materialId: cm, bounds: { x: x + t, y, z: tb, width: innerW, height: t, depth: Ds }, grain: 'horizontal', thicknessAxis: 'y', ownerId: id, length: captured(down(innerW)), width: down(Ds), ...jointNote(s.joinery === 'rabbet' ? 'rabbets' : 'dados') });
+  // Corner joints: only a bottom panel at the carcass bottom can run under the sides (a raised
+  // bottom sits between them, above the rail).
+  const baseBottom = doubledBottom ? 'bottom-finish' : !openBottom && floorTop - t === y ? 'bottom' : null;
+  const bj = baseBottom ? joints.bottom : NO_CORNERS;
+  const tj = openTop ? NO_CORNERS : joints.top;
+  // Rabbet for a rabbeted back: up to half the panel thickness (3/8" at most).
+  const rb = rabbeted ? Math.min(snap(t / 2, ctx.grid, 'down'), inches(3 / 8)) : 0;
+  const rabbetNote = rabbeted ? `rabbet ${ctx.fmt(rb)} × ${ctx.fmt(tb)} along the back edge for the back` : '';
+  const notes = (...n: (string | false | undefined)[]) => {
+    const text = n.filter(Boolean).join('; ');
+    return text ? { note: text.charAt(0).toUpperCase() + text.slice(1) } : {};
+  };
+  // Panels run full depth when the back is rabbeted into them, or when they run under/over it.
+  const panelZ = (pastBack: boolean) => (rabbeted || pastBack ? 0 : tb);
+  const sideZ = rabbeted ? 0 : tb;
+  const sideD = D - sideZ;
+  const jointWord = s.joinery === 'rabbet' ? 'a rabbet' : 'a dado';
+  const side = (which: 'left' | 'right') => {
+    const under = bj[which];
+    const over = tj[which];
+    const y0 = y + (under ? t : 0);
+    const y1 = top - (over ? t : 0);
+    const seated = (under ? 1 : 0) + (over ? 1 : 0);
+    add({
+      id: `${id}/side-${which}`,
+      name: which === 'left' ? 'Left side' : 'Right side',
+      role: 'side',
+      materialId: cm,
+      bounds: { x: which === 'left' ? x : x + W - t, y: y0, z: sideZ, width: t, height: y1 - y0, depth: sideD },
+      grain: 'vertical',
+      thicknessAxis: 'x',
+      ownerId: id,
+      length: y1 - y0 + seated * jd,
+      width: down(sideD),
+      ...notes(
+        under && 'sits on the bottom',
+        over && 'the top runs over it',
+        jd > 0 && seated > 0 && `+${ctx.fmt(jd)} at ${seated === 2 ? 'each end' : 'that end'} into ${jointWord}`,
+        rabbetNote,
+      ),
+    });
+  };
+  side('left');
+  side('right');
+  /** A top or bottom panel at height `py`, running past the sides and back per its corner plan. */
+  const panel = (pid: string, name: string, role: 'top' | 'bottom', py: Ticks, plan: CornerPlan, into: string) => {
+    const x0 = x + (plan.left ? 0 : t);
+    const x1 = x + W - (plan.right ? 0 : t);
+    const z0 = panelZ(plan.back);
+    const captures = (plan.left ? 0 : 1) + (plan.right ? 0 : 1);
+    const past = plan.left && plan.right ? 'the sides' : plan.left ? 'the left side' : plan.right ? 'the right side' : '';
+    const word = role === 'bottom' ? 'under' : 'over';
+    add({
+      id: `${id}/${pid}`,
+      name,
+      role,
+      materialId: cm,
+      bounds: { x: x0, y: py, z: z0, width: x1 - x0, height: t, depth: D - z0 },
+      grain: 'horizontal',
+      thicknessAxis: 'y',
+      ownerId: id,
+      length: down(x1 - x0) + captures * jd,
+      width: down(D - z0),
+      ...notes(
+        past && `runs ${word} ${past}${plan.back && !rabbeted ? ' and the back' : ''}`,
+        !past && plan.back && !rabbeted && `runs ${word} the back`,
+        jd > 0 && captures > 0 && `+${ctx.fmt(jd)} ${captures === 2 ? 'each end' : 'at the captured end'} into ${into}`,
+        rabbetNote,
+      ),
+    });
+  };
+  if (!openTop) panel('top', 'Top', 'top', top - t, tj, s.joinery === 'rabbet' ? 'rabbets' : 'dados');
+  if (!openBottom) panel('bottom', 'Bottom', 'bottom', floorTop - t, baseBottom === 'bottom' ? bj : NO_CORNERS, 'dados');
+  if (doubledBottom) panel('bottom-finish', 'Finished bottom', 'bottom', y, bj, s.joinery === 'rabbet' ? 'rabbets' : 'dados');
   if (tb > 0) {
-    add({ id: `${id}/back`, name: 'Back', role: 'back', materialId: s.materials.back, bounds: { x, y, z: 0, width: W, height: H, depth: tb }, grain: 'vertical', thicknessAxis: 'z', ownerId: id });
+    if (rabbeted) {
+      // In rabbets in the sides, the top and the (structural) bottom: its edges are hidden.
+      const bx0 = x + t - rb;
+      const bx1 = x + W - t + rb;
+      const by0 = openBottom ? y : floorTop - rb;
+      const by1 = openTop ? top : top - t + rb;
+      add({ id: `${id}/back`, name: 'Back', role: 'back', materialId: s.materials.back, bounds: { x: bx0, y: by0, z: 0, width: bx1 - bx0, height: by1 - by0, depth: tb }, grain: 'vertical', thicknessAxis: 'z', ownerId: id, note: `Fits rabbets ${ctx.fmt(rb)} deep in the sides${openTop ? '' : ', top'}${openBottom ? '' : ' and bottom'}` });
+    } else {
+      const by0 = y + (bj.back ? t : 0);
+      const by1 = top - (tj.back ? t : 0);
+      add({ id: `${id}/back`, name: 'Back', role: 'back', materialId: s.materials.back, bounds: { x, y: by0, z: 0, width: W, height: by1 - by0, depth: tb }, grain: 'vertical', thicknessAxis: 'z', ownerId: id, ...notes(bj.back && 'sits on the bottom', tj.back && 'the top runs over it') });
+    }
   }
 
   // ---- Box's own frame rails (stiles are derived per frame group) ----
@@ -394,7 +504,8 @@ export function deriveBox(ctx: Ctx, box: PlacedBox): { parts: Part[]; sections: 
       return;
     }
     const sw = inner.x1 - inner.x0 - 2 * s.shelves.sideClearance;
-    const sd = Ds - s.shelves.frontSetback;
+    const nosing = s.shelves.adjustableFront === 'nosing' ? shelfNosing(op, r, inner) : null;
+    const sd = nosing ? nosing.shelfDepth : Ds - s.shelves.frontSetback;
     const placed = bays.map((bay) => ({ bay, gap: (bay.y1 - bay.y0 - n * tsh) / (n + 1) }));
     if (sw <= 0 || sd <= 0 || placed.some((b) => b.gap <= 0)) {
       ctx.issue('error', 'shelves-no-room', op.id, 'Not enough room for the adjustable shelves.');
@@ -404,7 +515,8 @@ export function deriveBox(ctx: Ctx, box: PlacedBox): { parts: Part[]; sections: 
     if (tightest < inches(2)) {
       ctx.issue('warning', 'shelves-crowded', op.id, `Adjustable shelves are only ${ctx.fmt(tightest)} apart.`);
     }
-    checkShelfSag(ctx, s, op.id, 'Adjustable shelf', s.materials.shelves, sw, sd, tsh);
+    const nosingEI = nosing ? stripEI(nosing.depth, nosing.height, ctx.project.materials.find((m) => m.id === s.materials.faceFrame)) : 0;
+    checkShelfSag(ctx, s, op.id, nosing ? 'Adjustable shelf (with nosing)' : 'Adjustable shelf', s.materials.shelves, sw, sd, tsh, nosingEI);
     placed.forEach(({ bay, gap }, b) => {
       const zone: PinZone = { ...bay, shelves: [] };
       pinZones.push(zone);
@@ -412,9 +524,46 @@ export function deriveBox(ctx: Ctx, box: PlacedBox): { parts: Part[]; sections: 
         const sy = snap(bay.y0 + gap * (k + 1) + tsh * k, ctx.grid);
         const shelfId = bays.length === 1 ? `${op.id}/adj-shelf-${k}` : `${op.id}/adj-shelf-${b}-${k}`;
         zone.shelves.push({ id: shelfId, y: sy });
-        add({ id: shelfId, name: 'Adjustable shelf', role: 'adjustableShelf', materialId: s.materials.shelves, bounds: { x: inner.x0 + s.shelves.sideClearance, y: sy, z: tb, width: sw, height: tsh, depth: sd }, grain: 'horizontal', thicknessAxis: 'y', ownerId: id, length: down(sw), width: down(sd) });
+        add({ id: shelfId, name: 'Adjustable shelf', role: 'adjustableShelf', materialId: s.materials.shelves, bounds: { x: inner.x0 + s.shelves.sideClearance, y: sy, z: tb, width: sw, height: tsh, depth: sd }, grain: 'horizontal', thicknessAxis: 'y', ownerId: id, length: down(sw), width: down(sd), ...(nosing ? { note: 'Front edge covered by its nosing (glue and pin)' } : {}) });
+        if (nosing) {
+          const top = sy + tsh;
+          add({
+            id: `${shelfId}-nosing`,
+            name: 'Shelf nosing',
+            role: 'rail',
+            materialId: s.materials.faceFrame,
+            bounds: { x: nosing.x0, y: top - nosing.height, z: nosing.z, width: nosing.x1 - nosing.x0, height: nosing.height, depth: nosing.depth },
+            grain: 'horizontal',
+            thicknessAxis: 'z',
+            ownerId: id,
+            length: down(nosing.x1 - nosing.x0),
+            note: `On the front of an adjustable shelf, top flush with it${nosing.setback > 0 ? `; ${ctx.fmt(nosing.setback)} back from the frame face` : ''}`,
+          });
+        }
       }
     });
+  };
+
+  /**
+   * A frame-lumber nosing on adjustable shelves: as tall as a mid rail, where a fixed shelf's rail
+   * would be (in the frame plane, or set back like an inset rail; always behind an inset front),
+   * narrow enough to pass through the opening. Returns its placement and the shelf's depth behind it.
+   */
+  const shelfNosing = (op: Opening, r: Rect, inner: Interior) => {
+    const depth = ctx.thickness(s.materials.faceFrame, id);
+    const height = Math.max(ff.midRailWidth, tsh);
+    let setback = (s.shelves.fixedEdge ?? 'flush') === 'inset' ? (s.shelves.fixedSetback ?? inches(1 / 4)) : 0;
+    if (s.fronts.mounting === 'inset' && op.front.type !== 'none') {
+      const frontThick = Math.max(tfr, ctx.thickness(s.materials.frontFrame, id));
+      setback = Math.max(setback, frontThick + inches(1 / 16));
+    }
+    // The nosing's front is the frame face (the carcass front when frameless), less the setback.
+    const front = zFrame + tf - setback;
+    const z = front - depth;
+    const clear = Math.max(s.shelves.sideClearance, inches(1 / 16));
+    const x0 = (frameless ? inner.x0 : Math.max(r.x, inner.x0)) + clear;
+    const x1 = (frameless ? inner.x1 : Math.min(r.x + r.width, inner.x1)) - clear;
+    return { x0, x1, z, depth, height, setback, shelfDepth: Math.max(0, z - tb) };
   };
 
   /**
@@ -492,7 +641,9 @@ function applyEdgeBanding(ctx: Ctx, s: ConstructionSettings, frameless: boolean,
   for (let i = 0; i < parts.length; i++) {
     const p = parts[i]!;
     if (!isSheet(p.materialId)) continue;
-    const frontEdge = p.role === 'adjustableShelf' || (frameless && ['side', 'top', 'bottom', 'partition', 'fixedShelf'].includes(p.role));
+    // Adjustable shelves with a nosing have their front covered instead.
+    const nosed = p.role === 'adjustableShelf' && s.shelves.adjustableFront === 'nosing';
+    const frontEdge = (p.role === 'adjustableShelf' && !nosed) || (frameless && ['side', 'top', 'bottom', 'partition', 'fixedShelf'].includes(p.role));
     if (frontEdge) {
       // The front edge runs along the part's length.
       parts[i] = { ...p, width: p.width - th, banding: p.length, bandedEdges: ['front'], note: [p.note, tag(p, 'Band the front edge')].filter(Boolean).join('; ') };

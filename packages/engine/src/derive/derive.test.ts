@@ -1307,3 +1307,181 @@ describe('deriveRun: exposed raw edges', () => {
     expect(raw.map((p) => p.role)).toContain('back');
   });
 });
+
+describe('deriveRun: long moldings', () => {
+  it('splices a crown longer than the longest stick over a stile, without a warning', () => {
+    const { result } = setup((_, r) => {
+      r.wall[0]!.length = inches(160);
+      r.trim = { crown: { height: inches(3.5), projection: inches(2.5) } };
+    });
+    expect(result.issues.filter((i) => i.code === 'part-exceeds-stock')).toEqual([]);
+    const crown = result.parts.filter((p) => p.role === 'molding' && p.id.includes('/crown-') && p.id.includes('-front'));
+    expect(crown.length).toBe(2);
+    expect(crown.every((p) => p.length <= inches(143))).toBe(true);
+    const stileCenters = result.parts.filter((p) => p.role === 'stile').map((p) => p.bounds.x + p.bounds.width / 2);
+    expect(stileCenters).toContain(crown[0]!.bounds.x + crown[0]!.bounds.width);
+    expect(crown[0]!.note).toMatch(/scarf joint over the stile/);
+  });
+});
+
+describe('deriveRun: adjustable shelf nosing', () => {
+  const nosed = (more?: (p: Project) => void) =>
+    setup((p) => {
+      p.settings = { ...p.settings, shelves: { ...p.settings.shelves, adjustableFront: 'nosing' } };
+      more?.(p);
+    });
+
+  it('puts a frame-lumber nosing on each adjustable shelf, flush with the frame like a fixed shelf rail', () => {
+    const { run, result } = nosed();
+    const box = boxesOf(tier(run, 1))[0]!;
+    const shelf = part(result, `${box.content.id}/adj-shelf-0`);
+    const nose = part(result, `${box.content.id}/adj-shelf-0-nosing`);
+    const topRail = part(result, `${box.id}/rail-top`);
+    expect(nose.role).toBe('rail');
+    expect(nose.materialId).toBe(topRail.materialId);
+    // In the frame plane, as tall as a mid rail, top flush with the shelf.
+    expect([nose.bounds.z, nose.bounds.depth]).toEqual([topRail.bounds.z, topRail.bounds.depth]);
+    expect(nose.bounds.height).toBe(inches(1.5));
+    expect(nose.bounds.y + nose.bounds.height).toBe(shelf.bounds.y + shelf.bounds.height);
+    // The shelf runs to the back of the nosing, and isn't banded (the nosing covers its front).
+    expect(shelf.bounds.z + shelf.bounds.depth).toBe(nose.bounds.z);
+    expect(shelf.bandedEdges).toBeUndefined();
+    // It passes between the stiles with 1/16" each side.
+    const opening = result.boxes.find((b) => b.id === box.id)!.sections[0]!.rect;
+    expect(nose.bounds.x).toBe(opening.x + inches(1 / 16));
+  });
+
+  it('stiffens the shelf against sag', () => {
+    const wide = (front: 'banded' | 'nosing') =>
+      setup((p, r) => {
+        p.settings = { ...p.settings, shelves: { ...p.settings.shelves, adjustableFront: front } };
+        // About a 34" span: past the limit for 3/4" plywood, within it with a 3/4 × 1 1/2 nosing.
+        r.wall[0]!.length = inches(72);
+        tier(r, 1).items = [flexBox(opening({ type: 'none' }, 3)), flexBox(opening({ type: 'none' }, 3))];
+        tier(r, 0).items = [flexBox(opening({ type: 'doorPair' }, 1)), flexBox(opening({ type: 'doorPair' }, 1))];
+      }).result.issues.filter((i) => i.code === 'shelf-sag' && i.message.startsWith('Adjustable'));
+    expect(wide('banded').length).toBeGreaterThan(0);
+    expect(wide('nosing')).toEqual([]);
+  });
+
+  it('sits behind an inset door', () => {
+    const { run, result } = nosed((p) => {
+      p.settings = { ...p.settings, fronts: { ...p.settings.fronts, mounting: 'inset' } };
+    });
+    const op = boxesOf(tier(run, 0))[0]!.content.id;
+    const nose = part(result, `${op}/adj-shelf-0-nosing`);
+    const door = part(result, `${op}/door-left`);
+    expect(nose.bounds.z + nose.bounds.depth).toBeLessThanOrEqual(door.bounds.z - inches(1 / 16));
+  });
+});
+
+describe('deriveRun: carcass corners', () => {
+  const withCarcass = (carcass: Partial<Project['settings']['carcass']>, more?: (p: Project, r: Run) => void) =>
+    setup((p, r) => {
+      p.settings = { ...p.settings, carcass: { ...p.settings.carcass, ...carcass } };
+      more?.(p, r);
+    });
+
+  it('runs a top over the sides and back when asked', () => {
+    const { run, result } = withCarcass({ topJoint: 'over' });
+    const b = boxesOf(tier(run, 0))[0]!;
+    const box = result.boxes.find((x) => x.id === b.id)!.carcass;
+    const top = part(result, `${b.id}/top`);
+    const side = part(result, `${b.id}/side-left`);
+    const back = part(result, `${b.id}/back`);
+    expect([top.bounds.x, top.bounds.width, top.bounds.z, top.bounds.depth]).toEqual([box.x, box.width, 0, box.depth]);
+    expect(side.bounds.y + side.bounds.height).toBe(top.bounds.y);
+    expect(back.bounds.y + back.bounds.height).toBe(top.bounds.y);
+    expect(top.note).toMatch(/Runs over the sides and the back/);
+    expect(side.note).toMatch(/The top runs over it/);
+  });
+
+  it('clears the bare side tops on the ledge in front of shallower uppers when automatic', () => {
+    const { run, result } = withCarcass({ topJoint: 'auto' });
+    expect(result.issues.filter((i) => i.code === 'raw-edges')).toEqual([]);
+    // Base tops now run over their sides; the uppers (tops hidden at the ceiling) stay standard.
+    const base = boxesOf(tier(run, 0))[0]!.id;
+    const upper = boxesOf(tier(run, 1))[0]!.id;
+    expect(part(result, `${base}/top`).note).toMatch(/Runs over the sides/);
+    expect(part(result, `${upper}/top`).bounds.x).toBe(part(result, `${upper}/side-left`).bounds.x + T);
+  });
+
+  it('runs the bottom of a box over a doorway under its sides and back when automatic', () => {
+    const { run, result } = withCarcass({ bottomJoint: 'auto' }, (_, r) => {
+      addSpan(r, { kind: 'gap', x: { anchor: 'center', offset: 0 }, width: inches(36), tiers: { from: tier(r, 0).id, to: tier(r, 0).id } }, () => 2);
+    });
+    const over = boxesOf(tier(run, 1)).find((b) => {
+      const c = result.boxes.find((x) => x.id === b.id)!.carcass;
+      return c.x < inches(50) && c.x + c.width > inches(50);
+    })!;
+    // Its edges over the gap are covered now.
+    expect(result.parts.filter((p) => p.ownerId === over.id && p.rawEdges)).toEqual([]);
+    const c = result.boxes.find((x) => x.id === over.id)!.carcass;
+    const finished = part(result, `${over.id}/bottom-finish`);
+    expect([finished.bounds.x, finished.bounds.width, finished.bounds.z]).toEqual([c.x, c.width, 0]);
+    expect(part(result, `${over.id}/side-left`).bounds.y).toBe(c.y + T);
+    // Boxes that aren't over the gap keep their standard joints.
+    const other = boxesOf(tier(run, 1))[3]!.id;
+    expect(part(result, `${other}/side-left`).bounds.y).toBe(result.boxes.find((x) => x.id === other)!.carcass.y);
+  });
+
+  it('only runs a bottom under the sides where it sits at the carcass bottom', () => {
+    // A raised bottom (above the bottom rail) stays between the sides even when asked.
+    const { run, result } = withCarcass({ bottomJoint: 'under' });
+    const b = boxesOf(tier(run, 0))[0]!.id;
+    expect(part(result, `${b}/bottom`).bounds.x).toBe(part(result, `${b}/side-left`).bounds.x + T);
+    // Frameless bottoms are at the carcass bottom, so they run under.
+    const frameless = withCarcass({ bottomJoint: 'under' }, (p) => {
+      p.settings = { ...p.settings, construction: 'frameless' };
+    });
+    const fb = boxesOf(tier(frameless.run, 0))[0]!.id;
+    const c = frameless.result.boxes.find((x) => x.id === fb)!.carcass;
+    expect(part(frameless.result, `${fb}/bottom`).bounds.x).toBe(c.x);
+    expect(part(frameless.result, `${fb}/side-left`).note).toMatch(/Sits on the bottom/);
+  });
+
+  it('sets a rabbeted back into the sides, top and bottom, hiding its edges', () => {
+    const { run, result } = setup((p) => {
+      p.settings = { ...p.settings, back: 'rabbeted' };
+    });
+    const b = boxesOf(tier(run, 1))[0]!.id;
+    const c = result.boxes.find((x) => x.id === b)!.carcass;
+    const side = part(result, `${b}/side-left`);
+    const back = part(result, `${b}/back`);
+    expect([side.bounds.z, side.bounds.depth]).toEqual([0, c.depth]);
+    expect(back.bounds.x).toBe(c.x + T - inches(11 / 32));
+    expect(back.note).toMatch(/Fits rabbets 11\/32" deep/);
+    expect(side.note).toMatch(/Rabbet 11\/32" × 7\/32" along the back edge/);
+    expect(result.parts.filter((p) => p.role === 'back' && p.rawEdges)).toEqual([]);
+  });
+});
+
+describe('deriveRun: mitred toe kick returns', () => {
+  const gapped = (mitre: boolean) =>
+    setup((_, r) => {
+      addSpan(r, { kind: 'gap', x: { anchor: 'center', offset: 0 }, width: inches(36), tiers: { from: tier(r, 0).id, to: tier(r, 0).id } }, () => 2);
+      tier(r, 0).toeKick = { ...tier(r, 0).toeKick!, mitreOpenEnds: mitre };
+    });
+  const kickRaw = (r: RunResult, tierId: string) => r.parts.filter((p) => p.ownerId === tierId && p.role === 'toeKick' && p.rawEdges);
+
+  it('leaves kick board ends showing at a doorway without returns', () => {
+    const { run, result } = gapped(false);
+    expect(kickRaw(result, tier(run, 0).id).length).toBeGreaterThan(0);
+  });
+
+  it('wraps the kick around the open ends with mitered, full-depth returns', () => {
+    const { run, result } = gapped(true);
+    const tierId = tier(run, 0).id;
+    expect(kickRaw(result, tierId)).toEqual([]);
+    const ret = result.parts.find((p) => p.ownerId === tierId && p.id.endsWith('kick-0-return-right'))!;
+    const front = result.parts.find((p) => p.ownerId === tierId && p.id.endsWith('kick-0-front'))!;
+    const back = result.parts.find((p) => p.ownerId === tierId && p.id.endsWith('kick-0-back'))!;
+    // The return runs from the wall to the front face; the front board runs to the corner; the back stops at the return.
+    expect([ret.bounds.z, ret.bounds.z + ret.bounds.depth]).toEqual([0, front.bounds.z + front.bounds.depth]);
+    expect(front.bounds.x + front.bounds.width).toBe(ret.bounds.x + ret.bounds.width);
+    expect(back.bounds.x + back.bounds.width).toBe(ret.bounds.x);
+    expect(front.note).toMatch(/45° miter at the right end/);
+    expect(front.mitres).toEqual([{ face: 'right', outer: 'front' }]);
+    expect(ret.mitres).toEqual([{ face: 'front', outer: 'right' }]);
+  });
+});

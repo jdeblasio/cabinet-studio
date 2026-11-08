@@ -402,6 +402,14 @@ function TierPanel({ run, tier, result }: { run: Run; tier: Tier; result: RunRes
                     ariaLabel="Toe kick setback"
                   />
                 </Field>
+                <Field label="Miter open ends" tip="At an open end (a doorway or a finished end), wrap the kick around the corner: a full-depth return meets the front board in a 45° miter, so no board end shows.">
+                  <input
+                    type="checkbox"
+                    aria-label="Miter the toe kick at open ends"
+                    checked={!!tier.toeKick.mitreOpenEnds}
+                    onChange={(e) => editRun((r) => setToeKick(r, tier.id, { ...tier.toeKick!, mitreOpenEnds: e.target.checked || undefined }))}
+                  />
+                </Field>
               </>
             )}
           </>

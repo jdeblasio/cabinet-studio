@@ -123,12 +123,35 @@ const SETTINGS: SettingDef[] = [
   { path: 'carcass.top', label: 'Top', tip: 'Panel: a top panel and top rail. Open: neither, so shelving continues into the box above.', type: 'select', options: CARCASS_END_OPTIONS },
   { path: 'carcass.bottom', label: 'Bottom', tip: 'Panel: a bottom panel and bottom rail. Open: neither, e.g. so a countertop below shows as the bottom shelf.', type: 'select', options: CARCASS_END_OPTIONS },
   {
+    path: 'carcass.topJoint',
+    label: 'Top joint',
+    tip: 'How the top meets the sides and back. Between the sides: the sides run full height (their top edges show if nothing covers them, e.g. on a ledge in front of shallower uppers). Over the sides: the top runs over the sides and back, hiding their top edges (its own ends show instead, unless a neighbor or wall covers them). Auto: per box and corner, whichever hides more raw edges.',
+    type: 'select',
+    options: [
+      ['between', 'Between the sides'],
+      ['over', 'Over the sides'],
+      ['auto', 'Auto (hide raw edges)'],
+    ],
+  },
+  {
+    path: 'carcass.bottomJoint',
+    label: 'Bottom joint',
+    tip: 'How the bottom meets the sides and back, where the bottom panel is at the bottom of the box (frameless boxes, and the finished bottom of a box over a doorway or open space). Under the sides: the sides and back sit on it, hiding their bottom edges. Auto: per box and corner, whichever hides more raw edges. A bottom raised above the bottom rail always sits between the sides.',
+    type: 'select',
+    options: [
+      ['between', 'Between the sides'],
+      ['under', 'Under the sides'],
+      ['auto', 'Auto (hide raw edges)'],
+    ],
+  },
+  {
     path: 'back',
     label: 'Back',
-    tip: 'Applied: a back panel on the rear of each box. None: no back.',
+    tip: 'Applied: a back panel over the whole rear of each box (its edges show at an open end). Rabbeted: set into rabbets in the sides, top and bottom, which run full depth and hide its edges. None: no back.',
     type: 'select',
     options: [
       ['applied', 'Applied'],
+      ['rabbeted', 'Rabbeted'],
       ['none', 'None'],
     ],
   },
@@ -140,6 +163,16 @@ const SETTINGS: SettingDef[] = [
     options: [
       ['flush', 'Flush rail'],
       ['inset', 'Inset rail'],
+    ],
+  },
+  {
+    path: 'shelves.adjustableFront',
+    label: 'Adjustable shelf front',
+    tip: "Banded: edge banding on the front (when edge banding is on). Frame nosing: a strip of face frame lumber on the front, as tall as a mid rail and placed like a fixed shelf's rail, so adjustable shelves look like fixed ones. The nosing stiffens the shelf (the sag check counts it) but hangs below it, so spaces between shelves look shorter; it has to fit through the opening, so it's a little narrower than the opening.",
+    type: 'select',
+    options: [
+      ['banded', 'Banded edge'],
+      ['nosing', 'Frame nosing'],
     ],
   },
   { path: 'shelves.fixedSetback', label: 'Fixed shelf setback', tip: 'How far an inset fixed shelf rail sits back from the face of the frame.', type: 'length' },

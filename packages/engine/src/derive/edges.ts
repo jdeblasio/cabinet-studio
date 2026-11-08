@@ -85,7 +85,7 @@ function exposedOf(p: Part, parts: readonly Part[], spaces: readonly Region[], r
   const ceilingZone = layout.ceilingHeight - layout.ceilingGap - tol;
   for (const face of FACES) {
     const { axis: n, dir } = FACE[face];
-    if (n === t || p.bandedEdges?.includes(face)) continue;
+    if (n === t || p.bandedEdges?.includes(face) || p.mitres?.some((m) => m.face === face)) continue;
     const plane = dir > 0 ? hi(b, n) : lo(b, n);
     // Against the wall, the floor, the ceiling gap or a wall-end scribe gap: never seen.
     if (n === 'z' && dir < 0 && plane <= tol) continue;
@@ -140,6 +140,34 @@ function exposedOf(p: Part, parts: readonly Part[], spaces: readonly Region[], r
   return out;
 }
 
+/**
+ * A scorer for how much raw edge a set of parts leaves exposed (total length), among `all` parts:
+ * used to choose carcass corner joints that hide edges.
+ */
+export function exposureScorer(ctx: Ctx, layout: RunLayoutResult): (subset: readonly Part[], all: readonly Part[]) => { total: number; top: number; bottom: number } {
+  const sheet = new Set(ctx.project.materials.filter((m) => m.kind === 'sheet').map((m) => m.id));
+  const spaces = enclosures(ctx, layout);
+  return (subset, all) => {
+    const out = { total: 0, top: 0, bottom: 0 };
+    for (const p of subset) {
+      if (!sheet.has(p.materialId) || p.role === 'molding') continue;
+      for (const e of exposedOf(p, all, spaces, ctx.run, layout, ctx.grid)) {
+        const len = e.to - e.from;
+        out.total += len;
+        if (e.face === 'top' || e.face === 'bottom') out[e.face] += len;
+      }
+    }
+    return out;
+  };
+}
+
+/** "Hide them with A or B; band them ("Band exposed edges"); or cover them." */
+function fixText(fixes: Set<string> | undefined, it: string): string {
+  const list = [...(fixes ?? [])];
+  const hide = list.length ? `Hide ${it} with ${list.length === 1 ? list[0] : `${list.slice(0, -1).join(', ')} or ${list.at(-1)}`}; band` : 'Band';
+  return `${hide} ${it} ("Band exposed edges"), or cover ${it}.`;
+}
+
 const FACE_WORD: Record<EdgeFace, string> = { left: 'left', right: 'right', bottom: 'bottom', top: 'top', back: 'back', front: 'front' };
 
 /**
@@ -158,6 +186,7 @@ export function markRawEdges(ctx: Ctx, layout: RunLayoutResult, parts: Part[], s
   });
 
   const report = new Map<string, Set<string>>();
+  const hints = new Map<string, Set<string>>();
   for (const { index, edges } of found) {
     const p = parts[index]!;
     const s = settingsFor(p.ownerId);
@@ -193,6 +222,12 @@ export function markRawEdges(ctx: Ctx, layout: RunLayoutResult, parts: Part[], s
     const list = report.get(p.ownerId) ?? new Set<string>();
     for (const face of new Set(edges.map((e) => e.face))) list.add(`${p.name.toLowerCase()} (${FACE_WORD[face]})`);
     report.set(p.ownerId, list);
+    // What could hide them, by kind of part.
+    const fixes = hints.get(p.ownerId) ?? new Set<string>();
+    if ((p.role === 'side' || p.role === 'back') && edges.some((e) => e.face === 'top' || e.face === 'bottom')) fixes.add('Auto top/bottom joints');
+    if (p.role === 'back' && edges.some((e) => e.face === 'left' || e.face === 'right')) fixes.add('a rabbeted back');
+    if (p.role === 'toeKick') fixes.add('mitered toe kick ends');
+    hints.set(p.ownerId, fixes);
   }
 
   for (const [ownerId, list] of report) {
@@ -202,7 +237,7 @@ export function markRawEdges(ctx: Ctx, layout: RunLayoutResult, parts: Part[], s
       'info',
       'raw-edges',
       ownerId,
-      `Exposed plywood edge${items.length === 1 ? '' : 's'} with no banding: ${shown}. Turn on "Band exposed edges" (Construction) to band ${items.length === 1 ? 'it' : 'them'}, or cover ${items.length === 1 ? 'it' : 'them'}.`,
+      `Exposed plywood edge${items.length === 1 ? '' : 's'} with no banding: ${shown}. ${fixText(hints.get(ownerId), items.length === 1 ? 'it' : 'them')}`,
     );
   }
 }

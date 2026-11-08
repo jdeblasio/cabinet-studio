@@ -16,7 +16,7 @@ import type { ConstructionSettings, Material } from '../model';
 import { maxLumberLength } from '../cutlist/cutlist';
 import { usableRect } from '../cutlist/guillotine';
 import { resolveCutListOptions, type CutListOptions } from '../cutlist/options';
-import { snap, type Ticks } from '../units';
+import { inches, snap, type Ticks } from '../units';
 import type { Ctx } from './context';
 
 type Axis = 'x' | 'y';
@@ -98,7 +98,14 @@ function seamsFor(p: Part, axis: Axis, all: readonly Part[], tol: Ticks): Seam[]
   const center = (q: Part) => Math.round(lo(q.bounds, axis) + ext(q.bounds, axis) / 2);
 
   if (axis === 'x') {
-    if (p.role === 'rail') {
+    if (p.role === 'molding') {
+      // Over a stile's center (solid backing to nail the scarf to), in the tier the molding runs along.
+      for (const q of all) {
+        if (q.role !== 'stile') continue;
+        const vertical = q.bounds.y <= b.y + b.height + inches(1) && q.bounds.y + q.bounds.height >= b.y - inches(1);
+        if (vertical && inside(center(q))) out.push({ from: center(q), to: center(q), why: 'over the stile' });
+      }
+    } else if (p.role === 'rail') {
       for (const q of same) {
         if (q.role !== 'stile' || !touches(q)) continue;
         if (q.bounds.x > b.x && q.bounds.x + q.bounds.width < b.x + b.width) out.push({ from: q.bounds.x, to: q.bounds.x + q.bounds.width, why: 'at the mid stile, which runs through the rail', stileId: q.id });
@@ -217,9 +224,15 @@ export function splitOversizeParts(ctx: Ctx, parts: Part[], hardware: HardwareIt
     const m = materials.get(p.materialId);
     if (!m || fits(m, p, opts)) continue;
     const s = settingsFor(p.ownerId);
+    // Moldings are bought by length: a run longer than the longest stick is always spliced
+    // (scarf joints, over a stile where possible), whatever the setting.
+    const molding = p.role === 'molding';
     // The best axis to split along: the one needing the fewest pieces.
     let best: { axis: Axis; max: Ticks; alongLength: boolean; n: number } | null = null;
-    if (!NEVER.has(p.role)) {
+    if (molding) {
+      const max = maxLumberLength(opts.lumber);
+      if (max > 0 && p.bounds.width > ext(p.bounds, 'y')) best = { axis: 'x', max, alongLength: true, n: Math.ceil(p.length / max) };
+    } else if (!NEVER.has(p.role)) {
       for (const f of faceAxes(p)) {
         const max = maxPiece(m, f.alongLength, f.cross, opts);
         if (!max) continue;
@@ -227,7 +240,8 @@ export function splitOversizeParts(ctx: Ctx, parts: Part[], hardware: HardwareIt
         if (!best || n < best.n) best = { axis: f.axis, max, alongLength: f.alongLength, n };
       }
     }
-    if (!s.splitOversize || !best) {
+    if (molding && !best) continue;
+    if ((!s.splitOversize && !molding) || !best) {
       const list = oversize.get(p.ownerId) ?? [];
       list.push(p.name);
       oversize.set(p.ownerId, list);
@@ -247,7 +261,7 @@ export function splitOversizeParts(ctx: Ctx, parts: Part[], hardware: HardwareIt
       const cut = e + (k === 0 ? extra / 2 : 0) + (k === n - 1 ? extra / 2 : 0);
       const bounds: Bounds = axis === 'x' ? { ...p.bounds, x: piece.from, width: e } : { ...p.bounds, y: piece.from, height: e };
       const joints = [plan[k - 1]?.joint, piece.joint].filter((j): j is Seam => !!j);
-      const jointNote = joints.map((j) => `joint ${j.why || VISIBLE}`);
+      const jointNote = joints.map((j) => (molding ? `scarf joint ${j.why || 'between stiles: glue and pin it'}` : `joint ${j.why || VISIBLE}`));
       // Worded so identical pieces share one note in the cut list.
       const note = [p.note, `One of ${n} pieces`, ...[...new Set(jointNote)]].filter(Boolean).join('; ');
       const features = p.features?.filter((f) => (axis === 'x' ? f.x : f.y) >= piece.from && (axis === 'x' ? f.x : f.y) <= piece.to);

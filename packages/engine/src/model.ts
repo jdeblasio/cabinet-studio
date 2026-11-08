@@ -59,6 +59,9 @@ export type Mounting = 'partialOverlay' | 'fullOverlay' | 'inset';
  * rabbet joints capture tops, bottoms, fixed shelves and partitions in grooves `joineryDepth`
  * deep, so those parts are cut that much longer at each captured end.
  */
+/** Which part runs through at a carcass corner (see ConstructionSettings.carcass). */
+export type CornerJoint = 'between' | 'under' | 'over' | 'auto';
+
 /** How a fixed shelf's front edge is covered (see ConstructionSettings.shelves.fixedEdge). */
 export type FixedShelfEdge = 'flush' | 'inset';
 
@@ -112,8 +115,25 @@ export interface ConstructionSettings {
     /** Crown and base molding stock. */
     molding: Id;
   };
-  back: 'applied' | 'none';
-  carcass: { top: CarcassEnd; bottom: CarcassEnd };
+  /**
+   * 'applied': the back covers the box's whole rear (its edges flush with the sides' outer faces).
+   * 'rabbeted': set into rabbets in the sides, top and bottom, which run full depth and hide its
+   * edges. 'none': no back.
+   */
+  back: 'applied' | 'rabbeted' | 'none';
+  carcass: {
+    top: CarcassEnd;
+    bottom: CarcassEnd;
+    /**
+     * How the bottom meets the sides and back, where the bottom panel is at the carcass bottom
+     * (frameless, or a finished bottom over an opening): 'between' the sides (they run full
+     * height), 'under' them (they sit on it, hiding their bottom edges), or 'auto': under where
+     * that hides an edge that would otherwise show.
+     */
+    bottomJoint?: CornerJoint;
+    /** How the top meets the sides and back: 'between' the sides, 'over' them, or 'auto'. */
+    topJoint?: CornerJoint;
+  };
   faceFrame: {
     /**
      * How far the frame overhangs the box interior on each side. 0 = "flush inside":
@@ -179,6 +199,13 @@ export interface ConstructionSettings {
      */
     fixedEdge: FixedShelfEdge;
     fixedSetback: Ticks;
+    /**
+     * An adjustable shelf's front: 'banded' (edge banding, when on), or 'nosing': a strip of face
+     * frame lumber (as tall as a mid rail, its top flush with the shelf) so the shelf reads like a
+     * fixed shelf with its rail. The nosing sits where a fixed shelf's rail would (flush with the
+     * frame, or set back like an inset rail), clears the opening's sides, and stiffens the shelf.
+     */
+    adjustableFront?: 'banded' | 'nosing';
   };
   /** Minimum gap left at the ceiling for scribing (top of the highest tier). */
   ceilingScribe: Ticks;
@@ -318,7 +345,15 @@ export interface Tier extends SettingsScope {
    * Only honored on the bottom tier. Boxes sit on a recessed base platform `height` tall whose
    * kick board is set back `setback` from the face of the face frame.
    */
-  toeKick?: { height: Ticks; setback: Ticks };
+  toeKick?: {
+    height: Ticks;
+    setback: Ticks;
+    /**
+     * At an open end (a gap or a finished run end), wrap the kick around the corner: a full-depth
+     * return meets the front board in a 45° miter, so neither shows end grain.
+     */
+    mitreOpenEnds?: boolean;
+  };
   /**
    * A finished top over this tier's boxes, inside the tier's height (carcasses get shorter so the
    * counter surface stays put). One piece per contiguous run of boxes. It runs to a wall, overhangs

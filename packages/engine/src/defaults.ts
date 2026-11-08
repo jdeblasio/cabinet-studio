@@ -130,7 +130,7 @@ export const DEFAULT_SETTINGS: ConstructionSettings = {
     molding: 'molding',
   },
   back: 'applied',
-  carcass: { top: 'panel', bottom: 'panel' },
+  carcass: { top: 'panel', bottom: 'panel', bottomJoint: 'between', topJoint: 'between' },
   faceFrame: {
     lip: 0,
     topRailWidth: inches(1.5),
@@ -162,6 +162,7 @@ export const DEFAULT_SETTINGS: ConstructionSettings = {
     maxSagPerFoot: 0.02,
     fixedEdge: 'flush',
     fixedSetback: inches(1 / 4),
+    adjustableFront: 'banded',
   },
   ceilingScribe: inches(0.5),
   edgeBanding: { enabled: true, thickness: 0, exposed: false },

@@ -13,10 +13,12 @@ Free and open source under the AGPL-3.0.
   (shaded, wireframe, exploded). Boundary drags snap to edges in other tiers.
 - **Construction:** face frame or frameless, per project, tier or box. Settings cascade
   (project → run → tier → box) with named styles.
-  - **Joinery and fronts:** butt, dowel, confirmat, dado or rabbet joints; slab or
-    five-piece doors and drawer fronts in partial overlay, full overlay or inset.
+  - **Joinery and fronts:** butt, dowel, confirmat, dado or rabbet joints; tops over and
+    bottoms under the sides (or automatically, to hide raw edges); applied or rabbeted backs;
+    slab or five-piece doors and drawer fronts in partial overlay, full overlay or inset.
   - **Parts:** drawer boxes sized from the chosen slides; adjustable and fixed shelves (fixed
-    shelves with flush or inset rails); partitions.
+    shelves with flush or inset rails; adjustable ones banded or with a frame nosing);
+    partitions.
   - **Oversize parts:** optionally pieced at hidden joints (on partitions, fixed shelves, mid
     stiles) when they're bigger than your sheets or boards.
   - **Trim:** countertops (which can bridge a gap), toe kicks, crown and base molding,

@@ -1,7 +1,8 @@
-import type { BoxLayout, HardwareItem, Issue, Part, RunResult } from '../derived';
+import type { BoxLayout, HardwareItem, Issue, Part, RunResult, SectionLayout } from '../derived';
 import { formatLength } from '../format';
 import type { Id, Project } from '../model';
 import { deriveBox } from './box';
+import { chooseCorners } from './corners';
 import { applyFinishes } from './finish';
 import { splitOversizeParts } from './split';
 import { markRawEdges } from './edges';
@@ -36,15 +37,19 @@ export function deriveRun(project: Project, runId: Id): RunResult {
 
   const parts: Part[] = [];
   const hardware: HardwareItem[] = [];
-  const boxes: BoxLayout[] = [];
+  const sectionsOf = new Map<string, SectionLayout[]>();
+  const boxPartIds = new Map<string, Set<string>>();
   for (const placed of layout.boxes) {
     const { parts: boxParts, sections, hardware: boxHardware } = deriveBox(ctx, placed);
     parts.push(...boxParts);
     hardware.push(...boxHardware);
-    boxes.push({ id: placed.id, source: placed.source, tierId: placed.tierId, carcass: placed.carcass, sections });
+    sectionsOf.set(placed.id, sections);
+    boxPartIds.set(placed.id, new Set(boxParts.map((p) => p.id)));
   }
   const { frames, parts: stiles } = deriveFrames(ctx, layout.boxes, layout.width, layout.gaps, layout.lengthVariance);
   parts.push(...stiles, ...deriveToeKick(ctx, layout), ...deriveCountertops(ctx, layout, stiles), ...deriveScribeStrips(ctx, layout), ...deriveTrim(ctx, layout));
+  chooseCorners(ctx, layout, parts, hardware, sectionsOf, boxPartIds);
+  const boxes: BoxLayout[] = layout.boxes.map((placed) => ({ id: placed.id, source: placed.source, tierId: placed.tierId, carcass: placed.carcass, sections: sectionsOf.get(placed.id) ?? [] }));
 
   // Settings for a part's owner: its box's; a tier's for toe kicks and countertops; else the run's.
   const boxSettings = new Map(layout.boxes.map((b) => [b.id, b.settings]));
@@ -65,6 +70,17 @@ export function deriveRun(project: Project, runId: Id): RunResult {
       sourceId: run.id,
     });
   }
+
+  // A box re-derived for its corner joints reports the same issues again: keep one of each.
+  const seen = new Set<string>();
+  const unique = issues.filter((i) => {
+    const key = `${i.severity}|${i.code}|${i.sourceId}|${i.message}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  issues.length = 0;
+  issues.push(...unique);
 
   return {
     runId,

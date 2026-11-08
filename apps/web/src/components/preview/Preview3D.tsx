@@ -1,7 +1,7 @@
 import { findBox, findSpan, finishesOf, TICKS_PER_INCH, toGLTF, toOBJ, toSTL, type EdgeFace, type HardwareItem, type HardwareShape, type Id, type Part, type Run, type RunResult, type Ticks } from '@built-in-planner/engine';
 import { Edges, OrbitControls } from '@react-three/drei';
 import { Canvas, useThree, type ThreeEvent } from '@react-three/fiber';
-import { memo, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { PerspectiveCamera, Vector3 } from 'three';
 import { usePartColor } from '../../lib/colors';
 import { BANDING_COLOR, BandingToggle, RAW_EDGE_COLOR } from '../BandingToggle';
@@ -10,6 +10,7 @@ import { useRunResult } from '../../store/derived';
 import { selectionForId, type Selection } from '../../store/selection';
 import { useActiveRun, useEditor, type View3D } from '../../store/store';
 import { explodeOffsets, sceneExtent } from './explode';
+import { mitredBoxGeometry } from './mitre';
 
 /** Scene units are inches. */
 const I = (t: Ticks) => t / TICKS_PER_INCH;
@@ -223,9 +224,17 @@ const PartMesh = memo(function PartMesh({
     if (e.delta > 4) return; // the end of an orbit drag, not a click
     onSelect(part);
   };
+  // Mitered ends get a true 45° cut (the part's bounds run to the outside of the corner).
+  const mitres = part.mitres;
+  const mitred = useMemo(() => (mitres?.length ? mitredBoxGeometry([w, h, d], mitres) : null), [w, h, d, mitres]);
+  useEffect(() => () => mitred?.dispose(), [mitred]);
   return (
-    <mesh position={[I(b.x) + w / 2 + (offset?.[0] ?? 0), I(b.y) + h / 2 + (offset?.[1] ?? 0), I(b.z) + d / 2 + (offset?.[2] ?? 0)]} onClick={onClick}>
-      <boxGeometry args={[w, h, d]} />
+    <mesh
+      position={[I(b.x) + w / 2 + (offset?.[0] ?? 0), I(b.y) + h / 2 + (offset?.[1] ?? 0), I(b.z) + d / 2 + (offset?.[2] ?? 0)]}
+      onClick={onClick}
+      {...(mitred ? { geometry: mitred } : {})}
+    >
+      {!mitred && <boxGeometry args={[w, h, d]} />}
       {mode !== 'wireframe' ? (
         <meshStandardMaterial
           color={color}

@@ -133,6 +133,17 @@ step or two off its siblings. Hold Alt/Option to drag freely.
 | Backs | Back presets per box: full back (inset in rabbet/dado, or applied) or no back. Plus **hanging rails / nailers** for fastening to studs. Open boxes typically get a finished back |
 | Freestanding | Finished ends and finished back |
 
+- **Implemented:** applied, rabbeted (in rabbets in the sides, top and bottom, which then run
+  full depth; rabbet half the panel thickness, at most 3/8") or no back.
+- **Corner joints:** the top can run **between** the sides (they run full height) or **over**
+  the sides and back; the bottom, where it sits at the carcass bottom (frameless, or a finished
+  bottom over an opening), between or **under** them. Dado/rabbet allowances follow the joint.
+  **Auto** picks, per box and corner, the arrangement that leaves the least raw edge showing
+  (by the exposed-edge check), preferring the standard joint on a tie. Toe kicks can be
+  **mitered at open ends**: a full-depth return meets the front board at 45°, the back board
+  stops against it. Mitered parts record each miter (`Part.mitres`: the cut face and the
+  face on the outside of the corner); their bounds run to the outside, and the 3D view and the glTF, OBJ
+  and STL exports cut the inside corner away for a true 45° joint.
 ### Face frames
 
 - **Continuous**, not per box: shared stiles where boxes meet, wide stiles at walls for
@@ -240,7 +251,11 @@ step or two off its siblings. Hold Alt/Option to drag freely.
   between them). On a face frame each counted fixed shelf gets a rail over its front edge, its
   top flush with the shelf: **flush** in the frame, or **inset** (set back from the frame face
   by a setting). Behind an inset front the rail always clears the door. Frameless: no rail.
-- Adjustable shelves with shelf-pin hole lines
+- Adjustable shelves with shelf-pin hole lines. Their front is banded, or gets a **frame
+  nosing**: face frame lumber as tall as a mid rail, top flush with the shelf, placed like a
+  fixed shelf's rail (in the frame plane, or set back like an inset rail; always behind an inset
+  front), 1/16" clear of the opening each side. The sag check counts the nosing's stiffness
+  (summed about each piece's own axis: conservative).
 - Vertical dividers / cubbies
 
 ### Fronts
@@ -354,8 +369,9 @@ step or two off its siblings. Hold Alt/Option to drag freely.
   shelves on a partition (a finished bottom in line with one); backs behind a partition or
   fixed shelf; rails at a mid stile, which then runs through the rail; countertops over the
   joint between boxes; sides on a fixed shelf, bottom or top. Joint allowances (dados) stay on
-  the outer ends, and drilled holes and hardware follow their piece. Fronts, drawer parts,
-  adjustable shelves and moldings are never split.
+  the outer ends, and drilled holes and hardware follow their piece. Fronts, drawer parts and
+  adjustable shelves are never split. Moldings longer than the longest stick are always spliced
+  (scarf joints over a stile where possible), whatever the setting, and never reported.
 - **Constraints, not edits**: users don't drag parts on sheets. They steer the optimizer:
   lock grain per part, mark sheets as offcuts/partial, group parts onto one sheet (e.g.
   grain-matched doors), set kerf/trim.

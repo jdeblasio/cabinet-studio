@@ -18,21 +18,32 @@ export function modulusOf(material: Material | undefined): number {
   return material?.modulus ?? DEFAULT_MODULUS[material?.kind ?? 'sheet'];
 }
 
-/** Midspan sag in inches for a shelf of this span, depth and thickness (all ticks). */
-export function shelfSag(span: Ticks, depth: Ticks, thickness: Ticks, loadPsf: number, modulusPsi: number): number {
+/**
+ * Midspan sag in inches for a shelf of this span, depth and thickness (all ticks). `extraEI`
+ * (lb·in²) adds the stiffness of something fastened along it, e.g. a solid wood nosing (summed
+ * about each piece's own axis, which underestimates the pair a little: conservative).
+ */
+export function shelfSag(span: Ticks, depth: Ticks, thickness: Ticks, loadPsf: number, modulusPsi: number, extraEI = 0): number {
   const L = span / TICKS_PER_INCH;
   const b = depth / TICKS_PER_INCH;
   const h = thickness / TICKS_PER_INCH;
   if (L <= 0 || b <= 0 || h <= 0 || modulusPsi <= 0) return 0;
   const w = (loadPsf * b) / 144; // lb per inch of span
   const I = (b * h ** 3) / 12;
-  return (5 * w * L ** 4) / (384 * modulusPsi * I);
+  return (5 * w * L ** 4) / (384 * (modulusPsi * I + extraEI));
+}
+
+/** Bending stiffness E·I (lb·in²) of a strip `width` wide (along the load) and `height` deep, standing on edge. */
+export function stripEI(width: Ticks, height: Ticks, material: Material | undefined): number {
+  const b = width / TICKS_PER_INCH;
+  const h = height / TICKS_PER_INCH;
+  return modulusOf(material) * ((b * h ** 3) / 12);
 }
 
 /** Warn when a shelf would sag visibly under the design load. */
-export function checkShelfSag(ctx: Ctx, s: ConstructionSettings, sourceId: Id, label: string, materialId: Id, span: Ticks, depth: Ticks, thickness: Ticks): void {
+export function checkShelfSag(ctx: Ctx, s: ConstructionSettings, sourceId: Id, label: string, materialId: Id, span: Ticks, depth: Ticks, thickness: Ticks, extraEI = 0): void {
   const material = ctx.project.materials.find((m) => m.id === materialId);
-  const sag = shelfSag(span, depth, thickness, s.shelves.designLoad, modulusOf(material));
+  const sag = shelfSag(span, depth, thickness, s.shelves.designLoad, modulusOf(material), extraEI);
   const limit = (s.shelves.maxSagPerFoot * span) / TICKS_PER_INCH / 12;
   if (sag <= limit) return;
   const shown = sag >= 0.1 ? sag.toFixed(2) : sag.toFixed(3);

@@ -82,6 +82,11 @@ export interface Part {
   banding?: Ticks;
   /** Which faces of the part's bounds are banded edges (e.g. a shelf's 'front'; a door's four sides). */
   bandedEdges?: EdgeFace[];
+  /**
+   * Ends cut at 45° to meet another part at an outside corner (no end grain shows there). The
+   * part's bounds run to the corner's outside; the cut takes away the corner on the inside.
+   */
+  mitres?: Mitre[];
   /** Exposed stretches of unbanded plywood edges (sheet goods only): seen, but neither banded nor covered. */
   rawEdges?: RawEdge[];
   /** Machining: holes drilled into this part (shelf pins, hinge cups). */
@@ -92,6 +97,15 @@ export interface Part {
 
 /** A face of a part's bounds, named by the direction it faces in run space (x: left/right, y: bottom/top, z: back/front). */
 export type EdgeFace = 'left' | 'right' | 'bottom' | 'top' | 'back' | 'front';
+
+/**
+ * A mitered end: the part's `face` is cut at 45°, the long point on its `outer` face (the face on
+ * the outside of the corner). E.g. a toe kick front board: face 'right', outer 'front'.
+ */
+export interface Mitre {
+  face: EdgeFace;
+  outer: EdgeFace;
+}
 
 /** An exposed stretch of a raw (unbanded) edge: on `face`, from `from` to `to` along `axis`. */
 export interface RawEdge {
