@@ -28,6 +28,8 @@ import {
   setTierKind,
   setTierName,
   setToeKick,
+  setCountertop,
+  DEFAULT_COUNTERTOP,
   setWallLength,
   splitOpening,
   unsplit,
@@ -290,6 +292,46 @@ function TierPanel({ run, tier, result }: { run: Run; tier: Tier; result: RunRes
                     value={tier.toeKick.setback}
                     onCommit={(setback) => editRun((r) => setToeKick(r, tier.id, { ...tier.toeKick!, setback }))}
                     ariaLabel="Toe kick setback"
+                  />
+                </Field>
+              </>
+            )}
+          </>
+        )}
+        {tier.kind === 'boxes' && (
+          <>
+            <Field label="Countertop" hint="Inside the tier height">
+              <input
+                type="checkbox"
+                aria-label="Countertop"
+                checked={!!tier.countertop}
+                onChange={(e) => editRun((r) => setCountertop(r, tier.id, e.target.checked ? { ...DEFAULT_COUNTERTOP } : undefined))}
+              />
+            </Field>
+            {tier.countertop && (
+              <>
+                <Field label="Top thickness">
+                  <LengthInput
+                    value={tier.countertop.thickness}
+                    min={inches(1 / 4)}
+                    onCommit={(thickness) => editRun((r) => setCountertop(r, tier.id, { ...tier.countertop!, thickness }))}
+                    ariaLabel="Countertop thickness"
+                  />
+                </Field>
+                <Field label="Front overhang" hint="Past the frame face">
+                  <LengthInput
+                    value={tier.countertop.frontOverhang}
+                    min={0}
+                    onCommit={(frontOverhang) => editRun((r) => setCountertop(r, tier.id, { ...tier.countertop!, frontOverhang }))}
+                    ariaLabel="Countertop front overhang"
+                  />
+                </Field>
+                <Field label="End overhang" hint="At open ends and gaps">
+                  <LengthInput
+                    value={tier.countertop.endOverhang}
+                    min={0}
+                    onCommit={(endOverhang) => editRun((r) => setCountertop(r, tier.id, { ...tier.countertop!, endOverhang }))}
+                    ariaLabel="Countertop end overhang"
                   />
                 </Field>
               </>

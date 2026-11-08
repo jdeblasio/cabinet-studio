@@ -276,6 +276,14 @@ export function setToeKick(run: Run, tierId: Id, toeKick: Tier['toeKick'] | unde
   return true;
 }
 
+export function setCountertop(run: Run, tierId: Id, countertop: Tier['countertop'] | undefined): boolean {
+  const tier = findTier(run, tierId);
+  if (!tier) return false;
+  if (countertop) tier.countertop = countertop;
+  else delete tier.countertop;
+  return true;
+}
+
 // ---------------------------------------------------------------------------
 // Sections (face layout)
 // ---------------------------------------------------------------------------

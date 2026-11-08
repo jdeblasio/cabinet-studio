@@ -79,6 +79,21 @@ export function layoutRun(ctx: Ctx): RunLayoutResult {
   });
   const kickH = (tierIdx: number) => (tierIdx === 0 && toeKick ? toeKick.height : 0);
 
+  // ---- Countertops (inside the tier band, above the carcasses) ----
+  const counterH = run.tiers.map((tier, i) => {
+    const ct = tier.countertop;
+    if (!ct || ct.thickness <= 0) return 0;
+    if (tier.kind !== 'boxes') {
+      ctx.issue('warning', 'countertop-ignored', tier.id, `Countertop on "${tier.name}" is ignored; it's an open space tier.`);
+      return 0;
+    }
+    if (ct.thickness >= (vSol.sizes[i] ?? 0) - kickH(i)) {
+      ctx.issue('error', 'countertop-too-thick', tier.id, `Countertop is thicker than the boxes in "${tier.name}" are tall.`);
+      return 0;
+    }
+    return ct.thickness;
+  });
+
   // ---- Spans: run-level positions ----
   const zoneL = run.ends.left === 'wall' ? runSettings.faceFrame.scribeAllowance : 0;
   const zoneR = W - (run.ends.right === 'wall' ? runSettings.faceFrame.scribeAllowance : 0);
@@ -119,6 +134,7 @@ export function layoutRun(ctx: Ctx): RunLayoutResult {
       height,
       depth: tier.depth,
       toeKick: kick,
+      countertop: counterH[ti] ?? 0,
       scribe: { left: 0, right: 0 },
       items: [],
     };
@@ -174,7 +190,7 @@ export function layoutRun(ctx: Ctx): RunLayoutResult {
     }
 
     const carcassY = y + kick;
-    const carcassH = height - kick;
+    const carcassH = height - kick - (counterH[ti] ?? 0);
     const last = regions.length - 1;
     regions.forEach((regionBoxes, k) => {
       const a = k === 0 ? zl : slotOrder[k - 1]!.x + slotOrder[k - 1]!.span.width;

@@ -9,6 +9,8 @@
  *    is raised so its top surface is flush with the top edge of the rail below it.
  *  - Stile coverage on each box side is (side thickness + lip); with lip 0 the frame is flush inside.
  *  - Split child sizes are clear face-opening sizes.
+ *  - An 'open' top or bottom (settings.carcass) has no panel and no rail on that edge; the
+ *    opening and interior run to the carcass edge, and fronts stop half a reveal short of it.
  */
 import type { Part, Rect, SectionLayout } from '../derived';
 import type { Opening, Section } from '../model';
@@ -51,6 +53,10 @@ export function deriveBox(ctx: Ctx, box: PlacedBox): { parts: Part[]; sections: 
   const Ds = D - tb;
   const zFrame = D;
   const down = ctx.down;
+  const openTop = s.carcass.top === 'open';
+  const openBottom = s.carcass.bottom === 'open';
+  const topRail = openTop ? 0 : ff.topRailWidth;
+  const bottomRail = openBottom ? 0 : ff.bottomRailWidth;
 
   if (W <= 2 * t || H <= 2 * t || Ds <= 0) {
     ctx.issue('error', 'box-too-small', id, `Box is too small to build (${ctx.fmt(W)} × ${ctx.fmt(H)}).`);
@@ -60,11 +66,11 @@ export function deriveBox(ctx: Ctx, box: PlacedBox): { parts: Part[]; sections: 
   // ---- Carcass ----
   const cm = s.materials.carcass;
   const innerW = W - 2 * t;
-  const floorTop = y + Math.max(ff.bottomRailWidth, t);
+  const floorTop = openBottom ? y : y + Math.max(bottomRail, t);
   add({ id: `${id}/side-left`, name: 'Left side', role: 'side', materialId: cm, bounds: { x, y, z: tb, width: t, height: H, depth: Ds }, grain: 'vertical', thicknessAxis: 'x', ownerId: id });
   add({ id: `${id}/side-right`, name: 'Right side', role: 'side', materialId: cm, bounds: { x: x + W - t, y, z: tb, width: t, height: H, depth: Ds }, grain: 'vertical', thicknessAxis: 'x', ownerId: id });
-  add({ id: `${id}/top`, name: 'Top', role: 'top', materialId: cm, bounds: { x: x + t, y: top - t, z: tb, width: innerW, height: t, depth: Ds }, grain: 'horizontal', thicknessAxis: 'y', ownerId: id, length: down(innerW), width: down(Ds) });
-  add({ id: `${id}/bottom`, name: 'Bottom', role: 'bottom', materialId: cm, bounds: { x: x + t, y: floorTop - t, z: tb, width: innerW, height: t, depth: Ds }, grain: 'horizontal', thicknessAxis: 'y', ownerId: id, length: down(innerW), width: down(Ds) });
+  if (!openTop) add({ id: `${id}/top`, name: 'Top', role: 'top', materialId: cm, bounds: { x: x + t, y: top - t, z: tb, width: innerW, height: t, depth: Ds }, grain: 'horizontal', thicknessAxis: 'y', ownerId: id, length: down(innerW), width: down(Ds) });
+  if (!openBottom) add({ id: `${id}/bottom`, name: 'Bottom', role: 'bottom', materialId: cm, bounds: { x: x + t, y: floorTop - t, z: tb, width: innerW, height: t, depth: Ds }, grain: 'horizontal', thicknessAxis: 'y', ownerId: id, length: down(innerW), width: down(Ds) });
   if (tb > 0) {
     add({ id: `${id}/back`, name: 'Back', role: 'back', materialId: s.materials.back, bounds: { x, y, z: 0, width: W, height: H, depth: tb }, grain: 'vertical', thicknessAxis: 'z', ownerId: id });
   }
@@ -73,16 +79,20 @@ export function deriveBox(ctx: Ctx, box: PlacedBox): { parts: Part[]; sections: 
   const fm = s.materials.faceFrame;
   const railX = x + t + lip;
   const railW = W - 2 * (t + lip);
-  add({ id: `${id}/rail-top`, name: 'Top rail', role: 'rail', materialId: fm, bounds: { x: railX, y: top - ff.topRailWidth, z: zFrame, width: railW, height: ff.topRailWidth, depth: tf }, grain: 'horizontal', thicknessAxis: 'z', ownerId: id, length: down(railW) });
-  add({ id: `${id}/rail-bottom`, name: 'Bottom rail', role: 'rail', materialId: fm, bounds: { x: railX, y, z: zFrame, width: railW, height: ff.bottomRailWidth, depth: tf }, grain: 'horizontal', thicknessAxis: 'z', ownerId: id, length: down(railW) });
+  if (topRail > 0) {
+    add({ id: `${id}/rail-top`, name: 'Top rail', role: 'rail', materialId: fm, bounds: { x: railX, y: top - topRail, z: zFrame, width: railW, height: topRail, depth: tf }, grain: 'horizontal', thicknessAxis: 'z', ownerId: id, length: down(railW) });
+  }
+  if (bottomRail > 0) {
+    add({ id: `${id}/rail-bottom`, name: 'Bottom rail', role: 'rail', materialId: fm, bounds: { x: railX, y, z: zFrame, width: railW, height: bottomRail, depth: tf }, grain: 'horizontal', thicknessAxis: 'z', ownerId: id, length: down(railW) });
+  }
 
-  const R: Rect = { x: railX, y: y + ff.bottomRailWidth, width: railW, height: H - ff.topRailWidth - ff.bottomRailWidth };
+  const R: Rect = { x: railX, y: y + bottomRail, width: railW, height: H - topRail - bottomRail };
   if (R.width <= 0 || R.height <= 0) {
     ctx.issue('error', 'box-too-small', id, 'Face frame leaves no opening; the box is too small for its rails and stiles.');
     return { parts, sections };
   }
-  const I: Interior = { x0: x + t, x1: x + W - t, y0: floorTop, y1: top - t };
-  const cover: EdgeCover = { left: t + lip, right: t + lip, top: ff.topRailWidth, bottom: ff.bottomRailWidth };
+  const I: Interior = { x0: x + t, x1: x + W - t, y0: floorTop, y1: openTop ? top : top - t };
+  const cover: EdgeCover = { left: t + lip, right: t + lip, top: topRail, bottom: bottomRail };
 
   const layoutSection = (sec: Section, r: Rect, inner: Interior, edge: EdgeCover, parentId?: string): void => {
     const entry: SectionLayout = { sectionId: sec.id, kind: sec.kind, rect: r };
@@ -183,7 +193,9 @@ export function deriveBox(ctx: Ctx, box: PlacedBox): { parts: Part[]; sections: 
       if (fr.mounting === 'inset') {
         F = { x: r.x + fr.reveal, y: r.y + fr.reveal, width: r.width - 2 * fr.reveal, height: r.height - 2 * fr.reveal };
       } else if (fr.mounting === 'partialOverlay') {
-        F = { x: r.x - fr.overlay, y: r.y - fr.overlay, width: r.width + 2 * fr.overlay, height: r.height + 2 * fr.overlay };
+        // Overlay each frame member; where there is none (open top/bottom), stop half a reveal short.
+        const ext = (c: Ticks) => (c > 0 ? fr.overlay : -fr.reveal / 2);
+        F = { x: r.x - ext(edge.left), y: r.y - ext(edge.bottom), width: r.width + ext(edge.left) + ext(edge.right), height: r.height + ext(edge.top) + ext(edge.bottom) };
       } else {
         // Full overlay: cover this opening's share of each frame member, leaving `reveal` between fronts.
         const l = edge.left - fr.reveal / 2;

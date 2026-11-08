@@ -5,6 +5,8 @@ export function newId(): Id {
   return globalThis.crypto.randomUUID();
 }
 
+export const DEFAULT_COUNTERTOP = { thickness: inches(1.5), frontOverhang: inches(1), endOverhang: inches(1) };
+
 export const DEFAULT_MATERIALS: Material[] = [
   {
     id: 'ply-23-32',
@@ -29,6 +31,13 @@ export const DEFAULT_MATERIALS: Material[] = [
     thickness: inches(3 / 4),
     color: '#e9e0c4',
   },
+  {
+    id: 'hardwood-top',
+    name: 'Hardwood top 1 1/2"',
+    kind: 'lumber',
+    thickness: inches(1.5),
+    color: '#c99f6e',
+  },
 ];
 
 export const DEFAULT_SETTINGS: ConstructionSettings = {
@@ -41,8 +50,10 @@ export const DEFAULT_SETTINGS: ConstructionSettings = {
     faceFrame: 'poplar-3-4',
     fronts: 'ply-23-32',
     toeKick: 'ply-23-32',
+    countertop: 'hardwood-top',
   },
   back: 'applied',
+  carcass: { top: 'panel', bottom: 'panel' },
   faceFrame: {
     lip: 0,
     topRailWidth: inches(1.5),

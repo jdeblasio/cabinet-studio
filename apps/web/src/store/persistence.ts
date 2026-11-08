@@ -1,4 +1,4 @@
-import { DEFAULT_SETTINGS, mergeSettings, SCHEMA_VERSION, type Project } from '@built-in-planner/engine';
+import { DEFAULT_MATERIALS, DEFAULT_SETTINGS, mergeSettings, SCHEMA_VERSION, type Project } from '@built-in-planner/engine';
 import { get, set } from 'idb-keyval';
 import { useEditor } from './store';
 
@@ -23,12 +23,16 @@ export function validateProject(data: unknown): Project {
     if (!Array.isArray(run.tiers) || !Array.isArray(run.wall) || run.wall.length === 0) throw new Error(`Run "${run.name ?? run.id}" is malformed.`);
     if (!Array.isArray(run.spans)) run.spans = [];
   }
+  // Fill in settings added since the file was written, and any default materials they refer to.
+  const settings = mergeSettings(DEFAULT_SETTINGS, p.settings);
+  const used = new Set(Object.values(settings.materials));
+  const materials = [...p.materials, ...DEFAULT_MATERIALS.filter((m) => used.has(m.id) && !p.materials!.some((pm) => pm.id === m.id))];
   return {
     ...(p as Project),
     name: typeof p.name === 'string' ? p.name : 'Untitled built-in',
     styles: Array.isArray(p.styles) ? p.styles : [],
-    // Fill in settings added since the file was written.
-    settings: mergeSettings(DEFAULT_SETTINGS, p.settings),
+    settings,
+    materials,
   };
 }
 

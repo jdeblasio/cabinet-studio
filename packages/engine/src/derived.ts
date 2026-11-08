@@ -47,7 +47,8 @@ export type PartRole =
   | 'rail'
   | 'door'
   | 'drawerFront'
-  | 'toeKick';
+  | 'toeKick'
+  | 'countertop';
 
 /** A single rectangular piece of material, placed in run space. */
 export interface Part {
@@ -93,6 +94,8 @@ export interface TierLayout {
   depth: Ticks;
   /** Toe kick height (0 if none). Carcasses in this tier start at y + toeKick. */
   toeKick: Ticks;
+  /** Countertop thickness (0 if none). Carcasses in this tier end at y + height − countertop. */
+  countertop: Ticks;
   /** Space between the wall and the first/last carcass in this tier (0 at open ends). */
   scribe: { left: Ticks; right: Ticks };
   /** Resolved items left → right (boxes and span slots), for selection and drag handles. */

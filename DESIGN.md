@@ -155,7 +155,20 @@ Hold Alt/Option to drag freely.
 - A shared stile between a base box and a flush tall box runs the tall box's full height,
   so above the base it stands proud of the tall box's side by one side thickness.
 - Rails are per box. Where two same-plane tiers stack, each box keeps its own top/bottom
-  rail (a doubled rail band); merging them into one rail is a later refinement.
+  rail (a doubled rail band); merging them into one rail is a later refinement. Setting the
+  lower box's top to **open** avoids the doubled band today.
+- **Open top / bottom** (`carcass.top` / `carcass.bottom`, cascades): an open edge has no
+  panel and no rail, so the face opening and the shelf interior run to the carcass edge.
+  Fronts stop half a reveal short of an open edge instead of overlaying a rail that isn't
+  there. Uses: open shelves over a countertop (the counter is the bottom shelf), or shelving
+  that continues into the box above.
+- **Countertop** (per tier: thickness, front overhang, end overhang): sits inside the tier's
+  height, so the carcasses get shorter and the counter surface stays put. One slab per
+  contiguous run of boxes, from the wall to the face of the face frame plus the front
+  overhang. At each end it runs to a wall, overhangs an open end or gap by the end overhang
+  (measured from a full-width end stile's outer edge), or stops at another box. A stile that
+  runs up past it (shared with a tall box) gets a lint note to notch the top. Its thickness
+  is set on the tier; the countertop material only supplies species and color.
 - Toe kick: a separate ladder-frame platform per contiguous, same-depth run of floor
   boxes; the kick face is set back from the face of the face frame.
 - Fronts: partial overlay adds the overlay on every edge; inset subtracts the reveal; full
@@ -327,7 +340,8 @@ Proves the design experience:
 - **Bridges:** how a bridge box is supported (on flanking towers' tops vs. hung from the wall)
   and how its face frame joins neighbors.
 - **Freestanding units:** modeled as a run with no wall, or a distinct entity?
-- **Countertops:** shop-built (in cut list) vs. ordered (stone/laminate, size-only), or both?
+- **Countertops:** they are shop-built parts today. Should ordered tops (stone, laminate;
+  size-only, not in the cut list) be an option? Should a top bridge a gap (desk knee space)?
 - **Moldings:** profile library vs. bounding-box profiles; miter returns at run ends.
 - **Grain matching** across door pairs / drawer banks beyond "group onto one sheet".
 - **Shelf sag model:** which formula and default load assumptions.

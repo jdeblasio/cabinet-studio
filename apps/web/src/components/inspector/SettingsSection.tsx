@@ -25,6 +25,11 @@ const END_STILE_OPTIONS = [
   ['full', 'Full-width stile'],
 ] as const;
 
+const CARCASS_END_OPTIONS = [
+  ['panel', 'Panel'],
+  ['open', 'Open (no panel or rail)'],
+] as const;
+
 const SETTINGS: SettingDef[] = [
   {
     path: 'construction',
@@ -57,6 +62,8 @@ const SETTINGS: SettingDef[] = [
   { path: 'faceFrame.endStiles.right', label: 'Open right end', type: 'select', options: END_STILE_OPTIONS },
   { path: 'faceFrame.lip', label: 'Frame lip', type: 'length' },
   { path: 'faceFrame.scribeAllowance', label: 'Scribe allowance', type: 'length' },
+  { path: 'carcass.top', label: 'Top', type: 'select', options: CARCASS_END_OPTIONS },
+  { path: 'carcass.bottom', label: 'Bottom', type: 'select', options: CARCASS_END_OPTIONS },
   {
     path: 'back',
     label: 'Back',

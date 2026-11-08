@@ -56,6 +56,13 @@ export type Joinery = 'butt';
  */
 export type EndStile = 'flush' | 'full';
 
+/**
+ * A carcass top or bottom. 'open' leaves out the panel and the face frame rail on that edge, so
+ * the opening runs to the carcass edge: a countertop below shows as the bottom shelf, or shelving
+ * continues into the box above without a doubled panel and rail.
+ */
+export type CarcassEnd = 'panel' | 'open';
+
 export interface ConstructionSettings {
   construction: ConstructionStyle;
   joinery: Joinery;
@@ -67,8 +74,10 @@ export interface ConstructionSettings {
     faceFrame: Id;
     fronts: Id;
     toeKick: Id;
+    countertop: Id;
   };
   back: 'applied' | 'none';
+  carcass: { top: CarcassEnd; bottom: CarcassEnd };
   faceFrame: {
     /**
      * How far the frame overhangs the box interior on each side. 0 = "flush inside":
@@ -160,8 +169,23 @@ export interface Tier extends SettingsScope {
    * kick board is set back `setback` from the face of the face frame.
    */
   toeKick?: { height: Ticks; setback: Ticks };
+  /**
+   * A finished top over this tier's boxes, inside the tier's height (carcasses get shorter so the
+   * counter surface stays put). One piece per contiguous run of boxes. It runs to a wall, overhangs
+   * open ends and gaps by `endOverhang`, and stops at any other box. Its thickness is set here; the
+   * countertop material (settings) gives species and color.
+   */
+  countertop?: Countertop;
   /** Left → right. A SpanSlot marks where a spanning element passes through this tier. */
   items: TierItem[];
+}
+
+export interface Countertop {
+  thickness: Ticks;
+  /** Past the face of the face frame. */
+  frontOverhang: Ticks;
+  /** Past the outside of the end box (or its end stile) at an open end or a gap. */
+  endOverhang: Ticks;
 }
 
 export type TierItem = Box | SpanSlot;

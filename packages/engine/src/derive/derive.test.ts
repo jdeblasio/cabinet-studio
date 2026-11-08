@@ -23,6 +23,7 @@ const part = (r: RunResult, id: string): Part => {
   return p;
 };
 const nonInfo = (r: RunResult) => r.issues.filter((i) => i.severity !== 'info');
+const counters = (r: RunResult) => r.parts.filter((p) => p.role === 'countertop');
 
 describe('deriveRun: default project', () => {
   const { run, result } = setup();
@@ -356,5 +357,117 @@ describe('deriveRun: front mounting', () => {
     const left = part(result, `${b}/door-left`);
     expect(left.bounds.x - (right.bounds.x + right.bounds.width)).toBe(inches(1 / 16));
     expect(right.width).toBe(inches(14 + 25 / 32));
+  });
+});
+
+describe('deriveRun: countertops', () => {
+  const CT = { thickness: inches(1.5), frontOverhang: inches(1), endOverhang: inches(1) };
+  const withCounter = (more?: (p: Project, r: Run) => void) =>
+    setup((p, r) => {
+      tier(r, 0).countertop = { ...CT };
+      more?.(p, r);
+    });
+
+  it('sits inside the tier band, wall to wall, past the face of the frame', () => {
+    const { run, result } = withCounter();
+    expect(result.issues).toEqual([]);
+    expect(result.tiers[0]).toMatchObject({ height: inches(30), toeKick: inches(3.5), countertop: inches(1.5) });
+    const box = result.boxes.find((b) => b.id === boxesOf(tier(run, 0))[0]!.id)!;
+    expect([box.carcass.y, box.carcass.height]).toEqual([inches(3.5), inches(25)]);
+    const [top] = counters(result);
+    expect(top!.bounds).toEqual({ x: 0, y: inches(28.5), z: 0, width: inches(120), height: inches(1.5), depth: inches(16 + 0.75 + 1) });
+    expect([top!.length, top!.width, top!.thickness]).toEqual([inches(120), inches(17.75), inches(1.5)]);
+    expect(top!.materialId).toBe('hardwood-top');
+    // The upper tier still starts on top of the band, i.e. on the countertop.
+    expect(result.tiers[1]!.y).toBe(inches(30));
+  });
+
+  it('splits at a gap and overhangs into it, measured from a full-width end stile', () => {
+    const gapIn = (r: Run) => {
+      const id = newId();
+      r.spans.push({ id, kind: 'gap', x: { anchor: 'center', offset: 0 }, width: inches(36), tiers: { from: tier(r, 0).id, to: tier(r, 0).id }, content: opening() });
+      tier(r, 0).items.splice(2, 0, { kind: 'slot', spanId: id });
+    };
+    const flush = counters(withCounter((_, r) => gapIn(r)).result);
+    expect(flush.map((c) => [c.bounds.x, c.bounds.x + c.bounds.width])).toEqual([
+      [0, inches(43)],
+      [inches(77), inches(120)],
+    ]);
+    const full = counters(
+      withCounter((_, r) => {
+        gapIn(r);
+        tier(r, 0).overrides = { faceFrame: { endStiles: { left: 'full', right: 'full' } } };
+      }).result,
+    );
+    expect(full[0]!.bounds.x + full[0]!.bounds.width).toBe(inches(43) + T);
+    expect(full[1]!.bounds.x).toBe(inches(77) - T);
+  });
+
+  it('stops at a tall box beside it and notes the stile notch', () => {
+    const { result } = withCounter((_, r) => {
+      const id = newId();
+      r.spans.push({ id, kind: 'box', x: { anchor: 'right', offset: 0 }, width: inches(24), tiers: { from: tier(r, 0).id, to: tier(r, 1).id }, content: opening() });
+      for (const t of r.tiers) t.items.push({ kind: 'slot', spanId: id });
+    });
+    const [top] = counters(result);
+    expect(top!.bounds.x + top!.bounds.width).toBe(inches(95.5));
+    expect(nonInfo(result)).toEqual([]);
+    expect(result.issues.map((i) => i.code)).toContain('countertop-notch');
+  });
+
+  it('rejects a countertop thicker than the boxes are tall', () => {
+    const { result } = withCounter((_, r) => {
+      tier(r, 0).countertop = { ...CT, thickness: inches(27) };
+    });
+    expect(result.issues.map((i) => i.code)).toContain('countertop-too-thick');
+    expect(counters(result)).toEqual([]);
+  });
+});
+
+describe('deriveRun: open carcass tops and bottoms', () => {
+  it('a hutch: upper boxes with open bottoms sit on the countertop, which shows as the bottom shelf', () => {
+    const { run, result } = setup((_, r) => {
+      tier(r, 0).countertop = { thickness: inches(1.5), frontOverhang: inches(1), endOverhang: inches(1) };
+      tier(r, 1).overrides = { carcass: { bottom: 'open' } };
+    });
+    expect(nonInfo(result)).toEqual([]);
+    const up = boxesOf(tier(run, 1))[0]!;
+    const ids = result.parts.filter((p) => p.ownerId === up.id).map((p) => p.id);
+    expect(ids).not.toContain(`${up.id}/bottom`);
+    expect(ids).not.toContain(`${up.id}/rail-bottom`);
+    expect(ids).toContain(`${up.id}/top`);
+    const layout = result.boxes.find((b) => b.id === up.id)!;
+    const counterTop = counters(result)[0]!;
+    expect(layout.carcass.y).toBe(counterTop.bounds.y + counterTop.bounds.height);
+    // The face opening and the shelf spacing start at the countertop.
+    expect(layout.sections[0]!.rect.y).toBe(layout.carcass.y);
+    const shelves = result.parts.filter((p) => p.id.startsWith(`${up.content.id}/adj-shelf`));
+    const interior = inches(96 - 0.5) - T - layout.carcass.y; // carcass top (under the ceiling scribe) minus the top panel
+    const gap = (interior - 3 * T) / 4;
+    expect(shelves[0]!.bounds.y).toBe(Math.round((layout.carcass.y + gap) / inches(1 / 32)) * inches(1 / 32));
+  });
+
+  it('an open top drops the top panel and rail so the opening runs to the carcass top', () => {
+    const { run, result } = setup((_, r) => {
+      boxesOf(tier(r, 0))[0]!.overrides = { carcass: { top: 'open' } };
+    });
+    const id = boxesOf(tier(run, 0))[0]!.id;
+    const ids = result.parts.map((p) => p.id);
+    expect(ids).not.toContain(`${id}/top`);
+    expect(ids).not.toContain(`${id}/rail-top`);
+    const b = result.boxes.find((bx) => bx.id === id)!;
+    const r = b.sections[0]!.rect;
+    expect(r.y + r.height).toBe(b.carcass.y + b.carcass.height);
+  });
+
+  it('partial overlay fronts stop half a reveal short of an open edge', () => {
+    const { run, result } = setup((_, r) => {
+      tier(r, 0).overrides = { carcass: { bottom: 'open' } };
+    });
+    const op = boxesOf(tier(run, 0))[0]!.content;
+    const door = part(result, `${op.id}/door-left`);
+    expect(door.bounds.y).toBe(inches(3.5 + 1 / 32));
+    // The top still overlays the top rail by 1/2".
+    expect(door.bounds.y + door.bounds.height).toBe(inches(30 - 1.5 + 0.5));
   });
 });
