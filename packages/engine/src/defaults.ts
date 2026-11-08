@@ -1,4 +1,4 @@
-import { SCHEMA_VERSION, type Box, type ConstructionSettings, type Finish, type Front, type HardwareLibrary, type Id, type Material, type Project, type Run, type Section } from './model';
+import { SCHEMA_VERSION, type Tier, type TierItem, type Box, type ConstructionSettings, type Finish, type Front, type HardwareLibrary, type Id, type Material, type Project, type Run, type Section } from './model';
 import { DEFAULT_GRID, inches, mm } from './units';
 
 export function newId(): Id {
@@ -206,6 +206,50 @@ export function createDefaultRun(name = 'Wall 1'): Run {
       },
     ],
   };
+}
+
+/**
+ * A new island: a front face of base boxes (door pairs) and a back face of open shelves, back to
+ * back, 36" to the top of a 1 1/2" countertop with 1" overhangs (12" on the back, for seating),
+ * on a toe kick mitered around the ends, with full-width end stiles and end panels at both ends.
+ */
+export function createIsland(name = 'Island'): { front: Run; back: Run } {
+  const length = inches(72);
+  const height = inches(36);
+  const tier = (items: TierItem[], label: string): Tier => ({
+    id: newId(),
+    name: label,
+    kind: 'boxes',
+    height: { kind: 'flex', ratio: 1 },
+    depth: inches(12),
+    toeKick: { height: inches(3.5), setback: inches(3), mitreOpenEnds: true },
+    countertop: { thickness: inches(1.5), frontOverhang: inches(1), endOverhang: inches(1), backOverhang: inches(12) },
+    items,
+  });
+  const ends = { faceFrame: { endStiles: { left: 'full' as const, right: 'full' as const } } };
+  const front: Run = {
+    id: newId(),
+    name,
+    kind: 'island',
+    island: { back: 'boxes' },
+    wall: [{ id: newId(), length, ceilingHeight: height }],
+    ends: { left: 'open', right: 'open' },
+    spans: [],
+    tiers: [tier([0, 1, 2].map(() => flexBox(opening({ type: 'doorPair' }, 1))), 'Front')],
+    overrides: ends,
+  };
+  const back: Run = {
+    id: newId(),
+    name: `${name} (back)`,
+    kind: 'island',
+    islandOf: front.id,
+    wall: [{ id: newId(), length, ceilingHeight: height }],
+    ends: { left: 'open', right: 'open' },
+    spans: [],
+    tiers: [tier([0, 1, 2].map(() => flexBox(opening({ type: 'none' }, 1))), 'Back')],
+    overrides: ends,
+  };
+  return { front, back };
 }
 
 export function createDefaultProject(): Project {

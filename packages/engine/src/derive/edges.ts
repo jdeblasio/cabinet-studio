@@ -56,9 +56,18 @@ interface Region {
   bounds: Bounds;
 }
 
-/** Closed spaces: each box's carcass, plus the space behind its toe kick down to the floor. */
+/**
+ * Closed spaces: each box's carcass, plus the space behind its toe kick down to the floor; on an
+ * island's back face, the island countertop (it belongs to the front face's run).
+ */
 function enclosures(ctx: Ctx, layout: RunLayoutResult): Region[] {
   const out: Region[] = [];
+  if (ctx.run.islandOf) {
+    const far = layout.width * 4 + inches(1000);
+    for (const tl of layout.tiers) {
+      if (tl.countertop > 0) out.push({ ownerId: 'island-countertop', bounds: { x: -far, y: tl.y + tl.height - tl.countertop, z: -far, width: 2 * far, height: tl.countertop, depth: 2 * far } });
+    }
+  }
   for (const b of layout.boxes) {
     out.push({ ownerId: b.id, bounds: b.carcass });
     const tier = ctx.run.tiers.find((t) => t.id === b.tierId);
@@ -88,10 +97,13 @@ function exposedOf(p: Part, parts: readonly Part[], spaces: readonly Region[], r
     if (n === t || p.bandedEdges?.includes(face) || p.mitres?.some((m) => m.face === face)) continue;
     const plane = dir > 0 ? hi(b, n) : lo(b, n);
     // Against the wall, the floor, the ceiling gap or a wall-end scribe gap: never seen.
+    // Behind: the wall, or on an island the other face's boxes (or its finished back panel).
+    // Islands have no ceiling above.
+    const island = run.kind === 'island';
     if (n === 'z' && dir < 0 && plane <= tol) continue;
     // Undersides this close to the floor (e.g. over the toe kick space) aren't seen.
     if (n === 'y' && dir < 0 && plane <= LOW_UNDERSIDE) continue;
-    if (n === 'y' && dir > 0 && plane >= ceilingZone) continue;
+    if (!island && n === 'y' && dir > 0 && plane >= ceilingZone) continue;
     if (n === 'x' && dir < 0 && run.ends.left === 'wall' && plane <= wallZone) continue;
     if (n === 'x' && dir > 0 && run.ends.right === 'wall' && plane >= layout.width - wallZone) continue;
 

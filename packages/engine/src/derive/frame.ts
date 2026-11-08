@@ -157,7 +157,9 @@ export function deriveFrames(
 function endPanel(ctx: Ctx, m: Edges, side: 'left' | 'right'): Part {
   const t = ctx.thickness(m.box.settings.materials.carcass, m.box.id);
   const x = side === 'left' ? m.x0 - m.cover : m.x1 + m.cover - t;
-  const z = m.box.carcass.z;
+  // On a single-sided island it also covers the end of the finished back panel behind the boxes.
+  const backPanel = ctx.run.kind === 'island' && !ctx.run.islandOf && ctx.run.island?.back === 'panel';
+  const z = m.box.carcass.z - (backPanel ? t : 0);
   return makePart({
     id: `${m.box.id}/end-panel-${side}`,
     name: 'End panel',

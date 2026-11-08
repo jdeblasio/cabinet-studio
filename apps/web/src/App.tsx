@@ -2,7 +2,7 @@ import { findBox, findSpan, removeBox, removeSpan } from '@cabinet-studio/engine
 import { useEffect, useRef } from 'react';
 import { BuildView } from './components/build/BuildView';
 import { DrawingsView } from './components/drawings/DrawingsView';
-import { Elevation } from './components/elevation/Elevation';
+import { DesignViews } from './components/elevation/DesignViews';
 import { Inspector } from './components/inspector/Inspector';
 import { CutListView } from './components/outputs/CutListView';
 import { SheetsView } from './components/outputs/SheetsView';
@@ -90,7 +90,7 @@ function DesignCenter() {
   return (
     <div className="center" style={{ gridTemplateRows: `minmax(0, ${split}fr) auto auto minmax(0, ${1 - split}fr)` }}>
       <section ref={elevation} className="pane elevation-pane" aria-label="Front elevation">
-        <Elevation />
+        <DesignViews />
       </section>
       <Problems />
       <Splitter upper={elevation} lower={preview} split={split} onChange={setSplit} label="Resize the elevation and 3D preview" />

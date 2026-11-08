@@ -1,5 +1,7 @@
 import {
   addBox,
+  addIsland,
+  setIslandBack,
   setMolding,
   DEFAULT_CROWN,
   DEFAULT_BASE_MOLDING,
@@ -147,14 +149,18 @@ function RunPicker({ run }: { run: Run }) {
   const runs = useEditor((s) => s.project.runs);
   const edit = useEditor((s) => s.edit);
   const setActiveRun = useEditor((s) => s.setActiveRun);
+  // An island is listed once (its main run); its back face is a view of it.
   return (
     <span className="style-controls">
-      <select className="input" aria-label="Wall run" title="Wall runs in this project (e.g. one per wall)" value={run.id} onChange={(e) => setActiveRun(e.target.value)}>
-        {runs.map((r) => (
-          <option key={r.id} value={r.id}>
-            {r.name}
-          </option>
-        ))}
+      <select className="input" aria-label="Wall run or island" title="Wall runs and islands in this project" value={run.islandOf ?? run.id} onChange={(e) => setActiveRun(e.target.value)}>
+        {runs
+          .filter((r) => !r.islandOf)
+          .map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.name}
+              {r.kind === 'island' ? ' (island)' : ''}
+            </option>
+          ))}
       </select>
       <button
         title="Add another wall run with default tiers"
@@ -166,7 +172,104 @@ function RunPicker({ run }: { run: Run }) {
       >
         + Wall
       </button>
+      <button
+        title="Add a freestanding island: base boxes back to back under one countertop"
+        onClick={() => {
+          let id: Id | undefined;
+          edit((d) => void (id = addIsland(d)));
+          if (id) setActiveRun(id);
+        }}
+      >
+        + Island
+      </button>
     </span>
+  );
+}
+
+/** An island's main run (its front face) or back face: size, how its back is finished, its tiers. */
+function IslandPanel({ run, main, result, runCount }: { run: Run; main: Run; result: RunResult; runCount: number }) {
+  const editRun = useEditRun();
+  const edit = useEditor((s) => s.edit);
+  const select = useEditor((s) => s.select);
+  const setActiveRun = useEditor((s) => s.setActiveRun);
+  const { fmt } = useFormatter();
+  const isBack = !!run.islandOf;
+  const seg = main.wall[0]!;
+  const editMain = (fn: (r: Run) => void) =>
+    edit((d) => {
+      const r = d.runs.find((x) => x.id === main.id);
+      if (r) fn(r);
+    });
+  return (
+    <>
+      <Section title={isBack ? 'Island back face' : 'Island'} actions={<RunPicker run={run} />}>
+        {isBack && <p className="muted small">The boxes on the back of {main.name}, as seen from the back. Its size, height, toe kick and countertop follow the island.</p>}
+        <Field label="Name" tip={isBack ? 'A name for the back face (used in the cut list).' : 'A name for this island.'}>
+          <TextInput value={run.name} onCommit={(name) => editRun((r) => void (r.name = name || r.name))} />
+        </Field>
+        <Field label="Length" tip="Overall length of the island's boxes, end to end (the countertop overhangs it).">
+          {isBack ? (
+            <span className="readout">{fmt(seg.length)}</span>
+          ) : (
+            <LengthInput value={seg.length} min={inches(12)} onCommit={(t) => editMain((r) => void setWallLength(r, t))} ariaLabel="Island length" />
+          )}
+        </Field>
+        <Field label="Height" tip="Floor to the top of the countertop. The tier fills it, toe kick and countertop included.">
+          {isBack ? (
+            <span className="readout">{fmt(seg.ceilingHeight)}</span>
+          ) : (
+            <LengthInput value={seg.ceilingHeight} min={inches(12)} onCommit={(t) => editMain((r) => void setCeilingHeight(r, t))} ariaLabel="Island height" />
+          )}
+        </Field>
+        {!isBack && (
+          <Field label="Back" tip="Cabinets: a second row of boxes facing the back, back to back with the front row (edit it with the Back view). Finished panel: a single row, with a finished panel over its back, e.g. for seating under the countertop overhang.">
+            <Segmented
+              value={main.island?.back ?? 'boxes'}
+              options={[
+                ['boxes', 'Cabinets'],
+                ['panel', 'Finished panel'],
+              ]}
+              onChange={(v) => edit((d) => void setIslandBack(d, main.id, v))}
+            />
+          </Field>
+        )}
+        {!isBack && runCount > 1 && (
+          <div className="actions">
+            <button
+              className="danger"
+              title="Delete this island, both faces (undoable)"
+              onClick={() => {
+                const next = useEditor.getState().project.runs.find((r) => r.id !== main.id && r.islandOf !== main.id && !r.islandOf);
+                edit((d) => void removeRun(d, main.id));
+                if (next) setActiveRun(next.id);
+              }}
+            >
+              Delete island
+            </button>
+          </div>
+        )}
+      </Section>
+      <Section title={isBack ? 'Back face tier' : 'Tier'}>
+        <ul className="list">
+          {run.tiers.map((t) => {
+            const tl = result.tiers.find((x) => x.tierId === t.id);
+            return (
+              <li key={t.id}>
+                <button className="link" onClick={() => select({ kind: 'tier', runId: run.id, tierId: t.id })}>
+                  {t.name}
+                </button>
+                <span className="muted">
+                  {t.items.filter((i) => i.kind === 'box').length} boxes{tl ? ` · ${fmt(tl.depth)} deep` : ''}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      </Section>
+      <AddSpanSection run={run} />
+      <SettingsSection scope={{ kind: 'run', runId: run.id }} />
+      <ProjectLink />
+    </>
   );
 }
 
@@ -175,9 +278,11 @@ function RunPanel({ run, result }: { run: Run; result: RunResult }) {
   const edit = useEditor((s) => s.edit);
   const select = useEditor((s) => s.select);
   const setActiveRun = useEditor((s) => s.setActiveRun);
-  const runCount = useEditor((s) => s.project.runs.length);
+  const runCount = useEditor((s) => s.project.runs.filter((r) => !r.islandOf).length);
+  const main = useEditor((s) => (run.islandOf ? s.project.runs.find((r) => r.id === run.islandOf) : undefined));
   const { fmt } = useFormatter();
   const seg = run.wall[0]!;
+  if (run.kind === 'island') return <IslandPanel run={run} main={main ?? run} result={result} runCount={runCount} />;
   return (
     <>
       <Section title="Wall run" actions={<RunPicker run={run} />}>
@@ -355,6 +460,9 @@ function TierPanel({ run, tier, result }: { run: Run; tier: Tier; result: RunRes
   const select = useEditor((s) => s.select);
   const tl = result.tiers.find((t) => t.tierId === tier.id);
   const isBottom = run.tiers[0]?.id === tier.id;
+  const island = run.kind === 'island';
+  // An island's back face takes its height, toe kick and countertop from the front face.
+  const follows = !!run.islandOf;
   return (
     <>
       <Section title="Tier">
@@ -371,11 +479,15 @@ function TierPanel({ run, tier, result }: { run: Run; tier: Tier; result: RunRes
             onChange={(k) => editRun((r) => setTierKind(r, tier.id, k))}
           />
         </Field>
-        <SizeSpecEditor label="Height" tip="Tier height, including any toe kick and countertop. Fixed, or flex to share the wall height with other tiers." spec={tier.height} resolved={tl?.height} onChange={(s) => editRun((r) => setTierHeight(r, tier.id, s))} />
+        {follows ? (
+          <p className="muted small">Height, toe kick and countertop follow the island's front face.</p>
+        ) : (
+          <SizeSpecEditor label="Height" tip="Tier height, including any toe kick and countertop. Fixed, or flex to share the wall height with other tiers." spec={tier.height} resolved={tl?.height} onChange={(s) => editRun((r) => setTierHeight(r, tier.id, s))} />
+        )}
         <Field label="Depth" tip="Carcass depth including the back panel, not counting the face frame or fronts." hint="Carcass, incl. back">
           <LengthInput value={tier.depth} min={inches(2)} onCommit={(t) => editRun((r) => setTierDepth(r, tier.id, t))} ariaLabel="Tier depth" />
         </Field>
-        {isBottom && (
+        {isBottom && !follows && (
           <>
             <Field label="Toe kick" tip="A recessed base platform under the bottom tier, with a kick board set back from the face.">
               <input
@@ -414,7 +526,7 @@ function TierPanel({ run, tier, result }: { run: Run; tier: Tier; result: RunRes
             )}
           </>
         )}
-        {tier.kind === 'boxes' && (
+        {tier.kind === 'boxes' && !follows && (
           <>
             <Field label="Countertop" tip="A finished top over this tier’s boxes. It fits inside the tier height, so the boxes get shorter." hint="Inside the tier height">
               <input
@@ -450,6 +562,16 @@ function TierPanel({ run, tier, result }: { run: Run; tier: Tier; result: RunRes
                     ariaLabel="Countertop end overhang"
                   />
                 </Field>
+                {island && (
+                  <Field label="Back overhang" tip="How far an island's countertop projects past its back face (or back panel), e.g. 10–15 inches for seating." hint="Past the back face">
+                    <LengthInput
+                      value={tier.countertop.backOverhang ?? tier.countertop.frontOverhang}
+                      min={0}
+                      onCommit={(backOverhang) => editRun((r) => setCountertop(r, tier.id, { ...tier.countertop!, backOverhang }))}
+                      ariaLabel="Countertop back overhang"
+                    />
+                  </Field>
+                )}
               </>
             )}
           </>
@@ -466,11 +588,11 @@ function TierPanel({ run, tier, result }: { run: Run; tier: Tier; result: RunRes
               + Box at end
             </button>
           )}
-          <button onClick={() => editRun((r) => void addTier(r, tier.id, 'above'))}>+ Tier above</button>
-          <button onClick={() => editRun((r) => void addTier(r, tier.id, 'below'))}>+ Tier below</button>
+          {!island && <button onClick={() => editRun((r) => void addTier(r, tier.id, 'above'))}>+ Tier above</button>}
+          {!island && <button onClick={() => editRun((r) => void addTier(r, tier.id, 'below'))}>+ Tier below</button>}
           <button
             className="danger"
-            disabled={run.tiers.length <= 1}
+            disabled={run.tiers.length <= 1 || island}
             onClick={() => {
               editRun((r) => removeTier(r, tier.id));
               select({ kind: 'run', runId: run.id });

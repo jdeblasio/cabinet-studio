@@ -6,6 +6,8 @@ import { validSelection, type Selection } from './selection';
 const HISTORY_LIMIT = 200;
 
 export type View3D = 'shaded' | 'wireframe' | 'exploded';
+/** The 2D design pane: the editable elevation of the active run (or island face), or a read-only end or top view. */
+export type DesignView = 'elevation' | 'left' | 'right' | 'top';
 /** Top-level views: the design editor, and outputs derived from the design. */
 export type AppView = 'design' | 'project' | 'cutlist' | 'sheets' | 'shopping' | 'drawings' | 'build';
 
@@ -26,6 +28,9 @@ export interface EditorState {
   showAllSettings: boolean;
   /** Highlight edge-banded edges in the elevation and 3D preview. */
   showBanding: boolean;
+  designView: DesignView;
+  /** Draw the wall and ceiling behind wall runs in the 2D views. */
+  showWalls: boolean;
   view: AppView;
   loaded: boolean;
 
@@ -51,6 +56,8 @@ export interface EditorState {
   setShowHardware: (v: boolean) => void;
   setShowAllSettings: (v: boolean) => void;
   setShowBanding: (v: boolean) => void;
+  setDesignView: (v: DesignView) => void;
+  setShowWalls: (v: boolean) => void;
   setView: (v: AppView) => void;
 }
 
@@ -83,6 +90,8 @@ const editorState: StateCreator<EditorState> = (set, get) => {
     showHardware: true,
     showAllSettings: false,
     showBanding: false,
+    designView: 'elevation',
+    showWalls: true,
     view: 'design',
     loaded: false,
 
@@ -180,6 +189,8 @@ const editorState: StateCreator<EditorState> = (set, get) => {
     setShowHardware: (showHardware) => set({ showHardware }),
     setShowAllSettings: (showAllSettings) => set({ showAllSettings }),
     setShowBanding: (showBanding) => set({ showBanding }),
+    setDesignView: (designView) => set({ designView }),
+    setShowWalls: (showWalls) => set({ showWalls }),
     setView: (view) => set({ view }),
   };
 };

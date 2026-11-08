@@ -673,3 +673,39 @@ button.link:hover {
 .settings-toggle {
   margin-top: 6px;
 }
+
+/* 2D design pane: view switcher (top left) and read-only projections. */
+.design-views {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  z-index: 2;
+}
+.design-views .segmented button:disabled {
+  color: var(--muted);
+  opacity: 0.6;
+}
+.projection-label {
+  position: absolute;
+  left: 12px;
+  bottom: 8px;
+  font-size: 0.88em;
+}
+.elevation-svg .section-wall {
+  fill: #e7e3dc;
+  stroke: #b9b2a5;
+}
+.elevation.projection .part:hover {
+  stroke: var(--accent);
+  stroke-width: 1.5;
+}
+.elevation-svg .countertop-outline {
+  fill: none;
+  stroke: #6f5e4a;
+  stroke-width: 1.25;
+  stroke-dasharray: 6 4;
+  pointer-events: none;
+}

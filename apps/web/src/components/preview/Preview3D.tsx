@@ -6,7 +6,7 @@ import { PerspectiveCamera, Vector3 } from 'three';
 import { usePartColor } from '../../lib/colors';
 import { BANDING_COLOR, BandingToggle, RAW_EDGE_COLOR } from '../BandingToggle';
 import { downloadFile, fileSlug } from '../../lib/download';
-import { useRunResult } from '../../store/derived';
+import { getRunResult, useRunResult } from '../../store/derived';
 import { selectionForId, type Selection } from '../../store/selection';
 import { useActiveRun, useEditor, type View3D } from '../../store/store';
 import { explodeOffsets, sceneExtent } from './explode';
@@ -52,9 +52,29 @@ function highlightedParts(run: Run, result: RunResult, selection: Selection | nu
   return ids;
 }
 
-export function Preview3D() {
+/**
+ * What the 3D view shows: the active run, or a whole island (its main run's parts plus its back
+ * face, mirrored into place), whichever face is being edited.
+ */
+function useScene(): { run: Run; result: RunResult; island: boolean; backIds: Set<string>; mainId: string; backId?: string } {
   const run = useActiveRun();
-  const result = useRunResult();
+  const active = useRunResult();
+  const project = useEditor((s) => s.project);
+  const island = run.kind === 'island';
+  const mainId = run.islandOf ?? run.id;
+  return useMemo(() => {
+    if (!island) return { run, result: active, island, backIds: new Set<string>(), mainId };
+    const main = getRunResult(project, mainId);
+    const back = main.island;
+    const result: RunResult = back ? { ...main, parts: [...main.parts, ...back.parts], hardware: [...main.hardware, ...back.hardware], boxes: [...main.boxes, ...back.boxes] } : main;
+    return { run, result, island, backIds: new Set(back?.parts.map((p) => p.id) ?? []), mainId, ...(back ? { backId: back.backRunId } : {}) };
+  }, [run, active, project, island, mainId]);
+}
+
+export function Preview3D() {
+  const { run, result, island, backIds, mainId, backId } = useScene();
+  const project = useEditor((s) => s.project);
+  const setActiveRun = useEditor((s) => s.setActiveRun);
   const selection = useEditor((s) => s.selection);
   const select = useEditor((s) => s.select);
   const mode = useEditor((s) => s.view3d);
@@ -71,22 +91,32 @@ export function Preview3D() {
 
   const W = Math.max(I(result.width), 12);
   const H = Math.max(I(result.ceilingHeight), 12);
-  const size = Math.max(W, H);
+  // An island reaches behind its spine (negative z); a wall run starts at the wall.
+  const zMin = island ? Math.min(0, ...result.parts.map((p) => I(p.bounds.z))) : 0;
+  const zMax = Math.max(12, ...result.parts.map((p) => I(p.bounds.z + p.bounds.depth)));
+  const size = Math.max(W, H, zMax - zMin);
   // Frame the wall, or in the exploded view everything as spread out (which runs taller and wider).
   const extent = useMemo(() => (offsets ? sceneExtent(result, offsets) : null), [result, offsets]);
   const fitW = extent ? Math.max(extent.maxX - extent.minX, 12) : W;
   const fitH = extent ? Math.max(extent.maxY, 12) : H;
-  const target: [number, number, number] = extent ? [(extent.minX + extent.maxX) / 2, fitH / 2, Math.max(8, extent.maxZ / 3)] : [W / 2, H / 2, 8];
+  const target: [number, number, number] = extent
+    ? [(extent.minX + extent.maxX) / 2, fitH / 2, Math.max(8, extent.maxZ / 3)]
+    : [W / 2, island ? H / 3 : H / 2, island ? (zMin + zMax) / 2 : 8];
 
   const onSelectPart = (part: Part) => {
-    if (findBox(run, part.ownerId) || findSpan(run, part.ownerId) || run.tiers.some((t) => t.id === part.ownerId)) {
-      select(selectionForId(run, part.ownerId, result));
+    // On an island, a part may belong to the other face: switch to it.
+    const runId = backId && backIds.has(part.id) ? backId : mainId;
+    const target = runId === run.id ? run : project.runs.find((r) => r.id === runId);
+    if (!target) return;
+    if (findBox(target, part.ownerId) || findSpan(target, part.ownerId) || target.tiers.some((t) => t.id === part.ownerId)) {
+      if (target.id !== run.id) setActiveRun(target.id);
+      select(selectionForId(target, part.ownerId, getRunResult(project, target.id)));
     }
   };
 
   return (
     <div className="preview">
-      <Canvas key={`${run.id}:${resetKey}`} camera={{ fov: 35, near: 1, far: size * 20 }} dpr={[1, 2]}>
+      <Canvas key={`${mainId}:${resetKey}`} camera={{ fov: 35, near: 1, far: size * 20 }} dpr={[1, 2]}>
         <FitCamera width={fitW} height={fitH} target={target} fitKey={mode === 'exploded' ? 'exploded' : 'assembled'} />
         <color attach="background" args={['#f3f1ec']} />
         <hemisphereLight intensity={0.85} groundColor="#b8ad9b" />
@@ -94,15 +124,26 @@ export function Preview3D() {
         <directionalLight position={[W * 1.2, H * 0.5, size * 0.4]} intensity={0.35} />
         {/* Soft fill from below so undersides (bottoms over openings) read as surfaces, not dark recesses. */}
         <directionalLight position={[W * 0.4, -H * 0.8, size * 0.8]} intensity={0.6} />
-        {/* Wall and floor */}
-        <mesh position={[W / 2, H / 2, -0.26]}>
-          <boxGeometry args={[W, H, 0.5]} />
-          <meshStandardMaterial color="#e7e3dc" />
-        </mesh>
-        <mesh position={[W / 2, -0.25, size * 0.3]}>
-          <boxGeometry args={[W * 1.3, 0.5, size * 0.6]} />
-          <meshStandardMaterial color="#d6d0c6" />
-        </mesh>
+        {/* Islands are seen from all sides: light the back too. */}
+        {island && <directionalLight position={[W * 0.6, H * 1.4, zMin - size * 1.2]} intensity={0.9} />}
+        {/* Wall (not for islands) and floor */}
+        {!island && (
+          <mesh position={[W / 2, H / 2, -0.26]}>
+            <boxGeometry args={[W, H, 0.5]} />
+            <meshStandardMaterial color="#e7e3dc" />
+          </mesh>
+        )}
+        {island ? (
+          <mesh position={[W / 2, -0.25, (zMin + zMax) / 2]}>
+            <boxGeometry args={[W + size * 0.8, 0.5, zMax - zMin + size * 0.8]} />
+            <meshStandardMaterial color="#d6d0c6" />
+          </mesh>
+        ) : (
+          <mesh position={[W / 2, -0.25, size * 0.3]}>
+            <boxGeometry args={[W * 1.3, 0.5, size * 0.6]} />
+            <meshStandardMaterial color="#d6d0c6" />
+          </mesh>
+        )}
         <group>
           {result.parts.map((p) => (
             <PartMesh

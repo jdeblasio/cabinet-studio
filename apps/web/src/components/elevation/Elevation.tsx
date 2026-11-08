@@ -3,7 +3,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import { usePartColor } from '../../lib/colors';
 import { BANDING_COLOR, BandingToggle, RAW_EDGE_COLOR } from '../BandingToggle';
 import { useFormatter } from '../../lib/units';
-import { useRunResult } from '../../store/derived';
+import { getRunResult, useRunResult } from '../../store/derived';
 import { sameSelection, selectionKey, type Selection } from '../../store/selection';
 import { useActiveRun, useEditor } from '../../store/store';
 import { computeHandles, hitChain, selectionRect, type BoundaryHandle } from './geometry';
@@ -145,15 +145,24 @@ export function Elevation() {
     select(next);
   };
 
+  // An island's back face shows the island's countertop (it belongs to the front face), mirrored.
+  const project = useEditor((s) => s.project);
+  const islandTops = useMemo(() => {
+    if (!run.islandOf) return [];
+    const main = getRunResult(project, run.islandOf);
+    return main.parts.filter((p) => p.role === 'countertop').map((p) => ({ ...p, bounds: { ...p.bounds, x: main.width - (p.bounds.x + p.bounds.width) } }));
+  }, [project, run.islandOf]);
   const parts = useMemo(
     () =>
-      [...result.parts].sort(
+      [...result.parts, ...islandTops].sort(
         (a, b) => a.bounds.z + a.bounds.depth - (b.bounds.z + b.bounds.depth) || Number(FRONT_ROLES.has(a.role)) - Number(FRONT_ROLES.has(b.role)),
       ),
-    [result.parts],
+    [result.parts, islandTops],
   );
   const colorOf = usePartColor();
   const showBanding = useEditor((s) => s.showBanding);
+  // Islands stand free; wall runs show their wall unless it's turned off.
+  const showWalls = useEditor((s) => s.showWalls) && run.kind !== 'island';
   const handles = useMemo(() => computeHandles(run, result, MIN_SIZE), [run, result]);
 
   const W = I(result.width);
@@ -178,7 +187,7 @@ export function Elevation() {
         onPointerLeave={() => setHover(null)}
       >
         {/* Wall */}
-        <rect x={0} y={-H} width={W} height={H} className="wall" />
+        {showWalls && <rect x={0} y={-H} width={W} height={H} className="wall" />}
         {result.tiers.map((t, i) => {
           const r = rectToSvg({ x: 0, y: t.y, width: result.width, height: t.height });
           return <rect key={t.tierId} {...r} className={`tier-band ${i % 2 ? 'odd' : ''} ${t.kind}`} />;
@@ -196,7 +205,7 @@ export function Elevation() {
 
         {/* Floor and ceiling */}
         <line x1={-W * 0.04} x2={W * 1.04} y1={0} y2={0} className="floor" />
-        <line x1={0} x2={W} y1={-H} y2={-H} className="ceiling" />
+        {showWalls && <line x1={0} x2={W} y1={-H} y2={-H} className="ceiling" />}
 
         <Dimensions result={result} fmt={fmt} font={font} px={px} />
 

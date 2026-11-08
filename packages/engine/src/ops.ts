@@ -6,7 +6,7 @@
  * that return false/undefined so the editor can call them speculatively.
  */
 import type { RunResult } from './derived';
-import { createDefaultRun, finishesOf, hardwareOf, newId } from './defaults';
+import { createDefaultRun, createIsland, finishesOf, hardwareOf, newId } from './defaults';
 import { deriveRun } from './derive/index';
 import type {
   Box,
@@ -14,6 +14,7 @@ import type {
   Finish,
   Front,
   HardwareLibrary,
+  IslandSpec,
   Id,
   Material,
   Molding,
@@ -570,12 +571,46 @@ export function addRun(project: Project, name?: string): Id {
   return run.id;
 }
 
-/** Remove a wall run; a project always keeps at least one. */
+/**
+ * Remove a wall run or an island (with its back face); a project always keeps at least one.
+ * An island's back face is removed with its island, not on its own.
+ */
 export function removeRun(project: Project, runId: Id): boolean {
-  if (project.runs.length <= 1) return false;
-  const i = project.runs.findIndex((r) => r.id === runId);
-  if (i < 0) return false;
-  project.runs.splice(i, 1);
+  const run = project.runs.find((r) => r.id === runId);
+  if (!run || run.islandOf) return false;
+  if (project.runs.filter((r) => !r.islandOf).length <= 1) return false;
+  project.runs = project.runs.filter((r) => r.id !== runId && r.islandOf !== runId);
+  return true;
+}
+
+/** Add an island (its front and back faces). Returns its main run's id. */
+export function addIsland(project: Project, name?: string): Id {
+  const n = project.runs.filter((r) => r.kind === 'island' && !r.islandOf).length + 1;
+  const { front, back } = createIsland(name ?? `Island ${n}`);
+  project.runs.push(front, back);
+  return front.id;
+}
+
+/** An island's back face run, if it has one. */
+export function islandBack(project: Pick<Project, 'runs'>, islandId: Id): Run | undefined {
+  return project.runs.find((r) => r.islandOf === islandId);
+}
+
+/**
+ * Finish an island's back with a second row of boxes or with a panel. Switching to a panel
+ * removes the back face (undo brings it back); switching to boxes adds a fresh one.
+ */
+export function setIslandBack(project: Project, islandId: Id, back: IslandSpec['back']): boolean {
+  const island = project.runs.find((r) => r.id === islandId);
+  if (!island || island.kind !== 'island' || island.islandOf) return false;
+  island.island = { ...island.island, back };
+  const existing = islandBack(project, islandId);
+  if (back === 'panel' && existing) project.runs = project.runs.filter((r) => r !== existing);
+  if (back === 'boxes' && !existing) {
+    const fresh = createIsland(island.name).back;
+    fresh.islandOf = island.id;
+    project.runs.splice(project.runs.indexOf(island) + 1, 0, fresh);
+  }
   return true;
 }
 

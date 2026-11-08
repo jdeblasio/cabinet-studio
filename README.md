@@ -10,7 +10,10 @@ Free and open source under the AGPL-3.0.
 
 - **Design** a wall run as tiers of boxes with fixed and flex widths, tall boxes and gaps
   (doorways, knee space), in a front elevation with an inspector and a live 3D preview
-  (shaded, wireframe, exploded). Boundary drags snap to edges in other tiers.
+  (shaded, wireframe, exploded). Boundary drags snap to edges in other tiers. Read-only
+  views from either end and from above; walls can be hidden.
+- **Islands:** freestanding runs with boxes on both faces (back to back) or a finished back
+  panel, under one countertop with a seating overhang.
 - **Construction:** face frame or frameless, per project, tier or box. Settings cascade
   (project → run → tier → box) with named styles.
   - **Joinery and fronts:** butt, dowel, confirmat, dado or rabbet joints; tops over and

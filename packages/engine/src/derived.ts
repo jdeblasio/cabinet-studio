@@ -180,6 +180,12 @@ export interface RunResult {
   /** Hardware for illustration (slides, hinges, shelf pins). */
   hardware: HardwareItem[];
   issues: Issue[];
+  /**
+   * An island's main run: its back face's parts, hardware and boxes, mirrored into this run's
+   * space (x reversed, z behind the spine), for display. The back face's own result is what the
+   * cut list counts.
+   */
+  island?: { backRunId: Id; parts: Part[]; hardware: HardwareItem[]; boxes: BoxLayout[] };
 }
 
 export interface TierLayout {

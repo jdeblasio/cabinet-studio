@@ -54,6 +54,8 @@ export function deriveToeKick(ctx: Ctx, layout: RunLayoutResult): Part[] {
     const mitre = !!ctx.run.tiers.find((t) => t.id === kick.tierId)?.toeKick?.mitreOpenEnds;
     const mitreL = mitre && !first.atLeftWall;
     const mitreR = mitre && !lastBox.atRightWall;
+    // A single-sided island's finished back panel runs to the floor: the returns run back over its ends.
+    const backPanel = ctx.run.kind === 'island' && !ctx.run.islandOf && ctx.run.island?.back === 'panel' ? ctx.thickness(s.materials.carcass, kick.tierId) : 0;
     const common = { role: 'toeKick' as const, materialId: s.materials.toeKick, ownerId: kick.tierId };
     // Cross pieces at both ends and under every joint between boxes.
     const xs = [xa, ...seg.slice(1).map((b) => b.carcass.x - tk / 2), xb - tk];
@@ -94,7 +96,7 @@ export function deriveToeKick(ctx: Ctx, layout: RunLayoutResult): Part[] {
       if (isReturn) {
         // Full depth, from the wall to the front face, mitered with the front board at the corner.
         parts.push(
-          makePart({ ...common, id: `${base}-return-${ci === 0 ? 'left' : 'right'}`, name: 'Toe kick (return)', bounds: { x: cx, y: 0, z: 0, width: tk, height: h, depth: platformDepth }, grain: 'horizontal', thicknessAxis: 'x', length: ctx.down(platformDepth), width: h, note: '45° miter at the front end, with the front board' }),
+          makePart({ ...common, id: `${base}-return-${ci === 0 ? 'left' : 'right'}`, name: 'Toe kick (return)', bounds: { x: cx, y: 0, z: backPanel ? -backPanel : 0, width: tk, height: h, depth: platformDepth + backPanel }, grain: 'horizontal', thicknessAxis: 'x', length: ctx.down(platformDepth + backPanel), width: h, note: '45° miter at the front end, with the front board' }),
         );
         parts[parts.length - 1] = { ...parts[parts.length - 1]!, mitres: [{ face: 'front', outer: ci === 0 ? 'left' : 'right' }] };
         return;

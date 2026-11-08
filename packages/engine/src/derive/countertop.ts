@@ -6,13 +6,17 @@
  */
 import type { Part } from '../derived';
 import { resolveSettings } from '../settings';
-import type { Ticks } from '../units';
+import { inches, type Ticks } from '../units';
 import { checkShelfSag } from './checks';
 import { makePart, type Ctx } from './context';
 import type { PlacedBox, RunLayoutResult } from './layout';
 import { endReach } from './reach';
 
-export function deriveCountertops(ctx: Ctx, layout: RunLayoutResult, stiles: readonly Part[]): Part[] {
+/**
+ * `islandBack`: on an island's main run, how far the island reaches behind the spine (its back
+ * face or back panel). The top then covers both and overhangs the back by `backOverhang`.
+ */
+export function deriveCountertops(ctx: Ctx, layout: RunLayoutResult, stiles: readonly Part[], islandBack?: Ticks): Part[] {
   const parts: Part[] = [];
   for (const tl of layout.tiers) {
     const tier = ctx.run.tiers.find((t) => t.id === tl.tierId);
@@ -58,13 +62,19 @@ export function deriveCountertops(ctx: Ctx, layout: RunLayoutResult, stiles: rea
       }
 
       const tf = settings.construction === 'frameless' ? 0 : ctx.thickness(settings.materials.faceFrame, tier.id);
-      const depth = first.carcass.depth + tf + ct.frontOverhang;
+      // An island top starts past its back face; a wall run's at the wall.
+      const backOverhang = ct.backOverhang ?? ct.frontOverhang;
+      const z0 = islandBack !== undefined ? first.carcass.z - islandBack - backOverhang : first.carcass.z;
+      const depth = first.carcass.z + first.carcass.depth + tf + ct.frontOverhang - z0;
+      if (islandBack !== undefined && backOverhang > inches(10)) {
+        ctx.issue('info', 'countertop-seating-overhang', tier.id, `The countertop overhangs the back by ${ctx.fmt(backOverhang)}: support it with brackets or corbels about every 24", or a thicker top.`);
+      }
       const part = makePart({
         id: `${tier.id}/countertop-${si}`,
         name: 'Countertop',
         role: 'countertop',
         materialId: settings.materials.countertop,
-        bounds: { x: xa, y: y0, z: first.carcass.z, width: xb - xa, height: tl.countertop, depth },
+        bounds: { x: xa, y: y0, z: z0, width: xb - xa, height: tl.countertop, depth },
         grain: 'horizontal',
         thicknessAxis: 'y',
         ownerId: tier.id,

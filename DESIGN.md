@@ -43,10 +43,40 @@ first-class views of it:
 | Layout | v1? |
 |---|---|
 | Straight wall runs (with gaps) | Yes |
-| Freestanding units / islands (finished ends and backs) | Yes |
+| Freestanding units / islands (finished ends and backs) | Yes (see Islands) |
 | Bridges over gaps (e.g. upper box spanning a doorway between two towers) | Yes |
 | Corners (L/U-shaped) | **No**, but the data model supports connected segments with angles from day one so corners can be added without a rewrite |
 | Sloped ceilings | No. All parts are rectangular, which keeps guillotine nesting simple |
+
+### Islands
+
+- An island is a run with `kind: 'island'` and no walls: both ends finished, no ceiling scribe;
+  its "wall" length is the island's length and its "ceiling" the overall height (top of the
+  countertop). Its main run is the **front face**. Its back is either a **second row of boxes**
+  facing the back (a back-face run with `islandOf` the main run, edited like any run, as seen
+  from the back) or a **finished panel** (single-sided, e.g. for seating).
+- Each face derives in its own space (x along the face as seen from that side, z out from the
+  spine where the rows meet). The back face takes its length, height and tier heights, toe kick
+  and countertop thickness from the front, so the rows line up. One tier per face for now.
+- The main run owns the island-level parts: the countertop over both faces (front, end and a
+  `backOverhang` for seating, noted when it needs brackets) and the finished back panel (between
+  the end panels, which then run back over its ends, as do mitered toe kick returns). New islands
+  default to full-width end stiles (so end panels finish each face's ends) and mitered toe kicks.
+- For display (3D, end and top views, exports) the main run's result also carries the back face's
+  parts mirrored into its space (`RunResult.island`); the cut list counts each face's own parts.
+- The exposed-edge check treats the spine like a wall (the other face is there) and ignores the
+  ceiling rule; the back face knows the island's countertop covers its tops.
+- Build steps mark out the island, fasten boxes to the platform (not a wall), set the back face
+  back to back with the front, and top both once both are in.
+- Not yet: islands placed in the room plan with the wall runs, end boxes (openings on the ends),
+  two-level (bar height) islands, seating supports as parts, drawing sheets of the whole island.
+
+### 2D views
+
+- The design pane switches between the editable **Front** elevation (an island's **Back** face
+  too) and read-only views **from the left end**, **the right end** and **above** (parts drawn
+  back to front; an island whole, both faces; countertops outlined from above; click a part to
+  select its box). A **Walls** toggle hides the wall and ceiling of wall runs; islands have none.
 
 ## 4. Layout model
 

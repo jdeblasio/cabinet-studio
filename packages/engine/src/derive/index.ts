@@ -2,6 +2,7 @@ import type { BoxLayout, HardwareItem, Issue, Part, RunResult, SectionLayout } f
 import { formatLength } from '../format';
 import type { Id, Project } from '../model';
 import { deriveBox } from './box';
+import { effectiveRun, islandBackExtent, islandBackPanel, mirrorBackFace } from './island';
 import { chooseCorners } from './corners';
 import { applyFinishes } from './finish';
 import { splitOversizeParts } from './split';
@@ -21,8 +22,10 @@ function emptyResult(runId: Id, issues: Issue[]): RunResult {
 
 /** Derive layout, parts and issues for one run. Pure and deterministic. */
 export function deriveRun(project: Project, runId: Id): RunResult {
-  const run = project.runs.find((r) => r.id === runId);
-  if (!run) return emptyResult(runId, [{ severity: 'error', code: 'run-missing', message: 'Run not found.', sourceId: runId }]);
+  const raw = project.runs.find((r) => r.id === runId);
+  if (!raw) return emptyResult(runId, [{ severity: 'error', code: 'run-missing', message: 'Run not found.', sourceId: runId }]);
+  // Island faces derive with finished ends and the island's size (see island.ts).
+  const run = effectiveRun(project, raw);
   const issues: Issue[] = [];
   if (run.wall.length === 0) {
     issues.push({ severity: 'error', code: 'wall-missing', message: 'This run has no wall.', sourceId: run.id });
@@ -47,7 +50,7 @@ export function deriveRun(project: Project, runId: Id): RunResult {
     boxPartIds.set(placed.id, new Set(boxParts.map((p) => p.id)));
   }
   const { frames, parts: stiles } = deriveFrames(ctx, layout.boxes, layout.width, layout.gaps, layout.lengthVariance);
-  parts.push(...stiles, ...deriveToeKick(ctx, layout), ...deriveCountertops(ctx, layout, stiles), ...deriveScribeStrips(ctx, layout), ...deriveTrim(ctx, layout, parts));
+  parts.push(...stiles, ...deriveToeKick(ctx, layout), ...(run.islandOf ? [] : deriveCountertops(ctx, layout, stiles, run.kind === 'island' ? islandBackExtent(project, run) : undefined)), ...deriveScribeStrips(ctx, layout), ...deriveTrim(ctx, layout, parts), ...islandBackPanel(ctx, layout));
   chooseCorners(ctx, layout, parts, hardware, sectionsOf, boxPartIds);
   const boxes: BoxLayout[] = layout.boxes.map((placed) => ({ id: placed.id, source: placed.source, tierId: placed.tierId, carcass: placed.carcass, sections: sectionsOf.get(placed.id) ?? [] }));
 
@@ -82,7 +85,12 @@ export function deriveRun(project: Project, runId: Id): RunResult {
   issues.length = 0;
   issues.push(...unique);
 
+  // An island's main run carries its back face, mirrored into place, for display.
+  const backRun = run.kind === 'island' && !run.islandOf && run.island?.back !== 'panel' ? project.runs.find((r) => r.islandOf === run.id) : undefined;
+  const island = backRun ? mirrorBackFace(deriveRun(project, backRun.id), layout.width) : undefined;
+
   return {
+    ...(island ? { island } : {}),
     runId,
     width: layout.width,
     ceilingHeight: layout.ceilingHeight,

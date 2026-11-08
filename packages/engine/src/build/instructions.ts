@@ -129,9 +129,25 @@ export function buildInstructions(project: Project, results: readonly RunResult[
   const start: BuildStep[] = [];
   for (const result of results) {
     const run = project.runs.find((r) => r.id === result.runId);
-    if (!run || result.tiers.length === 0) continue;
+    if (!run || result.tiers.length === 0 || run.islandOf) continue;
     const wall = run.wall[0]!;
     const bottom = [...result.tiers].sort((a, b) => a.y - b.y)[0]!;
+    if (run.kind === 'island') {
+      const top = result.parts.find((p) => p.role === 'countertop');
+      const depth = top ? top.bounds.depth : bottom.depth;
+      start.push(
+        step(`room-${run.id}`, `Mark out ${run.name}`, {
+          how: [
+            `Mark its footprint on the floor: about ${fmt(top?.bounds.width ?? wall.length)} × ${fmt(depth)} at the countertop, square to the walls around it.`,
+            'Leave a walkway of at least 36" (42" in a working kitchen) between it and the counters or walls around it.',
+            `Check the floor for level over the footprint and note the high spot: ${bottom.toeKick > 0 ? 'the toe kick platform' : 'the boxes'} are shimmed up from there.`,
+            'Plan any power (most codes require an outlet in a kitchen island) before the boxes go down.',
+          ],
+          locate: { runId: run.id, ownerId: run.id },
+        }),
+      );
+      continue;
+    }
     const how = [
       `Measure the wall: it should be ${fmt(wall.length)} long${wall.measuredLengths?.length ? ` (you measured ${list(wall.measuredLengths.map(fmt))} elsewhere; the boxes fit the tightest)` : ''}, with ${fmt(wall.ceilingHeight)} to the ceiling.`,
       'Find the studs and mark them on the wall above and below where the boxes go.',
@@ -220,6 +236,8 @@ export function buildInstructions(project: Project, results: readonly RunResult[
   sections.push({ id: 'prepare', title: 'Cut and prepare the parts', steps: prep });
 
   // ---- 3. Tiers, bottom to top ----
+  /** Island countertops, held until the island's back face is in. */
+  const deferredTops = new Map<Id, BuildStep[]>();
   for (const result of results) {
     const run = project.runs.find((r) => r.id === result.runId);
     if (!run) continue;
@@ -249,7 +267,11 @@ export function buildInstructions(project: Project, results: readonly RunResult[
               `Glue and screw the cross pieces between the boards, keeping the frame square.${pieced ? ' Long boards are pieced; their joints land on cross pieces.' : ''}`,
               ...(mitred ? ['At each open end, a return runs the full depth and meets the front board in a 45° miter: glue the miter and pin it from both sides.'] : []),
               `Set the platform in place, its front board ${fmt(tier.toeKick.setback)} back from where the face of the frame will be, and level it both ways with shims from the high spot.`,
-              'Screw it to the floor (or to a cleat on the wall) through the cross pieces.',
+              run.islandOf
+                ? `Set it back to back against the front face's platform, flush at the ends, and screw the two together; screw it to the floor through the cross pieces.`
+                : run.kind === 'island'
+                  ? 'Screw it to the floor through the cross pieces (or fit it over cleats screwed to the floor).'
+                  : 'Screw it to the floor (or to a cleat on the wall) through the cross pieces.',
             ],
             parts: partsOf(run.id, kick),
             notes: ['Check level along the front and back and across each end before moving on: every box above sits on this.'],
@@ -267,13 +289,21 @@ export function buildInstructions(project: Project, results: readonly RunResult[
       if (top.length && tier.countertop) {
         const glue = report.glueUps.some((g) => g.parts.some((pr) => top.some((p) => pr.key === `${run.id}:${p.id}`)));
         const pieced = top.some((p) => /One of \d+ pieces/.test(p.note ?? ''));
-        steps.push(
+        // An island's top goes on once its back face is built and set too.
+        const defer = run.kind === 'island' && !run.islandOf && project.runs.some((r) => r.islandOf === run.id);
+        const into = defer ? (deferredTops.get(run.id) ?? deferredTops.set(run.id, []).get(run.id)!) : steps;
+        into.push(
           step(`top-${tier.id}`, 'Install the countertop', {
             subtitle: `${fmt(tier.countertop.thickness)} thick`,
             how: [
               ...(glue ? ['Glue it up first if it was made from boards (see Glue-ups), then flatten and cut it to size.'] : []),
               ...(pieced ? ['It comes in pieces: join them over the box joints below (see the cut list notes).'] : []),
-              `Set it on the boxes with ${fmt(tier.countertop.frontOverhang)} past the face of the frame and ${fmt(tier.countertop.endOverhang)} past any open end.`,
+              run.kind === 'island'
+                ? `Set it on both faces of the island with ${fmt(tier.countertop.frontOverhang)} past the front, ${fmt(tier.countertop.backOverhang ?? tier.countertop.frontOverhang)} past the back and ${fmt(tier.countertop.endOverhang)} past each end.`
+                : `Set it on the boxes with ${fmt(tier.countertop.frontOverhang)} past the face of the frame and ${fmt(tier.countertop.endOverhang)} past any open end.`,
+              ...(run.kind === 'island' && (tier.countertop.backOverhang ?? 0) > inches(10)
+                ? ['Support the seating overhang with brackets or corbels about every 24" (screwed to the back face), or use a top stiff enough to span it.']
+                : []),
               'Fasten it from below through the box tops: slotted holes or figure-8 fasteners for solid wood, so it can move across its width.',
             ],
             parts: partsOf(run.id, top),
@@ -290,6 +320,11 @@ export function buildInstructions(project: Project, results: readonly RunResult[
         });
       }
     });
+    const tops = run.islandOf ? deferredTops.get(run.islandOf) : undefined;
+    if (tops?.length) {
+      const main = project.runs.find((r) => r.id === run.islandOf);
+      sections.push({ id: `island-top-${run.islandOf}`, title: `${main?.name ?? 'Island'}: countertop`, intro: 'Over both faces, once they are set and fastened together.', steps: tops });
+    }
 
     // ---- 4a. Trim ----
     const trim: BuildStep[] = [];
@@ -566,16 +601,22 @@ function setBoxesStep(
   const on = ti === 0 ? (tl.toeKick > 0 ? 'on the toe kick platform' : 'on the floor (shimmed level)') : 'on the tier below';
   const tall = boxes.filter((b) => b.source === 'span');
   const one = boxes.length === 1;
+  const island = run.kind === 'island';
   const how = [
     one ? `Set ${names[0]} ${on}.` : `Set the boxes ${on}, left to right: ${list(names)}.`,
     ...(tall.length ? [`${list(tall.map((b) => ownerLabel(run.id, b.id)))} ${tall.length === 1 ? 'runs' : 'run'} up through the tiers above: brace ${tall.length === 1 ? 'it' : 'them'} plumb.`] : []),
     `Line up ${one ? 'its front with the boxes below' : 'the fronts in one flat plane'} and ${one ? 'its top' : 'the tops'} level at ${fmt(tl.y + tl.height - tl.countertop)} from the floor.`,
     ...(one ? [] : ['Clamp each box to its neighbor, flush at the front, and screw them together through the sides, near the front and back, top and bottom.']),
-    `Screw ${one ? 'it' : 'each box'} to the wall through the back into the studs, near the top${tall.length ? ' (tall boxes near the bottom too)' : ''}.`,
+    island
+      ? run.islandOf
+        ? `Set ${one ? 'it' : 'them'} back to back against the front face's boxes, flush at the ends, and screw the backs together through both.`
+        : `Screw ${one ? 'it' : 'each box'} down to ${ti === 0 && tl.toeKick > 0 ? 'the platform' : 'the floor (or cleats on it)'} through the bottom; there's no wall to hold ${one ? 'it' : 'them'}.`
+      : `Screw ${one ? 'it' : 'each box'} to the wall through the back into the studs, near the top${tall.length ? ' (tall boxes near the bottom too)' : ''}.`,
+    ...(island && run.islandOf && ti === 0 && tl.toeKick > 0 ? ['Screw them down to their platform through the bottoms.'] : []),
   ];
   const notes: string[] = [];
-  if (tl.scribe.left > 0 && run.ends.left === 'wall') notes.push(`Leave about ${fmt(tl.scribe.left)} at the left wall: the scribe stile covers it.`);
-  if (tl.scribe.right > 0 && run.ends.right === 'wall') notes.push(`Leave about ${fmt(tl.scribe.right)} at the right wall: the scribe stile covers it.`);
+  if (!island && tl.scribe.left > 0 && run.ends.left === 'wall') notes.push(`Leave about ${fmt(tl.scribe.left)} at the left wall: the scribe stile covers it.`);
+  if (!island && tl.scribe.right > 0 && run.ends.right === 'wall') notes.push(`Leave about ${fmt(tl.scribe.right)} at the right wall: the scribe stile covers it.`);
   const gaps = result.gaps.filter((g) => g.rect.y < tl.y + tl.height && g.rect.y + g.rect.height > tl.y);
   if (gaps.length) notes.push('Keep the ends next to openings plumb: they show.');
   const fillers = result.parts.filter((p) => p.name === 'Wall filler' && boxes.some((b) => b.id === p.ownerId));

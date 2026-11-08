@@ -3,6 +3,7 @@ import { buildCutReport } from '../cutlist/index';
 import { createDefaultProject } from '../defaults';
 import { deriveProject } from '../derive/index';
 import type { Project } from '../model';
+import { addIsland } from '../ops';
 import { inches } from '../units';
 import { buildInstructions, type BuildPlan } from './instructions';
 
@@ -83,5 +84,24 @@ describe('buildInstructions', () => {
     expect(all.find((s) => s.title === 'Set the adjustable shelves')!.hardware.join(' ')).toMatch(/shelf pins/);
     expect(all.find((s) => s.title === 'Band the edges')!.how.join(' ')).toMatch(/front edge/);
     expect(all.find((s) => s.title === 'Drill the holes')!.how.join(' ')).toMatch(/Hinge cups: \d+ holes/);
+  });
+});
+
+describe('buildInstructions for islands', () => {
+  it('marks out the island, sets the back face against the front, then tops both', () => {
+    const project = createDefaultProject();
+    project.runs = [];
+    addIsland(project, 'Island');
+    const results = deriveProject(project);
+    const plan = buildInstructions(project, results, buildCutReport(project, results));
+    const titles = plan.sections.map((s) => s.title);
+    expect(titles).toContain('Island: Front (tier 1 of 1, from the bottom)');
+    expect(titles.indexOf('Island: countertop')).toBe(titles.indexOf('Island (back): Back (tier 1 of 1, from the bottom)') + 1);
+    const all = plan.sections.flatMap((s) => s.steps);
+    expect(all[0]!.title).toBe('Mark out Island');
+    const backSet = plan.sections.find((s) => s.title.startsWith('Island (back)'))!.steps.find((s) => s.title === 'Set and fasten the boxes')!;
+    expect(backSet.how.join(' ')).toMatch(/back to back against the front face's boxes/);
+    expect(all.some((s) => s.how.some((h) => /wall through the back/.test(h)))).toBe(false);
+    expect(all.find((s) => s.title === 'Install the countertop')!.how.join(' ')).toMatch(/12" past the back/);
   });
 });

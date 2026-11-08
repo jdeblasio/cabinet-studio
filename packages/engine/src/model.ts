@@ -303,6 +303,28 @@ export interface Run extends SettingsScope {
   spans: Span[];
   /** Moldings along the run, as simplified profiles (bounding boxes). */
   trim?: { crown?: Molding; base?: Molding };
+  /**
+   * 'wall' (default): boxes against a wall. 'island': freestanding, no walls: both ends are
+   * finished and `wall[0]` gives the island's length and overall height (to the countertop top).
+   * An island's main run is its front face; a second run (`islandOf`) can be its back face.
+   */
+  kind?: 'wall' | 'island';
+  /** On an island's main run: how its back is finished. */
+  island?: IslandSpec;
+  /**
+   * On an island's back face: the island's main run. The back face takes its length, height and
+   * tier heights, toe kick and countertop thickness from the main run; its boxes face the back.
+   */
+  islandOf?: Id;
+}
+
+/** How an island's back is finished (on its main, front-face run). */
+export interface IslandSpec {
+  /**
+   * 'boxes': a second row of boxes facing the back (a back-face run, `islandOf` this run), set
+   * back to back with the front row. 'panel': a finished panel over the backs of the front boxes.
+   */
+  back: 'boxes' | 'panel';
 }
 
 /** A molding's profile, simplified to its bounding box. */
@@ -371,6 +393,8 @@ export interface Countertop {
   frontOverhang: Ticks;
   /** Past the outside of the end box (or its end stile) at an open end or a gap. */
   endOverhang: Ticks;
+  /** Islands: past the back face (e.g. 10"–15" for seating). Defaults to the front overhang. */
+  backOverhang?: Ticks;
 }
 
 export type TierItem = Box | SpanSlot;
