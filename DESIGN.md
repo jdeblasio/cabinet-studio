@@ -77,8 +77,22 @@ Project
 - Flex boxes divide the space left after fixed boxes, reserved slots, gaps, and
   fillers/scribes.
 - Changing a measurement re-flows the run automatically.
-- After snapping (Section 8), any leftover from flex distribution goes to a designated
-  filler.
+- Resolution (implemented): fixed items take their size; flex items share the rest by
+  ratio, clamped to min/max (violators are frozen and the rest re-distributed, as in CSS).
+- Flex sizes snap **down** to the grid, so flex boxes with equal ratios come out identical
+  (identical parts in the cut list). The leftover goes to the **wall-end scribe stiles**:
+  split evenly when both ends are walls, otherwise to the one wall end. A region between
+  two spanning elements (no wall) gives its leftover to its rightmost flex box.
+- Inside a box, a split's leftover goes to its last flex child (bottom row / right column).
+- Over-filled tiers or splits are reported as errors; nothing is blocked.
+
+### Editing: dragging a boundary
+
+Dragging the edge between two neighbors **keeps each one's type**: a fixed item gets a new
+fixed size; a flex item gets a new ratio. Between two flex neighbors their combined ratio
+is redistributed in proportion to the new sizes, so the run still re-flows when the wall
+changes. Fixed + flex changes only the fixed one. The same rule applies to tier heights and
+to split children.
 
 ## 5. Fitting to measured walls
 
@@ -113,6 +127,28 @@ Project
   their own frame.
 - Face-frame joints use the same preset menu, e.g. pocket screw, dowel, mortise & tenon
   with tenon-length allowance on rails **(assumed)**.
+- Default lip: **flush inside** (frame inner edges line up with box side inner faces, so
+  drawer slides mount without spacers). A shared stile is then exactly 2 × side thickness.
+
+### Derivation conventions (milestone 1, face frame + butt joints)
+
+- Sides run full height; top and bottom are captured between the sides.
+- An applied back covers the full rear of the box; sides/top/bottom are (depth − back) deep.
+- The frame is flush with the carcass top and bottom. The bottom panel, and each fixed
+  shelf, is raised so its top surface is flush with the top edge of the rail below it.
+- Split child sizes are **clear face-opening sizes** (inside the frame).
+- Stiles are derived per frame group at every vertical boundary: shared stiles cover both
+  sides; an end stile at a wall runs to the wall (scribe space); an end stile elsewhere
+  (open end, beside a gap or a set-back box) is flush with the side.
+- A shared stile between a base box and a flush tall box runs the tall box's full height,
+  so above the base it stands proud of the tall box's side by one side thickness.
+- Rails are per box. Where two same-plane tiers stack, each box keeps its own top/bottom
+  rail (a doubled rail band); merging them into one rail is a later refinement.
+- Toe kick: a separate ladder-frame platform per contiguous, same-depth run of floor
+  boxes; the kick face is set back from the face of the face frame.
+- Fronts: partial overlay adds the overlay on every edge; inset subtracts the reveal; full
+  overlay covers this opening's share of each frame member, leaving `reveal` between
+  neighboring fronts. Front and interior part sizes snap down to the grid.
 
 ### Interiors
 
@@ -164,7 +200,7 @@ Project
   interior snaps**. User-facing box W/H/D stay on-grid; derived interior parts snap toward
   a slightly loose fit; lint notes the rounding.
 - Internal storage: integer ticks of **1/8128"** (≈ 3.125 µm), which represent both systems
-  exactly: 1/64" = 127 ticks, 0.1 mm = 32 ticks **(assumed)**.
+  exactly: 1/64" = 127 ticks, 0.1 mm = 32 ticks (implemented).
 
 ## 9. Settings: cascade + named styles
 
@@ -276,8 +312,6 @@ Proves the design experience:
 
 ## 16. Open questions
 
-- **Flex resolution details:** precedence of min/max/ratio, behavior when fixed widths
-  over-fill a run, which filler receives snapped leftovers by default.
 - **Bridges:** how a bridge box is supported (on flanking towers' tops vs. hung from the wall)
   and how its face frame joins neighbors.
 - **Freestanding units:** modeled as a run with no wall, or a distinct entity?
