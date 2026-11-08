@@ -132,6 +132,8 @@ export const DEFAULT_SETTINGS: ConstructionSettings = {
     frontSetback: inches(1 / 4),
     designLoad: 20,
     maxSagPerFoot: 0.02,
+    fixedEdge: 'flush',
+    fixedSetback: inches(1 / 4),
   },
   ceilingScribe: inches(0.5),
   edgeBanding: { enabled: true, thickness: 0 },

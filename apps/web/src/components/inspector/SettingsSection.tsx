@@ -129,6 +129,17 @@ const SETTINGS: SettingDef[] = [
       ['none', 'None'],
     ],
   },
+  {
+    path: 'shelves.fixedEdge',
+    label: 'Fixed shelf edge',
+    tip: "How a fixed shelf's front edge is covered. Flush: a rail in the face frame, flush with it, its top flush with the shelf. Inset: the rail (and shelf) set back from the frame face by the setback below. Frameless boxes have no rail; the shelf front is flush or set back. Behind an inset door the rail always sits behind the door.",
+    type: 'select',
+    options: [
+      ['flush', 'Flush rail'],
+      ['inset', 'Inset rail'],
+    ],
+  },
+  { path: 'shelves.fixedSetback', label: 'Fixed shelf setback', tip: 'How far an inset fixed shelf rail sits back from the face of the frame.', type: 'length' },
   { path: 'shelves.designLoad', label: 'Shelf load', tip: 'Load for the shelf sag check, in pounds per square foot of shelf. 20 is roughly a full shelf of books.', type: 'number', unit: 'lb/ft²', min: 0 },
   { path: 'shelves.maxSagPerFoot', label: 'Max shelf sag', tip: 'Largest acceptable shelf sag, in inches per foot of span. 0.02 is about where sag becomes visible.', type: 'number', unit: 'in/ft', min: 0.001 },
   {

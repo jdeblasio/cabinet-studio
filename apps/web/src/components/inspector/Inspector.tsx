@@ -19,6 +19,7 @@ import {
   removeSpan,
   removeTier,
   setAdjustableShelves,
+  setFixedShelves,
   setBoxName,
   setBoxWidth,
   setCeilingHeight,
@@ -497,7 +498,7 @@ function FaceSummary({ run, ownerId, root }: { run: Run; ownerId: Id; root: Open
     <Field label="Face" tip="What fills the face: open, doors, drawers, or a split into several openings. Click to edit.">
       <button className="link" onClick={() => select({ kind: 'section', runId: run.id, ownerId, sectionId: root.id })}>
         {root.kind === 'opening'
-          ? `${frontLabel(root.front)}${root.adjustableShelves ? `, ${root.adjustableShelves} shelves` : ''}`
+          ? [frontLabel(root.front), root.fixedShelves ? `${root.fixedShelves} fixed` : '', root.adjustableShelves ? `${root.adjustableShelves} adj.${root.fixedShelves ? ' each' : ''}` : ''].filter(Boolean).join(', ')
           : `${root.children.length} ${root.direction}`}
       </button>
     </Field>
@@ -700,7 +701,17 @@ function OpeningControls({ run, ownerId, opening }: { run: Run; ownerId: Id; ope
       <Field label="Front" tip="Door, pair of doors, drawer front, or open.">
         <Select value={frontKey(opening.front)} options={FRONT_OPTIONS} onChange={(k) => editRun((r) => setFront(r, opening.id, frontFromKey(k)))} ariaLabel="Front" />
       </Field>
-      <Field label="Adj. shelves" tip="Number of adjustable shelves, spaced evenly.">
+      <Field
+        label="Fixed shelves"
+        tip="Fixed shelves, spaced evenly and dadoed into the sides, each with a rail over its front edge (flush with the face frame or inset; see Fixed shelf edge under Construction). The opening keeps one front."
+      >
+        <NumberInput value={opening.fixedShelves ?? 0} min={0} max={10} integer onCommit={(n) => editRun((r) => setFixedShelves(r, opening.id, n))} ariaLabel="Fixed shelves" />
+      </Field>
+      <Field
+        label="Adj. shelves"
+        tip={opening.fixedShelves ? 'Adjustable shelves in each space between fixed shelves, spaced evenly.' : 'Number of adjustable shelves, spaced evenly.'}
+        hint={opening.fixedShelves ? 'In each space' : undefined}
+      >
         <NumberInput value={opening.adjustableShelves} min={0} max={20} integer onCommit={(n) => editRun((r) => setAdjustableShelves(r, opening.id, n))} ariaLabel="Adjustable shelves" />
       </Field>
       <Field label="Split into" tip="Divide this opening into rows (stacked) or columns (side by side).">

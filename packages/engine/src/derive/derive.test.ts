@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Part, RunResult } from '../derived';
 import { createDefaultProject, flexBox, newId, opening } from '../defaults';
-import type { Box, Project, Run, Span, Split, Tier } from '../model';
+import type { Box, Opening, Project, Run, Span, Split, Tier } from '../model';
 import { inches, mm } from '../units';
 import { deriveRun } from './index';
 
@@ -1062,5 +1062,86 @@ describe('deriveRun: hardware for illustration', () => {
     const side = part(result, `${box.id}/side-left`);
     const leftPins = pins.filter((h) => h.partId === side.id).flatMap((h) => h.shapes);
     expect(new Set(leftPins.map((p) => (p.kind === 'cylinder' ? p.z : 0)))).toEqual(new Set(side.features!.map((f) => f.z)));
+  });
+});
+
+describe('deriveRun: fixed shelves', () => {
+  const withFixed = (mutate?: (p: Project, r: Run) => void, fixed = 1) =>
+    setup((p, r) => {
+      const op = boxesOf(tier(r, 1))[0]!.content; // open upper box, 3 adjustable shelves
+      if (op.kind === 'opening') op.fixedShelves = fixed;
+      mutate?.(p, r);
+    });
+  const shelvesOf = (r: RunResult, opId: string, role: Part['role']) => r.parts.filter((p) => p.id.startsWith(`${opId}/`) && p.role === role);
+
+  it('adds a fixed shelf with a flush rail over its front edge', () => {
+    const { run, result } = withFixed();
+    const box = boxesOf(tier(run, 1))[0]!;
+    expect(nonInfo(result)).toEqual([]);
+    const fixed = shelvesOf(result, box.content.id, 'fixedShelf');
+    const rails = result.parts.filter((p) => p.id.startsWith(`${box.content.id}/shelf-rail`));
+    expect(fixed).toHaveLength(1);
+    expect(rails).toHaveLength(1);
+    const [shelf, rail] = [fixed[0]!, rails[0]!];
+    const side = part(result, `${box.id}/side-left`);
+    // The rail sits in the face frame (flush), and its top is flush with the shelf top.
+    const topRail = part(result, `${box.id}/rail-top`);
+    expect(rail.bounds.z).toBe(topRail.bounds.z);
+    expect(rail.bounds.y + rail.bounds.height).toBe(shelf.bounds.y + shelf.bounds.height);
+    // The shelf spans the interior, captured in the sides, and runs to the back of the frame.
+    expect(shelf.bounds.x).toBe(side.bounds.x + side.bounds.width);
+    expect(shelf.bounds.z + shelf.bounds.depth).toBe(topRail.bounds.z);
+    // Three adjustable shelves in each space, above and below.
+    const adj = shelvesOf(result, box.content.id, 'adjustableShelf');
+    expect(adj).toHaveLength(6);
+    expect(adj.filter((p) => p.bounds.y < shelf.bounds.y)).toHaveLength(3);
+    // The face openings above and below the rail are the same height (to the grid).
+    const bottomRail = part(result, `${box.id}/rail-bottom`);
+    const lower = rail.bounds.y - (bottomRail.bounds.y + bottomRail.bounds.height);
+    const upper = topRail.bounds.y - (rail.bounds.y + rail.bounds.height);
+    expect(Math.abs(lower - upper)).toBeLessThanOrEqual(inches(1 / 32));
+  });
+
+  it('sets the rail and shelf back when the edge is inset', () => {
+    const { run, result } = withFixed((p) => {
+      p.settings = { ...p.settings, shelves: { ...p.settings.shelves, fixedEdge: 'inset', fixedSetback: inches(1 / 4) } };
+    });
+    const box = boxesOf(tier(run, 1))[0]!;
+    const rail = part(result, `${box.content.id}/shelf-rail-0`);
+    const shelf = part(result, `${box.content.id}/fixed-shelf-0`);
+    const topRail = part(result, `${box.id}/rail-top`);
+    expect(rail.bounds.z + rail.bounds.depth).toBe(topRail.bounds.z + topRail.bounds.depth - inches(1 / 4));
+    expect(shelf.bounds.z + shelf.bounds.depth).toBe(rail.bounds.z);
+    expect(rail.note).toMatch(/Set back 1\/4"/);
+  });
+
+  it('keeps the rail behind an inset door', () => {
+    const { run, result } = setup((p, r) => {
+      p.settings = { ...p.settings, fronts: { ...p.settings.fronts, mounting: 'inset' } };
+      const op = boxesOf(tier(r, 0))[0]!.content; // base box with a door pair
+      if (op.kind === 'opening') op.fixedShelves = 1;
+    });
+    const op = boxesOf(tier(run, 0))[0]!.content.id;
+    const rail = part(result, `${op}/shelf-rail-0`);
+    const door = part(result, `${op}/door-left`);
+    expect(rail.bounds.z + rail.bounds.depth).toBeLessThanOrEqual(door.bounds.z - inches(1 / 16));
+  });
+
+  it('has no rail on a frameless box', () => {
+    const { run, result } = withFixed((p) => {
+      p.settings = { ...p.settings, construction: 'frameless' };
+    }, 2);
+    const box = boxesOf(tier(run, 1))[0]!;
+    expect(shelvesOf(result, box.content.id, 'fixedShelf')).toHaveLength(2);
+    expect(result.parts.some((p) => p.id.includes('/shelf-rail-'))).toBe(false);
+    expect(shelvesOf(result, box.content.id, 'adjustableShelf')).toHaveLength(9);
+  });
+
+  it('ignores fixed shelves behind a drawer', () => {
+    const { result } = setup((_, r) => {
+      boxesOf(tier(r, 0))[0]!.content = { ...opening({ type: 'drawer' }), fixedShelves: 1 } as Opening;
+    });
+    expect(result.issues.map((i) => i.code)).toContain('shelves-in-drawer');
+    expect(result.parts.some((p) => p.role === 'fixedShelf' && p.id.includes('fixed-shelf'))).toBe(false);
   });
 });

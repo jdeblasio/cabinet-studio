@@ -380,6 +380,16 @@ export function setAdjustableShelves(run: Run, openingId: Id, count: number): bo
   return true;
 }
 
+/** Set an opening's fixed shelf count (0 removes them). */
+export function setFixedShelves(run: Run, openingId: Id, count: number): boolean {
+  const hit = findSectionInRun(run, openingId);
+  if (!hit || hit.section.kind !== 'opening') return false;
+  const n = Math.max(0, Math.round(count));
+  if (n > 0) hit.section.fixedShelves = n;
+  else delete hit.section.fixedShelves;
+  return true;
+}
+
 // ---------------------------------------------------------------------------
 // Spans (tall boxes, gaps)
 // ---------------------------------------------------------------------------

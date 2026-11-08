@@ -57,6 +57,9 @@ export type Mounting = 'partialOverlay' | 'fullOverlay' | 'inset';
  * rabbet joints capture tops, bottoms, fixed shelves and partitions in grooves `joineryDepth`
  * deep, so those parts are cut that much longer at each captured end.
  */
+/** How a fixed shelf's front edge is covered (see ConstructionSettings.shelves.fixedEdge). */
+export type FixedShelfEdge = 'flush' | 'inset';
+
 export type Joinery = 'butt' | 'dowel' | 'confirmat' | 'dado' | 'rabbet';
 
 /**
@@ -162,6 +165,13 @@ export interface ConstructionSettings {
     designLoad: number;
     /** Largest acceptable sag, inches per foot of span. */
     maxSagPerFoot: number;
+    /**
+     * An opening's fixed shelves: 'flush' puts a rail in the face frame (flush with it) over each
+     * shelf's front edge; 'inset' sets the rail (and shelf) back from the frame face by
+     * `fixedSetback`. Frameless boxes have no rail; the shelf's front is flush or set back.
+     */
+    fixedEdge: FixedShelfEdge;
+    fixedSetback: Ticks;
   };
   /** Minimum gap left at the ceiling for scribing (top of the highest tier). */
   ceilingScribe: Ticks;
@@ -343,8 +353,16 @@ export interface Opening {
   kind: 'opening';
   id: Id;
   front: Front;
-  /** Evenly spaced adjustable shelves inside this opening. */
+  /**
+   * Evenly spaced adjustable shelves inside this opening (in each space between fixed shelves,
+   * when it has fixed shelves).
+   */
   adjustableShelves: number;
+  /**
+   * Evenly spaced fixed shelves inside this opening, dadoed into the sides, each with its front
+   * edge covered by a rail (settings.shelves.fixedEdge). The opening keeps one front.
+   */
+  fixedShelves?: number;
 }
 
 export type Front =

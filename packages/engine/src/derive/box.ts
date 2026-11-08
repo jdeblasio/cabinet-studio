@@ -378,6 +378,14 @@ export function deriveBox(ctx: Ctx, box: PlacedBox): { parts: Part[]; sections: 
       }
     }
 
+    // ---- Fixed shelves (the opening's spaces between them get the adjustable shelves) ----
+    let bays: Interior[] = [inner];
+    const nf = op.fixedShelves ?? 0;
+    if (nf > 0) {
+      if (op.front.type === 'drawer') ctx.issue('warning', 'shelves-in-drawer', op.id, 'Fixed shelves are ignored behind a drawer front.');
+      else bays = addFixedShelves(op, r, inner, nf);
+    }
+
     // ---- Adjustable shelves ----
     const n = op.adjustableShelves;
     if (n <= 0) return;
@@ -387,23 +395,81 @@ export function deriveBox(ctx: Ctx, box: PlacedBox): { parts: Part[]; sections: 
     }
     const sw = inner.x1 - inner.x0 - 2 * s.shelves.sideClearance;
     const sd = Ds - s.shelves.frontSetback;
-    const space = inner.y1 - inner.y0;
-    const gap = (space - n * tsh) / (n + 1);
-    if (sw <= 0 || sd <= 0 || gap <= 0) {
+    const placed = bays.map((bay) => ({ bay, gap: (bay.y1 - bay.y0 - n * tsh) / (n + 1) }));
+    if (sw <= 0 || sd <= 0 || placed.some((b) => b.gap <= 0)) {
       ctx.issue('error', 'shelves-no-room', op.id, 'Not enough room for the adjustable shelves.');
       return;
     }
-    if (gap < inches(2)) {
-      ctx.issue('warning', 'shelves-crowded', op.id, `Adjustable shelves are only ${ctx.fmt(gap)} apart.`);
+    const tightest = Math.min(...placed.map((b) => b.gap));
+    if (tightest < inches(2)) {
+      ctx.issue('warning', 'shelves-crowded', op.id, `Adjustable shelves are only ${ctx.fmt(tightest)} apart.`);
     }
     checkShelfSag(ctx, s, op.id, 'Adjustable shelf', s.materials.shelves, sw, sd, tsh);
-    const zone: PinZone = { ...inner, shelves: [] };
-    pinZones.push(zone);
-    for (let k = 0; k < n; k++) {
-      const sy = snap(inner.y0 + gap * (k + 1) + tsh * k, ctx.grid);
-      zone.shelves.push({ id: `${op.id}/adj-shelf-${k}`, y: sy });
-      add({ id: `${op.id}/adj-shelf-${k}`, name: 'Adjustable shelf', role: 'adjustableShelf', materialId: s.materials.shelves, bounds: { x: inner.x0 + s.shelves.sideClearance, y: sy, z: tb, width: sw, height: tsh, depth: sd }, grain: 'horizontal', thicknessAxis: 'y', ownerId: id, length: down(sw), width: down(sd) });
+    placed.forEach(({ bay, gap }, b) => {
+      const zone: PinZone = { ...bay, shelves: [] };
+      pinZones.push(zone);
+      for (let k = 0; k < n; k++) {
+        const sy = snap(bay.y0 + gap * (k + 1) + tsh * k, ctx.grid);
+        const shelfId = bays.length === 1 ? `${op.id}/adj-shelf-${k}` : `${op.id}/adj-shelf-${b}-${k}`;
+        zone.shelves.push({ id: shelfId, y: sy });
+        add({ id: shelfId, name: 'Adjustable shelf', role: 'adjustableShelf', materialId: s.materials.shelves, bounds: { x: inner.x0 + s.shelves.sideClearance, y: sy, z: tb, width: sw, height: tsh, depth: sd }, grain: 'horizontal', thicknessAxis: 'y', ownerId: id, length: down(sw), width: down(sd) });
+      }
+    });
+  };
+
+  /**
+   * `nf` evenly spaced fixed shelves in an opening, dadoed into the sides (or partitions). On a
+   * face frame each gets a rail over its front edge, its top flush with the shelf top: in the
+   * frame ('flush') or set back from its face ('inset'); a rail always clears an inset front.
+   * Frameless shelves have no rail. Returns the interior spaces between the shelves, bottom up.
+   */
+  const addFixedShelves = (op: Opening, r: Rect, inner: Interior, nf: number): Interior[] => {
+    const sh = s.shelves;
+    const member = frameless ? tsh : ff.midRailWidth;
+    const bay = (r.height - nf * member) / (nf + 1);
+    if (bay < inches(2)) {
+      ctx.issue('error', 'shelves-no-room', op.id, `Not enough room for ${nf} fixed shelves.`);
+      return [inner];
     }
+    let setback = (sh.fixedEdge ?? 'flush') === 'inset' ? (sh.fixedSetback ?? inches(1 / 4)) : 0;
+    if (s.fronts.mounting === 'inset' && op.front.type !== 'none') {
+      // Behind an inset front: clear the thickest front this box might have.
+      const frontThick = Math.max(tfr, ctx.thickness(s.materials.frontFrame, id));
+      setback = Math.max(setback, frontThick + inches(1 / 16));
+    }
+    const w = inner.x1 - inner.x0;
+    const depth = Ds - setback;
+    if (depth <= 0) {
+      ctx.issue('error', 'shelves-no-room', op.id, 'Fixed shelves are set back further than the box is deep.');
+      return [inner];
+    }
+    checkShelfSag(ctx, s, op.id, 'Fixed shelf', s.materials.shelves, w, depth, tsh);
+    const bays: Interior[] = [];
+    let below = inner.y0;
+    for (let k = 0; k < nf; k++) {
+      const railY = snap(r.y + (k + 1) * bay + k * member, ctx.grid);
+      const shelfTop = railY + member;
+      const shelfY = shelfTop - tsh;
+      if (!frameless) {
+        add({
+          id: `${op.id}/shelf-rail-${k}`,
+          name: 'Shelf rail',
+          role: 'rail',
+          materialId: s.materials.faceFrame,
+          bounds: { x: r.x, y: railY, z: zFrame - setback, width: r.width, height: member, depth: tf },
+          grain: 'horizontal',
+          thicknessAxis: 'z',
+          ownerId: id,
+          length: down(r.width),
+          ...(setback > 0 ? { note: `Set back ${ctx.fmt(setback)} from the face frame, over the fixed shelf's front edge` } : {}),
+        });
+      }
+      add({ id: `${op.id}/fixed-shelf-${k}`, name: 'Fixed shelf', role: 'fixedShelf', materialId: s.materials.shelves, bounds: { x: inner.x0, y: shelfY, z: tb, width: w, height: tsh, depth }, grain: 'horizontal', thicknessAxis: 'y', ownerId: id, length: captured(down(w)), width: down(depth), ...jointNote('dados') });
+      bays.push({ ...inner, y0: below, y1: shelfY });
+      below = shelfTop;
+    }
+    bays.push({ ...inner, y0: below, y1: inner.y1 });
+    return bays;
   };
 
   layoutSection(box.content, R, I, cover);
