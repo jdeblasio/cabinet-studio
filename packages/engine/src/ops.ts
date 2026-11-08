@@ -6,12 +6,13 @@
  * that return false/undefined so the editor can call them speculatively.
  */
 import type { RunResult } from './derived';
-import { createDefaultRun, newId } from './defaults';
+import { createDefaultRun, hardwareOf, newId } from './defaults';
 import { deriveRun } from './derive/index';
 import type {
   Box,
   EndCondition,
   Front,
+  HardwareLibrary,
   Id,
   Material,
   Molding,
@@ -532,6 +533,15 @@ export function setSpanGeometry(
 // ---------------------------------------------------------------------------
 // Run / wall
 // ---------------------------------------------------------------------------
+
+/** Edit a hardware type in the project's library (copying the seed catalog into the project first). */
+export function updateHardware<K extends keyof HardwareLibrary>(project: Project, kind: K, id: Id, patch: Partial<HardwareLibrary[K][number]>): boolean {
+  if (!project.hardware) project.hardware = structuredClone(hardwareOf(project));
+  const item = (project.hardware[kind] as { id: Id }[]).find((h) => h.id === id);
+  if (!item) return false;
+  Object.assign(item, patch);
+  return true;
+}
 
 /** Set or remove a run's crown or base molding. */
 export function setMolding(run: Run, which: 'crown' | 'base', molding: Molding | undefined): void {

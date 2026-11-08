@@ -579,3 +579,23 @@ button.link:hover {
   width: auto;
   max-width: 130px;
 }
+
+/* Hardware library */
+.subhead {
+  margin: 10px 0 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.hardware-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+}
+.hardware-item:last-child {
+  border-bottom: none;
+}

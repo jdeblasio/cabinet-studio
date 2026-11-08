@@ -27,6 +27,8 @@ export interface Project {
   settings: ConstructionSettings;
   styles: NamedStyle[];
   materials: Material[];
+  /** Hardware library; the built-in seed catalog when missing. */
+  hardware?: HardwareLibrary;
   runs: Run[];
 }
 
@@ -138,17 +140,15 @@ export interface ConstructionSettings {
       panelClearance: Ticks;
     };
   };
-  /** Drawer boxes on side-mount slides, sized from the opening. */
+  /** Which hardware from the project's library to use (see Project.hardware). */
+  hardware: { slide: Id; hinge: Id; shelfPin: Id };
+  /** Drawer boxes, sized from the opening and the chosen slides. */
   drawers: {
-    /** Space per side for the slide (between the box and the carcass side). */
-    slideClearance: Ticks;
     /** Space between the box and the top / bottom of the frame opening. */
     topClearance: Ticks;
     bottomClearance: Ticks;
     /** Minimum space behind the box. */
     rearClearance: Ticks;
-    /** Available slide lengths; the box depth is the longest that fits. */
-    slideLengths: Ticks[];
   };
   shelves: {
     /** Adjustable shelf clearance per side (to the carcass side / partition). */
@@ -171,6 +171,40 @@ export interface ConstructionSettings {
 }
 
 export type DeepPartial<T> = { [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K] };
+
+/** A drawer slide type. The box depth is the longest available length that fits. */
+export interface SlideSpec {
+  id: Id;
+  name: string;
+  mount: 'side' | 'under';
+  /** Space per side between the drawer box and the cabinet side. */
+  sideClearance: Ticks;
+  lengths: Ticks[];
+}
+
+/** A hinge type. Count per door grows with door height (see the shopping list). */
+export interface HingeSpec {
+  id: Id;
+  name: string;
+  kind: 'concealed' | 'butt' | 'other';
+  /** Cup diameter for concealed hinges (e.g. 35 mm), for drilling. */
+  cupDiameter?: Ticks;
+}
+
+export interface ShelfPinSpec {
+  id: Id;
+  name: string;
+  diameter: Ticks;
+  /** Pins per adjustable shelf. */
+  perShelf: number;
+}
+
+/** The project's hardware library: generic types users can copy and edit. */
+export interface HardwareLibrary {
+  slides: SlideSpec[];
+  hinges: HingeSpec[];
+  shelfPins: ShelfPinSpec[];
+}
 
 export interface NamedStyle {
   id: Id;

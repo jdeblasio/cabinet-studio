@@ -1,8 +1,33 @@
-import { SCHEMA_VERSION, type Box, type ConstructionSettings, type Front, type Id, type Material, type Project, type Run, type Section } from './model';
-import { DEFAULT_GRID, inches } from './units';
+import { SCHEMA_VERSION, type Box, type ConstructionSettings, type Front, type HardwareLibrary, type Id, type Material, type Project, type Run, type Section } from './model';
+import { DEFAULT_GRID, inches, mm } from './units';
 
 export function newId(): Id {
   return globalThis.crypto.randomUUID();
+}
+
+/**
+ * Seed hardware catalog: generic types with typical specs. Check your hardware's own spec sheet
+ * (clearances and lengths vary by product) and edit the copy in your project.
+ */
+export const DEFAULT_HARDWARE: HardwareLibrary = {
+  slides: [
+    { id: 'slide-side-ball', name: 'Side-mount ball-bearing, full extension', mount: 'side', sideClearance: inches(1 / 2), lengths: [10, 12, 14, 16, 18, 20, 22, 24].map(inches) },
+    { id: 'slide-under-full', name: 'Undermount, full extension (typical)', mount: 'under', sideClearance: inches(3 / 16), lengths: [9, 12, 15, 18, 21].map(inches) },
+  ],
+  hinges: [
+    { id: 'hinge-concealed-ff', name: 'Concealed 35 mm, face-frame mount', kind: 'concealed', cupDiameter: mm(35) },
+    { id: 'hinge-concealed-fl', name: 'Concealed 35 mm, frameless (clip-on)', kind: 'concealed', cupDiameter: mm(35) },
+    { id: 'hinge-butt', name: 'Butt hinge (inset doors)', kind: 'butt' },
+  ],
+  shelfPins: [
+    { id: 'pin-5mm', name: '5 mm shelf pins', diameter: mm(5), perShelf: 4 },
+    { id: 'pin-1-4', name: '1/4" shelf pins', diameter: inches(1 / 4), perShelf: 4 },
+  ],
+};
+
+/** The project's hardware library (the seed catalog when it has none). */
+export function hardwareOf(project: Pick<Project, 'hardware'>): HardwareLibrary {
+  return project.hardware ?? DEFAULT_HARDWARE;
 }
 
 export const DEFAULT_CROWN = { height: inches(3.5), projection: inches(2.5) };
@@ -96,12 +121,11 @@ export const DEFAULT_SETTINGS: ConstructionSettings = {
     drawerStyle: 'slab',
     fivePiece: { stileWidth: inches(2.25), railWidth: inches(2.25), panelGroove: inches(3 / 8), panelClearance: inches(1 / 16) },
   },
+  hardware: { slide: 'slide-side-ball', hinge: 'hinge-concealed-ff', shelfPin: 'pin-5mm' },
   drawers: {
-    slideClearance: inches(1 / 2),
     topClearance: inches(3 / 4),
     bottomClearance: inches(1 / 4),
     rearClearance: inches(1 / 2),
-    slideLengths: [10, 12, 14, 16, 18, 20, 22, 24].map(inches),
   },
   shelves: {
     sideClearance: inches(1 / 32),

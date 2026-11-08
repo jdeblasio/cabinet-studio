@@ -4,6 +4,7 @@ import {
   findSpan,
   findTier,
   getPath,
+  hardwareOf,
   resolveSettings,
   clearStyleSetting,
   saveOverridesAsStyle,
@@ -25,6 +26,7 @@ type SettingDef =
   | { path: string; label: string; tip: string; type: 'length' }
   | { path: string; label: string; tip: string; type: 'number'; unit: string; min: number }
   | { path: string; label: string; tip: string; type: 'material' }
+  | { path: string; label: string; tip: string; type: 'hardware'; kind: 'slides' | 'hinges' | 'shelfPins' }
   | { path: string; label: string; tip: string; type: 'select'; options: readonly (readonly [string, string])[] };
 
 const END_STILE_OPTIONS = [
@@ -99,7 +101,9 @@ const SETTINGS: SettingDef[] = [
   { path: 'fronts.fivePiece.railWidth', label: '5-piece rail', tip: 'Width of the rails (horizontal frame pieces) of five-piece fronts.', type: 'length' },
   { path: 'fronts.fivePiece.panelGroove', label: 'Panel groove', tip: 'Depth of the groove that holds the panel. Rails get stub tenons this long on each end.', type: 'length' },
   { path: 'fronts.fivePiece.panelClearance', label: 'Panel clearance', tip: 'Gap per side between the panel and the bottom of its groove, for seasonal movement.', type: 'length' },
-  { path: 'drawers.slideClearance', label: 'Slide clearance', tip: 'Space per side between the drawer box and the cabinet side, for side-mount slides (usually 1/2").', type: 'length' },
+  { path: 'hardware.slide', label: 'Drawer slides', tip: 'Slide type from the project\'s hardware library. Its side clearance sets the drawer box width; the box depth is its longest length that fits.', type: 'hardware', kind: 'slides' },
+  { path: 'hardware.hinge', label: 'Hinges', tip: 'Hinge type from the hardware library (for the shopping list and, later, drilling).', type: 'hardware', kind: 'hinges' },
+  { path: 'hardware.shelfPin', label: 'Shelf pins', tip: 'Shelf pin type from the hardware library (for the shopping list and, later, drilling).', type: 'hardware', kind: 'shelfPins' },
   { path: 'drawers.topClearance', label: 'Drawer top gap', tip: 'Space between the top of the drawer box and the top of the frame opening.', type: 'length' },
   { path: 'drawers.bottomClearance', label: 'Drawer bottom gap', tip: 'Space between the bottom of the drawer box and the bottom of the frame opening.', type: 'length' },
   { path: 'drawers.rearClearance', label: 'Drawer rear gap', tip: 'Minimum space behind the drawer box. The box depth is the longest standard slide (10" to 24") that fits.', type: 'length' },
@@ -322,6 +326,16 @@ export function SettingsSection({ scope, title }: { scope: ScopeRef; title?: str
                     <NumberInput value={value as number} min={def.min} onCommit={(n) => setValue(def.path, n)} ariaLabel={def.label} />
                     <span className="muted">{def.unit}</span>
                   </span>
+                ) : def.type === 'hardware' ? (
+                  <Select
+                    value={value as string}
+                    options={(() => {
+                      const opts = hardwareOf(project)[def.kind].map((h) => [h.id, h.name] as const);
+                      return opts.some(([hid]) => hid === value) ? opts : [[value as string, '(missing)'] as const, ...opts];
+                    })()}
+                    onChange={(v) => setValue(def.path, v)}
+                    ariaLabel={def.label}
+                  />
                 ) : def.type === 'material' ? (
                   <Select value={value as string} options={materialOptions(value as string)} onChange={(v) => setValue(def.path, v)} ariaLabel={def.label} />
                 ) : typeof value === 'boolean' ? (

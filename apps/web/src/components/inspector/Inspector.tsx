@@ -1,6 +1,8 @@
 import {
   addBox,
   addMaterial,
+  hardwareOf,
+  updateHardware,
   setMolding,
   DEFAULT_CROWN,
   DEFAULT_BASE_MOLDING,
@@ -302,9 +304,49 @@ function ProjectPanel() {
         </Field>
       </Section>
       <MaterialsSection />
+      <HardwareSection />
       <StylesSection />
       <SettingsSection scope={{ kind: 'project' }} title="Construction (project defaults)" />
     </>
+  );
+}
+
+/** The project's hardware library: slide, hinge and shelf-pin types (editable copies of the seed catalog). */
+function HardwareSection() {
+  const project = useEditor((s) => s.project);
+  const edit = useEditor((s) => s.edit);
+  const lib = hardwareOf(project);
+  return (
+    <Section title="Hardware">
+      <p className="muted small">Typical specs. Check your hardware's spec sheet and adjust; choose which to use under Construction.</p>
+      <h4 className="subhead">Drawer slides</h4>
+      {lib.slides.map((sl) => (
+        <div key={sl.id} className="hardware-item">
+          <TextInput value={sl.name} ariaLabel="Slide name" onCommit={(name) => edit((d) => void updateHardware(d, 'slides', sl.id, { name: name || sl.name }))} />
+          <Field label="Side clearance" tip="Space per side between the drawer box and the cabinet side.">
+            <LengthInput value={sl.sideClearance} ariaLabel={`${sl.name} side clearance`} onCommit={(sideClearance) => edit((d) => void updateHardware(d, 'slides', sl.id, { sideClearance }))} />
+          </Field>
+          <Field label="Lengths" tip="Available slide lengths, separated by commas. The box depth is the longest that fits.">
+            <LengthListInput value={sl.lengths} ariaLabel={`${sl.name} lengths`} onCommit={(lengths) => lengths && edit((d) => void updateHardware(d, 'slides', sl.id, { lengths }))} />
+          </Field>
+        </div>
+      ))}
+      <h4 className="subhead">Hinges</h4>
+      {lib.hinges.map((h) => (
+        <div key={h.id} className="hardware-item">
+          <TextInput value={h.name} ariaLabel="Hinge name" onCommit={(name) => edit((d) => void updateHardware(d, 'hinges', h.id, { name: name || h.name }))} />
+        </div>
+      ))}
+      <h4 className="subhead">Shelf pins</h4>
+      {lib.shelfPins.map((pin) => (
+        <div key={pin.id} className="hardware-item">
+          <TextInput value={pin.name} ariaLabel="Shelf pin name" onCommit={(name) => edit((d) => void updateHardware(d, 'shelfPins', pin.id, { name: name || pin.name }))} />
+          <Field label="Per shelf" tip="Pins per adjustable shelf.">
+            <NumberInput value={pin.perShelf} min={2} integer ariaLabel={`${pin.name} per shelf`} onCommit={(perShelf) => edit((d) => void updateHardware(d, 'shelfPins', pin.id, { perShelf }))} />
+          </Field>
+        </div>
+      ))}
+    </Section>
   );
 }
 

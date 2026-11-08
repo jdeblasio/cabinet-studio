@@ -24,6 +24,7 @@
 import type { Part, Rect, SectionLayout } from '../derived';
 import type { ConstructionSettings, Opening, Section } from '../model';
 import { inches, snap, type Ticks } from '../units';
+import { DEFAULT_HARDWARE, hardwareOf } from '../defaults';
 import { checkShelfSag } from './checks';
 import { makePart, type Ctx } from './context';
 import type { PlacedBox } from './layout';
@@ -281,12 +282,14 @@ export function deriveBox(ctx: Ctx, box: PlacedBox): { parts: Part[]; sections: 
     const tbot = ctx.thickness(btm, id);
     const groove = Math.min(inches(1 / 4), t / 2);
     const available = frontZ - tb - dr.rearClearance;
-    const depth = [...dr.slideLengths].sort((a, b) => b - a).find((l) => l <= available);
+    const library = hardwareOf(ctx.project);
+    const slide = library.slides.find((sl) => sl.id === s.hardware?.slide) ?? DEFAULT_HARDWARE.slides[0]!;
+    const depth = [...slide.lengths].sort((a, b) => b - a).find((l) => l <= available);
     if (depth === undefined) {
-      ctx.issue('warning', 'drawer-too-shallow', op.id, `No drawer slide fits: only ${ctx.fmt(Math.max(0, available))} of depth behind the front.`);
+      ctx.issue('warning', 'drawer-too-shallow', op.id, `No ${slide.name} slide fits: only ${ctx.fmt(Math.max(0, available))} of depth behind the front (shortest is ${ctx.fmt(Math.min(...slide.lengths))}).`);
       return;
     }
-    const w = down(Math.min(r.width, inner.x1 - inner.x0) - 2 * dr.slideClearance);
+    const w = down(Math.min(r.width, inner.x1 - inner.x0) - 2 * slide.sideClearance);
     const h = down(r.height - dr.topClearance - dr.bottomClearance);
     if (w <= 2 * t + inches(1) || h < inches(2)) {
       ctx.issue('warning', 'drawer-too-small', op.id, 'The opening is too small for a drawer box.');
@@ -388,7 +391,7 @@ export function deriveBox(ctx: Ctx, box: PlacedBox): { parts: Part[]; sections: 
  */
 function applyEdgeBanding(ctx: Ctx, s: ConstructionSettings, frameless: boolean, parts: Part[]): void {
   const eb = s.edgeBanding;
-  if (!eb.enabled) return;
+  if (!eb?.enabled) return;
   const isSheet = (id: string) => ctx.project.materials.find((m) => m.id === id)?.kind === 'sheet';
   const th = eb.thickness;
   const tag = (p: Part, what: string) => (th > 0 ? `${what} (cut ${ctx.fmt(th)} under per banded edge)` : what);

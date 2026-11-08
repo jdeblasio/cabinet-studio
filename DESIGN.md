@@ -270,6 +270,11 @@ step or two off its siblings. Hold Alt/Option to drag freely.
 - Shipped with a **seed catalog** of a handful of common real products (Blum, Salice,
   Accuride, ...) that users can copy and edit.
 - Hardware specs drive clearances, drilling, and the shopping list.
+- **Implemented so far:** a seed catalog of generic types (side-mount and undermount slides,
+  concealed and butt hinges, 5 mm and 1/4" shelf pins) with typical specs, editable per project
+  (the first edit copies the catalog into the project). Construction settings pick the slide,
+  hinge and pin type per project/tier/box; the slide's side clearance and lengths size drawer
+  boxes. Drilling from hinge and pin specs is still to come.
 
 ## 8. Units and precision
 

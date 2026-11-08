@@ -648,6 +648,18 @@ describe('deriveRun: drawer boxes', () => {
     expect([bottom.length, bottom.width, bottom.thickness]).toEqual([inches(26 + 27 / 32), inches(15 + 17 / 32), inches(7 / 32)]);
   });
 
+  it('sizes the box for the chosen slides (undermount: tighter sides, its own lengths)', () => {
+    const { run, result } = setup((p, r) => {
+      p.settings = { ...p.settings, hardware: { ...p.settings.hardware, slide: 'slide-under-full' } };
+      boxesOf(tier(r, 0))[0]!.content = opening({ type: 'drawer' });
+    });
+    const op = boxesOf(tier(run, 0))[0]!.content;
+    const side = drawerParts(result, op.id).find((p) => p.id.endsWith('-side-left'))!;
+    expect(side.length).toBe(inches(15));
+    const front = drawerParts(result, op.id).find((p) => p.id.endsWith('-box-front'))!;
+    expect(front.length).toBe(inches(27 + 15 / 16) - 2 * T2);
+  });
+
   it('warns when no slide fits', () => {
     const { result } = withDrawer(9);
     expect(result.issues.map((i) => i.code)).toContain('drawer-too-shallow');
