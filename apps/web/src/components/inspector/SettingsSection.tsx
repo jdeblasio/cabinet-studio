@@ -156,6 +156,16 @@ const SETTINGS: SettingDef[] = [
     ],
   },
   { path: 'edgeBanding.thickness', label: 'Banding thickness', tip: 'Banded parts are cut this much smaller per banded edge. 0 for iron-on veneer tape; e.g. 1/4" for solid wood edging.', type: 'length' },
+  {
+    path: 'splitOversize',
+    label: 'Split oversize parts',
+    tip: "Parts bigger than your stock (a sheet less its edge trim, or the longest board; see Sheet layouts) are pieced with as few joints as possible, hidden where they can be: on a partition or fixed shelf, behind a partition for backs, at a mid stile (which then runs through the rail), or over the joint between boxes for countertops. Off: they're reported as problems.",
+    type: 'select',
+    options: [
+      ['false', 'Off (report them)'],
+      ['true', 'Split at hidden joints'],
+    ],
+  },
   { path: 'ceilingScribe', label: 'Ceiling scribe', tip: 'Space left at the ceiling above the top tier, for scribing to an uneven ceiling.', type: 'length' },
   // Which material (and so which thickness) each kind of part uses.
   { path: 'materials.carcass', label: 'Carcass material', tip: 'Material for box sides, tops, bottoms, partitions and end panels. Its thickness sets theirs.', type: 'material' },

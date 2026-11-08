@@ -234,7 +234,12 @@ step or two off its siblings. Hold Alt/Option to drag freely.
 
 ### Interiors
 
-- Fixed shelves (joined like carcass parts)
+- Fixed shelves (joined like carcass parts). Two ways: a **row split** with a "fixed shelf +
+  rail" divider (separate openings, each with its own front), or a **fixed shelf count** on
+  an opening (one opening and front; shelves evenly spaced, adjustable shelves in each space
+  between them). On a face frame each counted fixed shelf gets a rail over its front edge, its
+  top flush with the shelf: **flush** in the frame, or **inset** (set back from the frame face
+  by a setting). Behind an inset front the rail always clears the door. Frameless: no rail.
 - Adjustable shelves with shelf-pin hole lines
 - Vertical dividers / cubbies
 
@@ -261,6 +266,12 @@ step or two off its siblings. Hold Alt/Option to drag freely.
 - **Sheet goods:** actual thickness (e.g. 23/32"), sheet size, grain direction.
 - **Solid lumber:** for face frames, edging, 5-piece fronts; tracked by length / board feet.
 - Parts get a material **by role** (carcass, back, drawer box, face frame, ...).
+- **Paints and finishes** (name + color; seeded with white and black paint) apply over a
+  material where it's used: each material slot has a finish setting (Natural by default) in
+  the cascade, so e.g. painted face frames don't need a second poplar material. Parts carry a
+  `finishId`; the 3D view, elevation and glTF export show its color, and the cut list keeps
+  finishes in separate rows (with a Finish column, also in the CSV). Paint quantities are not
+  estimated.
 - **No prices.**
 
 ### Hardware
@@ -329,6 +340,15 @@ step or two off its siblings. Hold Alt/Option to drag freely.
   trim, grain, stock lengths, widest board and glue-up allowance are options saved with the
   project. Toe kick boards longer than a sheet are pieced over cross pieces. Per-part grain
   locks, offcut sheets and grouping parts onto one sheet are still to come.
+- **Oversize parts** (bigger than a sheet less its trim, given grain, or the longest board less
+  end trim) are reported per box, or, with the `splitOversize` setting on (cascade; also a
+  toggle on the box), pieced along one axis. The plan has the fewest visible joints, then the
+  fewest pieces, then the most even pieces. Joints hide where they can: tops, bottoms and fixed
+  shelves on a partition (a finished bottom in line with one); backs behind a partition or
+  fixed shelf; rails at a mid stile, which then runs through the rail; countertops over the
+  joint between boxes; sides on a fixed shelf, bottom or top. Joint allowances (dados) stay on
+  the outer ends, and drilled holes and hardware follow their piece. Fronts, drawer parts,
+  adjustable shelves and moldings are never split.
 - **Constraints, not edits**: users don't drag parts on sheets. They steer the optimizer:
   lock grain per part, mark sheets as offcuts/partial, group parts onto one sheet (e.g.
   grain-matched doors), set kerf/trim.

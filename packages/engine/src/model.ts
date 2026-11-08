@@ -188,6 +188,12 @@ export interface ConstructionSettings {
    * shelves. Banded parts are cut smaller by `thickness` per banded edge (0 for veneer tape).
    */
   edgeBanding: { enabled: boolean; thickness: Ticks };
+  /**
+   * Piece parts bigger than their stock (a sheet, or the longest board) with as few joints as
+   * possible, placed where they hide (on a partition, fixed shelf or mid stile). Off: such parts
+   * are reported instead.
+   */
+  splitOversize: boolean;
 }
 
 /** A slot in `ConstructionSettings.materials` (which material, and finish, a kind of part uses). */

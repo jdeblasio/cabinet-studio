@@ -3,6 +3,7 @@ import { formatLength } from '../format';
 import type { Id, Project } from '../model';
 import { deriveBox } from './box';
 import { applyFinishes } from './finish';
+import { splitOversizeParts } from './split';
 import { resolveSettings } from '../settings';
 import { deriveCountertops } from './countertop';
 import { makeCtx } from './context';
@@ -44,11 +45,13 @@ export function deriveRun(project: Project, runId: Id): RunResult {
   const { frames, parts: stiles } = deriveFrames(ctx, layout.boxes, layout.width, layout.gaps, layout.lengthVariance);
   parts.push(...stiles, ...deriveToeKick(ctx, layout), ...deriveCountertops(ctx, layout, stiles), ...deriveScribeStrips(ctx, layout), ...deriveTrim(ctx, layout));
 
-  // Paint: box parts take their box's finishes; toe kicks and countertops their tier's; the rest the run's.
+  // Settings for a part's owner: its box's; a tier's for toe kicks and countertops; else the run's.
   const boxSettings = new Map(layout.boxes.map((b) => [b.id, b.settings]));
   const runSettings = resolveSettings(project, [run]);
   const tierSettings = new Map(run.tiers.map((t) => [t.id, resolveSettings(project, [run, t])]));
-  applyFinishes(parts, (ownerId) => boxSettings.get(ownerId) ?? tierSettings.get(ownerId) ?? runSettings);
+  const settingsFor = (ownerId: string) => boxSettings.get(ownerId) ?? tierSettings.get(ownerId) ?? runSettings;
+  applyFinishes(parts, settingsFor);
+  splitOversizeParts(ctx, parts, hardware, settingsFor);
 
   for (const id of ctx.offGridMaterials) {
     const m = project.materials.find((mat) => mat.id === id);

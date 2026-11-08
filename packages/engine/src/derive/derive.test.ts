@@ -23,6 +23,8 @@ const part = (r: RunResult, id: string): Part => {
   return p;
 };
 const nonInfo = (r: RunResult) => r.issues.filter((i) => i.severity !== 'info');
+/** Problems other than parts too big for stock (some layouts here use wide boxes on purpose). */
+const layoutProblems = (r: RunResult) => nonInfo(r).filter((i) => i.code !== 'part-exceeds-stock');
 const counters = (r: RunResult) => r.parts.filter((p) => p.role === 'countertop');
 
 describe('deriveRun: default project', () => {
@@ -278,7 +280,7 @@ describe('deriveRun: spans', () => {
         (up.items[0] as Box).width = { kind: 'fixed', size: lowerEdge - inches(0.5) };
         upperIds = boxesOf(up).map((b) => b.id);
       });
-      expect(nonInfo(aligned)).toEqual([]);
+      expect(layoutProblems(aligned)).toEqual([]);
       const lowerId = aligned.tiers[0]!.items.filter((i) => i.kind === 'box').at(-1)!.id;
       const lower = part(aligned, `${lowerId}/stile-right`);
       const upper = part(aligned, `${upperIds[1]}/stile-left`);
@@ -395,7 +397,7 @@ describe('deriveRun: splits', () => {
       };
       tier(r, 1).items = [flexBox(split)];
     });
-    expect(nonInfo(result)).toEqual([]);
+    expect(layoutProblems(result)).toEqual([]);
     const upper = part(result, `${split.id}/stile-0`);
     const lower = part(result, `${boxesOf(tier(run, 0))[1]!.id}/stile-left`);
     expect([upper.bounds.x, upper.width]).toEqual([lower.bounds.x, lower.width]);
@@ -1173,5 +1175,67 @@ describe('deriveRun: finishes', () => {
     const kicks = result.parts.filter((p) => p.role === 'toeKick');
     expect(kicks.length).toBeGreaterThan(0);
     expect(kicks.every((p) => p.finishId === 'paint-black')).toBe(true);
+  });
+});
+
+describe('deriveRun: splitting oversize parts', () => {
+  /** One 146"-wide open base box (no doors), optionally three columns with partitions. */
+  const wide = (opts: { split?: boolean; partitions?: boolean } = {}) =>
+    setup((p, r) => {
+      r.wall[0]!.length = inches(147);
+      const base = tier(r, 0);
+      const content: Split | Opening = opts.partitions
+        ? { kind: 'split', id: newId(), direction: 'columns', divider: 'panel', children: [0, 1, 2].map(() => ({ size: { kind: 'flex' as const, ratio: 1 }, section: opening() })) }
+        : (opening() as Opening);
+      base.items = [{ kind: 'box', id: 'wide', width: { kind: 'fixed', size: inches(146) }, content }];
+      r.tiers = [base];
+      if (opts.split) p.settings = { ...p.settings, splitOversize: true };
+    });
+  const pieces = (r: RunResult, id: string) => r.parts.filter((p) => p.id.startsWith(`${id}-piece-`));
+  const USABLE = inches(95.5); // 96" sheet less 1/4" trim each end
+  const USABLE_W = inches(47.5);
+
+  it('reports oversize parts when splitting is off', () => {
+    const { result } = wide();
+    const issue = result.issues.find((i) => i.code === 'part-exceeds-stock');
+    expect(issue).toMatchObject({ severity: 'warning', sourceId: 'wide' });
+    expect(issue!.message).toMatch(/Top, Bottom, Back and \d+ more are bigger than your stock/);
+    expect(result.parts.some((p) => p.id.includes('-piece-'))).toBe(false);
+  });
+
+  it('pieces a top with an evenly placed (visible) joint when nothing can hide it', () => {
+    const { result } = wide({ split: true });
+    expect(result.issues.some((i) => i.code === 'part-exceeds-stock')).toBe(false);
+    const top = pieces(result, 'wide/top');
+    expect(top).toHaveLength(2);
+    expect(top.every((p) => p.length <= USABLE)).toBe(true);
+    expect(top[0]!.bounds.x + top[0]!.bounds.width).toBe(top[1]!.bounds.x);
+    expect(top[0]!.note).toMatch(/One of 2 pieces; joint not hidden/);
+    // The back's grain runs up, so its pieces are at most a sheet's width wide: 4 pieces.
+    const back = pieces(result, 'wide/back');
+    expect(back).toHaveLength(4);
+    expect(back.every((p) => p.width <= USABLE_W)).toBe(true);
+    // Lumber rails (146") are longer than a 12' board: two pieces.
+    expect(pieces(result, 'wide/rail-top')).toHaveLength(2);
+  });
+
+  it('hides joints on partitions, and runs mid stiles through pieced rails', () => {
+    const { result } = wide({ split: true, partitions: true });
+    const partitions = result.parts.filter((p) => p.ownerId === 'wide' && p.role === 'partition');
+    const centers = partitions.map((p) => p.bounds.x + p.bounds.width / 2);
+    const top = pieces(result, 'wide/top');
+    // Three pieces, every joint centered on a partition (no visible joints).
+    expect(top).toHaveLength(3);
+    expect(top.slice(0, -1).map((p) => p.bounds.x + p.bounds.width)).toEqual(centers);
+    expect(top.every((p) => !/not hidden/.test(p.note ?? ''))).toBe(true);
+    expect(top[0]!.note).toMatch(/joint centered on the partition/);
+    // The top rail breaks at a mid stile, which now runs through it.
+    const rail = pieces(result, 'wide/rail-top');
+    expect(rail.length).toBeGreaterThanOrEqual(2);
+    const stile = result.parts.find((p) => p.role === 'stile' && p.bounds.x === rail[0]!.bounds.x + rail[0]!.bounds.width)!;
+    expect(stile).toBeDefined();
+    expect(stile.bounds.y + stile.bounds.height).toBe(rail[0]!.bounds.y + rail[0]!.bounds.height);
+    expect(stile.note).toMatch(/Runs through the rail/);
+    expect(rail[1]!.bounds.x).toBe(stile.bounds.x + stile.bounds.width);
   });
 });

@@ -165,6 +165,7 @@ export const DEFAULT_SETTINGS: ConstructionSettings = {
   },
   ceilingScribe: inches(0.5),
   edgeBanding: { enabled: true, thickness: 0 },
+  splitOversize: false,
 };
 
 export function opening(front: Front = { type: 'none' }, adjustableShelves = 0): Section {

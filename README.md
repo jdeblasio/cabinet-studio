@@ -15,12 +15,14 @@ Free and open source under the AGPL-3.0.
   (project → run → tier → box) with named styles.
   - **Joinery and fronts:** butt, dowel, confirmat, dado or rabbet joints; slab or
     five-piece doors and drawer fronts in partial overlay, full overlay or inset.
-  - **Parts:** drawer boxes sized from the chosen slides; adjustable and fixed shelves;
-    partitions.
+  - **Parts:** drawer boxes sized from the chosen slides; adjustable and fixed shelves (fixed
+    shelves with flush or inset rails); partitions.
+  - **Oversize parts:** optionally pieced at hidden joints (on partitions, fixed shelves, mid
+    stiles) when they're bigger than your sheets or boards.
   - **Trim:** countertops (which can bridge a gap), toe kicks, crown and base molding,
     end panels, scribe strips and wall fillers.
-  - **Finishing and hardware:** edge banding, shelf pin and hinge cup drilling, and a
-    hardware library.
+  - **Finishing and hardware:** paints and finishes per kind of part, edge banding, shelf pin
+    and hinge cup drilling, and a hardware library (slides, hinges and pins shown in 3D).
 - **Fit the room:** walls take extra length and ceiling measurements. Boxes fit the
   tightest and scribe stiles are cut to scribe to the rest.
 - **Check:** a problems panel lints the design (e.g. shelf sag from a beam model, drawers

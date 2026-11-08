@@ -20,6 +20,9 @@ import {
   removeTier,
   setAdjustableShelves,
   setFixedShelves,
+  setOverride,
+  resolveSettings,
+  type SettingsScope,
   setBoxName,
   setBoxWidth,
   setCeilingHeight,
@@ -468,6 +471,7 @@ function TierPanel({ run, tier, result }: { run: Run; tier: Tier; result: RunRes
             Delete tier
           </button>
         </div>
+        <OversizeToggle result={result} ownerId={tier.id} chain={[run, tier]} onSet={(v) => editRun((r) => void ((t) => t && setOverride(t, 'splitOversize', v))(findTier(r, tier.id)))} />
       </Section>
       <AddSpanSection run={run} fromTierId={tier.id} />
       <SettingsSection scope={{ kind: 'tier', runId: run.id, tierId: tier.id }} />
@@ -478,6 +482,31 @@ function TierPanel({ run, tier, result }: { run: Run; tier: Tier; result: RunRes
 // ---------------------------------------------------------------------------
 // Box / span
 // ---------------------------------------------------------------------------
+
+/**
+ * Shown when a box (or a tier's countertop) has parts bigger than the stock: turn splitting on or
+ * off right here (an override on this box, tier or tall box).
+ */
+function OversizeToggle({ result, ownerId, chain, onSet }: { result: RunResult; ownerId: Id; chain: SettingsScope[]; onSet: (split: boolean) => void }) {
+  const project = useEditor((s) => s.project);
+  const issue = result.issues.find((i) => i.code === 'part-exceeds-stock' && i.sourceId === ownerId);
+  const pieced = result.parts.filter((p) => p.ownerId === ownerId && /-piece-\d+$/.test(p.id));
+  if (!issue && pieced.length === 0) return null;
+  const on = !!resolveSettings(project, chain).splitOversize;
+  const pieceCount = new Set(pieced.map((p) => p.id.replace(/-piece-\d+$/, ''))).size;
+  return (
+    <Field
+      label="Oversize parts"
+      tip="Parts bigger than your stock sheets or boards. Split them at hidden joints (on partitions, fixed shelves or mid stiles where possible), or turn this off to keep them whole and see them reported. Same as Split oversize parts under Construction."
+      hint={on ? (pieceCount ? `${pieceCount} part${pieceCount === 1 ? '' : 's'} pieced; see the cut list notes` : undefined) : issue ? 'Too big for your stock' : undefined}
+    >
+      <label className="toggle">
+        <input type="checkbox" checked={on} onChange={(e) => onSet(e.target.checked)} />
+        Split at hidden joints
+      </label>
+    </Field>
+  );
+}
 
 function CarcassReadout({ result, id }: { result: RunResult; id: Id }) {
   const { fmt } = useFormatter();
@@ -521,6 +550,7 @@ function BoxPanel({ run, boxId, result }: { run: Run; boxId: Id; result: RunResu
         </Field>
         <SizeSpecEditor label="Width" tip="Box width. Fixed, or flex to share the tier's width with other flex boxes." spec={box.width} resolved={resolved} onChange={(s) => editRun((r) => setBoxWidth(r, box.id, s))} />
         <CarcassReadout result={result} id={box.id} />
+        <OversizeToggle result={result} ownerId={box.id} chain={[run, tier, box]} onSet={(v) => editRun((r) => void ((b) => b && setOverride(b.box, 'splitOversize', v))(findBox(r, box.id)))} />
         <FaceSummary run={run} ownerId={box.id} root={box.content} />
         {box.content.kind === 'opening' && <OpeningControls run={run} ownerId={box.id} opening={box.content} />}
         <div className="actions">
@@ -632,6 +662,19 @@ function SpanPanel({ run, span, result }: { run: Run; span: Span; result: RunRes
               }
             />
           </Field>
+        )}
+        {span.kind === 'box' && (
+          <OversizeToggle
+            result={result}
+            ownerId={span.id}
+            chain={[run, span]}
+            onSet={(v) =>
+              edit((d) => {
+                const sp = d.runs.find((x) => x.id === run.id)?.spans.find((x) => x.id === span.id);
+                if (sp) setOverride(sp, 'splitOversize', v);
+              })
+            }
+          />
         )}
         {span.kind === 'box' && (
           <Field label="Depth" tip="Carcass depth. Leave it to follow the bottom tier it spans." hint={span.depth === undefined ? 'From bottom tier' : undefined}>
