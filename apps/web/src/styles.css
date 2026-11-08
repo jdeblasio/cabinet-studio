@@ -551,3 +551,31 @@ button.link:hover {
 .export-3d {
   width: auto;
 }
+
+/* Named styles */
+.style-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto 18px;
+  align-items: center;
+  gap: 8px;
+}
+.style-row > span {
+  display: flex;
+  min-width: 0;
+}
+.style-row .input {
+  width: 100%;
+}
+.small-inline {
+  font-size: 12px;
+  white-space: nowrap;
+}
+.style-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.style-controls .input {
+  width: auto;
+  max-width: 130px;
+}

@@ -277,7 +277,10 @@ step or two off its siblings. Hold Alt/Option to drag freely.
 - Each level inherits; overrides are visibly marked with "reset to inherited". The inspector
   shows where each value comes from.
 - **Named styles** (e.g. "Shaker inset, 3/4 ply, dado") can be applied at any level; editing
-  a style propagates to everything using it.
+  a style propagates to everything using it (implemented: a Styles section in the project
+  panel creates, renames, edits and deletes styles; each run/tier/box Construction section
+  has a style picker and "Save as style" to turn its overrides into a style. At a level,
+  overrides win over its style, which wins over what's inherited).
 
 ## 10. Validation
 

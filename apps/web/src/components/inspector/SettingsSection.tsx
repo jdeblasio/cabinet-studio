@@ -5,9 +5,12 @@ import {
   findTier,
   getPath,
   resolveSettings,
+  clearStyleSetting,
+  saveOverridesAsStyle,
   setOverride,
   setProjectSetting,
-  settingSource,
+  setScopeStyle,
+  setStyleSetting,
   type Id,
   type Project,
   type SettingsScope,
@@ -139,9 +142,10 @@ const SETTINGS: SettingDef[] = [
   { path: 'materials.frontPanel', label: '5-piece panel material', tip: 'Material for the panels of five-piece doors and drawer fronts.', type: 'material' },
 ];
 
-/** Where a settings edit lands: the project root, or an override on a run/tier/box/span. */
+/** Where a settings edit lands: the project root, an override on a run/tier/box/span, or a named style. */
 export type ScopeRef =
   | { kind: 'project' }
+  | { kind: 'style'; styleId: Id }
   | { kind: 'run'; runId: Id }
   | { kind: 'tier'; runId: Id; tierId: Id }
   | { kind: 'box'; runId: Id; boxId: Id }
@@ -149,6 +153,7 @@ export type ScopeRef =
 
 const LEVEL_NAMES: Record<ScopeRef['kind'], string> = {
   project: 'project',
+  style: 'style',
   run: 'run',
   tier: 'tier',
   box: 'box',
@@ -158,6 +163,11 @@ const LEVEL_NAMES: Record<ScopeRef['kind'], string> = {
 /** The cascade chain (outermost first, excluding the project root) for a scope, with level names. */
 function chainFor(project: Project, ref: ScopeRef): { chain: SettingsScope[]; names: string[] } | null {
   if (ref.kind === 'project') return { chain: [], names: [] };
+  if (ref.kind === 'style') {
+    // A style is edited like an override layer straight on top of the project settings.
+    const style = project.styles.find((st) => st.id === ref.styleId);
+    return style ? { chain: [{ overrides: style.settings }], names: ['style'] } : null;
+  }
   const run = project.runs.find((r) => r.id === ref.runId);
   if (!run) return null;
   switch (ref.kind) {
@@ -180,7 +190,7 @@ function chainFor(project: Project, ref: ScopeRef): { chain: SettingsScope[]; na
 }
 
 function scopeInDraft(draft: Project, ref: ScopeRef): SettingsScope | undefined {
-  if (ref.kind === 'project') return undefined;
+  if (ref.kind === 'project' || ref.kind === 'style') return undefined;
   const run = draft.runs.find((r) => r.id === ref.runId);
   if (!run) return undefined;
   switch (ref.kind) {
@@ -212,25 +222,83 @@ export function SettingsSection({ scope, title }: { scope: ScopeRef; title?: str
   const setValue = (path: string, value: unknown) =>
     edit((d) => {
       if (scope.kind === 'project') setProjectSetting(d, path, value);
-      else {
+      else if (scope.kind === 'style') {
+        const st = d.styles.find((x) => x.id === scope.styleId);
+        if (st) setStyleSetting(st, path, value);
+      } else {
         const s = scopeInDraft(d, scope);
         if (s) setOverride(s, path, value);
       }
     });
   const reset = (path: string) =>
     edit((d) => {
+      if (scope.kind === 'style') {
+        const st = d.styles.find((x) => x.id === scope.styleId);
+        if (st) clearStyleSetting(st, path);
+        return;
+      }
       const s = scopeInDraft(d, scope);
       if (s) clearOverride(s, path);
     });
 
+  /** Where a value comes from: an override at some level, a style applied at some level, or the project. */
+  const sourceOf = (path: string): { level: number; style?: string } => {
+    for (let i = chain.length - 1; i >= 0; i--) {
+      const sc = chain[i]!;
+      if (getPath(sc.overrides, path) !== undefined) return { level: i };
+      const st = sc.styleId ? project.styles.find((x) => x.id === sc.styleId) : undefined;
+      if (st && getPath(st.settings, path) !== undefined) return { level: i, style: st.name };
+    }
+    return { level: -1 };
+  };
+
+  const current = scope.kind === 'project' || scope.kind === 'style' ? undefined : chain[here];
+  const styleControls = current ? (
+    <span className="style-controls">
+      <select
+        className="input"
+        aria-label="Style"
+        title="Apply a named style (a reusable set of settings) here. Overrides below still win."
+        value={current.styleId ?? ''}
+        onChange={(e) =>
+          edit((d) => {
+            const s = scopeInDraft(d, scope);
+            if (s) setScopeStyle(s, e.target.value || undefined);
+          })
+        }
+      >
+        <option value="">No style</option>
+        {project.styles.map((st) => (
+          <option key={st.id} value={st.id}>
+            {st.name}
+          </option>
+        ))}
+      </select>
+      {current.overrides && Object.keys(current.overrides).length > 0 && (
+        <button
+          className="link"
+          title="Turn this level's overrides into a new named style and apply it here"
+          onClick={() =>
+            edit((d) => {
+              const s = scopeInDraft(d, scope);
+              if (s) saveOverridesAsStyle(d, s, `${LEVEL_NAMES[scope.kind]} style ${d.styles.length + 1}`.replace(/^./, (c) => c.toUpperCase()));
+            })
+          }
+        >
+          Save as style
+        </button>
+      )}
+    </span>
+  ) : undefined;
+
   return (
-    <Section title={title ?? `Construction (${LEVEL_NAMES[scope.kind]})`}>
+    <Section title={title ?? `Construction (${LEVEL_NAMES[scope.kind]})`} actions={styleControls}>
       <div className="settings-grid">
         {SETTINGS.map((def) => {
           const value = getPath(effective, def.path);
-          const source = scope.kind === 'project' ? -1 : settingSource(project, chain, def.path);
-          const overridden = scope.kind !== 'project' && source === here;
-          const from = source === -1 ? 'project' : names[source];
+          const src = scope.kind === 'project' ? { level: -1 } : sourceOf(def.path);
+          const overridden = scope.kind !== 'project' && src.level === here && !src.style;
+          const from = src.style ?? (src.level === -1 ? 'project' : names[src.level]);
           return (
             <div key={def.path} className={`setting${overridden ? ' overridden' : ''}`} title={def.tip}>
               <span className="field-label">{def.label}</span>

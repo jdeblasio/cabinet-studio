@@ -14,6 +14,7 @@ import type {
   Front,
   Id,
   Material,
+  NamedStyle,
   Opening,
   Project,
   Run,
@@ -640,6 +641,78 @@ export function removeMaterial(project: Project, id: Id): boolean {
   if (i < 0 || materialUsage(project, id) > 0) return false;
   project.materials.splice(i, 1);
   return true;
+}
+
+// ---------------------------------------------------------------------------
+// Named styles
+// ---------------------------------------------------------------------------
+
+/** Every scope that can reference a style: runs, tiers, boxes and spans. */
+function styleScopes(project: Project): SettingsScope[] {
+  const scopes: SettingsScope[] = [];
+  for (const run of project.runs) {
+    scopes.push(run, ...run.spans);
+    for (const tier of run.tiers) {
+      scopes.push(tier);
+      for (const item of tier.items) if (item.kind === 'box') scopes.push(item);
+    }
+  }
+  return scopes;
+}
+
+/** How many runs, tiers, boxes and spans use a style. */
+export function styleUsage(project: Project, styleId: Id): number {
+  return styleScopes(project).filter((s) => s.styleId === styleId).length;
+}
+
+/** Add a named style (optionally seeded with settings). Returns its id. */
+export function addStyle(project: Project, name: string, settings: NamedStyle['settings'] = {}): Id {
+  const id = newId();
+  project.styles.push({ id, name, settings: structuredClone(settings) });
+  return id;
+}
+
+export function renameStyle(project: Project, styleId: Id, name: string): boolean {
+  const style = project.styles.find((s) => s.id === styleId);
+  if (!style || !name) return false;
+  style.name = name;
+  return true;
+}
+
+/** Remove a style; anything using it falls back to what it inherits. */
+export function removeStyle(project: Project, styleId: Id): boolean {
+  const i = project.styles.findIndex((s) => s.id === styleId);
+  if (i < 0) return false;
+  project.styles.splice(i, 1);
+  for (const scope of styleScopes(project)) if (scope.styleId === styleId) delete scope.styleId;
+  return true;
+}
+
+export function setScopeStyle(scope: SettingsScope, styleId: Id | undefined): void {
+  if (styleId) scope.styleId = styleId;
+  else delete scope.styleId;
+}
+
+/** Set or clear one setting in a style (dotted path), pruning empty objects. */
+export function setStyleSetting(style: NamedStyle, path: string, value: unknown): void {
+  const proxy: SettingsScope = { overrides: style.settings };
+  setOverride(proxy, path, value);
+  style.settings = proxy.overrides ?? {};
+}
+
+export function clearStyleSetting(style: NamedStyle, path: string): void {
+  const proxy: SettingsScope = { overrides: style.settings };
+  clearOverride(proxy, path);
+  style.settings = proxy.overrides ?? {};
+}
+
+/** Turn a scope's overrides into a new named style and apply it there instead. Returns the style id. */
+export function saveOverridesAsStyle(project: Project, scope: SettingsScope, name: string): Id | undefined {
+  if (!scope.overrides || Object.keys(scope.overrides).length === 0) return undefined;
+  const id = addStyle(project, name, scope.overrides);
+  scope.styleId = id;
+  delete scope.overrides;
+  return id;
 }
 
 // ---------------------------------------------------------------------------

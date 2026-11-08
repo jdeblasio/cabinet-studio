@@ -5,6 +5,12 @@ import { deriveRun } from './derive/index';
 import {
   addBox,
   addMaterial,
+  addStyle,
+  removeStyle,
+  saveOverridesAsStyle,
+  setStyleSetting,
+  clearStyleSetting,
+  styleUsage,
   addSpan,
   addSplitChild,
   addTier,
@@ -313,5 +319,49 @@ describe('materials', () => {
     const side = result.parts.find((p) => p.id === `${boxes(run, 0)[0]!.id}/side-left`)!;
     expect(side.thickness).toBe(inches(3 / 4));
     expect(updateMaterial(project, 'nope', { thickness: 1 })).toBe(false);
+  });
+});
+
+describe('named styles', () => {
+  it('applies a style through the cascade and edits it in place', () => {
+    const { project, run } = setup();
+    const tier = run.tiers[0]!;
+    const id = addStyle(project, 'Inset shaker', { fronts: { mounting: 'inset', doorStyle: 'fivePiece' } });
+    tier.styleId = id;
+    expect(styleUsage(project, id)).toBe(1);
+    const box = boxes(run, 0)[0]!;
+    expect(resolveSettings(project, [run, tier, box]).fronts.mounting).toBe('inset');
+    // Box overrides still win over the tier's style.
+    setOverride(box, 'fronts.mounting', 'fullOverlay');
+    expect(resolveSettings(project, [run, tier, box]).fronts.mounting).toBe('fullOverlay');
+    // Editing the style changes everything that uses it.
+    const style = project.styles.find((s) => s.id === id)!;
+    setStyleSetting(style, 'fronts.reveal', inches(1 / 8));
+    expect(resolveSettings(project, [run, tier]).fronts.reveal).toBe(inches(1 / 8));
+    clearStyleSetting(style, 'fronts.reveal');
+    expect(style.settings.fronts).toEqual({ mounting: 'inset', doorStyle: 'fivePiece' });
+  });
+
+  it('removing a style unassigns it', () => {
+    const { project, run } = setup();
+    const id = addStyle(project, 'S');
+    run.styleId = id;
+    boxes(run, 1)[0]!.styleId = id;
+    expect(styleUsage(project, id)).toBe(2);
+    expect(removeStyle(project, id)).toBe(true);
+    expect(run.styleId).toBeUndefined();
+    expect(project.styles).toEqual([]);
+  });
+
+  it('saves a scope\'s overrides as a style', () => {
+    const { project, run } = setup();
+    const tier = run.tiers[1]!;
+    expect(saveOverridesAsStyle(project, tier, 'Empty')).toBeUndefined();
+    setOverride(tier, 'fronts.mounting', 'inset');
+    const before = resolveSettings(project, [run, tier]);
+    const id = saveOverridesAsStyle(project, tier, 'Upper style')!;
+    expect(tier.overrides).toBeUndefined();
+    expect(tier.styleId).toBe(id);
+    expect(resolveSettings(project, [run, tier])).toEqual(before);
   });
 });

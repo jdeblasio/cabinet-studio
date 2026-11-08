@@ -1,6 +1,10 @@
 import {
   addBox,
   addMaterial,
+  addStyle,
+  removeStyle,
+  renameStyle,
+  styleUsage,
   addSpan,
   addSplitChild,
   addTier,
@@ -178,7 +182,70 @@ function ProjectPanel() {
         </Field>
       </Section>
       <MaterialsSection />
+      <StylesSection />
       <SettingsSection scope={{ kind: 'project' }} title="Construction (project defaults)" />
+    </>
+  );
+}
+
+/** Named styles: reusable bundles of construction settings, applied per run, tier or box. */
+function StylesSection() {
+  const project = useEditor((s) => s.project);
+  const edit = useEditor((s) => s.edit);
+  const [editing, setEditing] = useState<Id | null>(null);
+  const open = project.styles.find((st) => st.id === editing);
+  return (
+    <>
+      <Section
+        title="Styles"
+        actions={
+          <button
+            title="Add an empty named style"
+            onClick={() => {
+              let id: Id | undefined;
+              edit((d) => void (id = addStyle(d, `Style ${d.styles.length + 1}`)));
+              if (id) setEditing(id);
+            }}
+          >
+            + Style
+          </button>
+        }
+      >
+        <p className="muted small">
+          Named sets of construction settings (e.g. "Inset Shaker, dado"). Apply one from any run, tier or box's Construction section; editing a style updates everything that uses it.
+        </p>
+        {project.styles.length === 0 && <p className="muted small">No styles yet.</p>}
+        <div className="materials">
+          {project.styles.map((st) => {
+            const used = styleUsage(project, st.id);
+            return (
+              <div key={st.id} className="style-row">
+                <span title="Style name">
+                  <TextInput value={st.name} ariaLabel="Style name" onCommit={(name) => edit((d) => void renameStyle(d, st.id, name))} />
+                </span>
+                <span className="muted small-inline" title="Runs, tiers and boxes using this style">
+                  {used} use{used === 1 ? '' : 's'}
+                </span>
+                <button className="link" onClick={() => setEditing(editing === st.id ? null : st.id)} title="Edit this style's settings">
+                  {editing === st.id ? 'Done' : 'Edit'}
+                </button>
+                <button
+                  className="link"
+                  title="Delete this style (anything using it keeps its own overrides and inherits the rest)"
+                  aria-label={`Delete ${st.name}`}
+                  onClick={() => {
+                    edit((d) => void removeStyle(d, st.id));
+                    if (editing === st.id) setEditing(null);
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </Section>
+      {open && <SettingsSection scope={{ kind: 'style', styleId: open.id }} title={`Style: ${open.name}`} />}
     </>
   );
 }
