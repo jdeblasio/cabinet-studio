@@ -6,6 +6,8 @@ import { validSelection, type Selection } from './selection';
 const HISTORY_LIMIT = 200;
 
 export type View3D = 'shaded' | 'wireframe';
+/** Top-level views: the design editor, and outputs derived from the design. */
+export type AppView = 'design' | 'cutlist' | 'sheets' | 'shopping' | 'drawings';
 
 export interface EditorState {
   project: Project;
@@ -18,6 +20,7 @@ export interface EditorState {
   /** Show lengths in the other unit system (approximate). */
   showOtherUnits: boolean;
   view3d: View3D;
+  view: AppView;
   loaded: boolean;
 
   /** Apply an edit as one undo step. */
@@ -37,6 +40,7 @@ export interface EditorState {
   replaceProject: (project: Project) => void;
   setShowOtherUnits: (v: boolean) => void;
   setView3d: (v: View3D) => void;
+  setView: (v: AppView) => void;
 }
 
 function fixSelection(project: Project, selection: Selection | null, activeRunId: Id): Selection | null {
@@ -65,6 +69,7 @@ export const useEditor = create<EditorState>()((set, get) => {
     activeRunId: firstRunId(initial),
     showOtherUnits: false,
     view3d: 'shaded',
+    view: 'design',
     loaded: false,
 
     edit: (recipe) => {
@@ -154,6 +159,7 @@ export const useEditor = create<EditorState>()((set, get) => {
 
     setShowOtherUnits: (showOtherUnits) => set({ showOtherUnits }),
     setView3d: (view3d) => set({ view3d }),
+    setView: (view) => set({ view }),
   };
 });
 

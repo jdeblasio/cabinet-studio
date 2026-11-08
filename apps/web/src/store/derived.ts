@@ -39,6 +39,16 @@ export function getRunResult(project: Project, runId: Id): RunResult {
   return result;
 }
 
+/** Derived results for every run in the project (memoized per project snapshot). */
+export function getProjectResults(project: Project): RunResult[] {
+  return project.runs.map((r) => getRunResult(project, r.id));
+}
+
+export function useProjectResults(): { project: Project; results: RunResult[] } {
+  const project = useEditor((s) => s.project);
+  return { project, results: getProjectResults(project) };
+}
+
 export function useRunResult(): RunResult {
   const project = useEditor((s) => s.project);
   const runId = useEditor((s) => s.activeRunId);

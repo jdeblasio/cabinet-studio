@@ -1,7 +1,12 @@
 import { findBox, findSpan, removeBox, removeSpan } from '@built-in-planner/engine';
 import { useEffect } from 'react';
+import { DrawingsView } from './components/drawings/DrawingsView';
 import { Elevation } from './components/elevation/Elevation';
 import { Inspector } from './components/inspector/Inspector';
+import { CutListView } from './components/outputs/CutListView';
+import { SheetsView } from './components/outputs/SheetsView';
+import { ShoppingView } from './components/outputs/ShoppingView';
+import { ViewTabs } from './components/ViewTabs';
 import { Preview3D } from './components/preview/Preview3D';
 import { Problems } from './components/Problems';
 import { Toolbar } from './components/Toolbar';
@@ -54,8 +59,25 @@ function useKeyboard() {
   }, []);
 }
 
+function OutputView() {
+  const view = useEditor((s) => s.view);
+  switch (view) {
+    case 'cutlist':
+      return <CutListView />;
+    case 'sheets':
+      return <SheetsView />;
+    case 'shopping':
+      return <ShoppingView />;
+    case 'drawings':
+      return <DrawingsView />;
+    default:
+      return null;
+  }
+}
+
 export function App() {
   const loaded = useEditor((s) => s.loaded);
+  const view = useEditor((s) => s.view);
 
   useEffect(() => {
     let cancelled = false;
@@ -75,18 +97,25 @@ export function App() {
   return (
     <div className="app">
       <Toolbar />
-      <main className="main">
-        <div className="center">
-          <section className="pane elevation-pane" aria-label="Front elevation">
-            <Elevation />
-          </section>
-          <Problems />
-          <section className="pane preview-pane" aria-label="3D preview">
-            <Preview3D />
-          </section>
-        </div>
-        <Inspector />
-      </main>
+      <ViewTabs />
+      {view === 'design' ? (
+        <main className="main">
+          <div className="center">
+            <section className="pane elevation-pane" aria-label="Front elevation">
+              <Elevation />
+            </section>
+            <Problems />
+            <section className="pane preview-pane" aria-label="3D preview">
+              <Preview3D />
+            </section>
+          </div>
+          <Inspector />
+        </main>
+      ) : (
+        <main className="output-main">
+          <OutputView />
+        </main>
+      )}
     </div>
   );
 }
