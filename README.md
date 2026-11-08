@@ -1,19 +1,58 @@
 # Built-in Planner
 
 Design software for built-in cabinets and shelving: a parametric model of a wall run
-(tiers of face-frame boxes, tall boxes, doorways) from which parts, drawings and cut lists
-are derived. See [DESIGN.md](DESIGN.md) for the product design and decisions.
+(tiers of boxes, tall boxes, doorways) from which parts, drawings, cut lists and sheet
+layouts are derived. See [DESIGN.md](DESIGN.md) for the product design and decisions.
 
 Free and open source under the AGPL-3.0.
+
+## What it does
+
+- **Design** a wall run as tiers of boxes with fixed and flex widths, tall boxes and gaps
+  (doorways, knee space), in a front elevation with an inspector and a live 3D preview
+  (shaded, wireframe, exploded). Boundary drags snap to edges in other tiers.
+- **Construction:** face frame or frameless, per project, tier or box. Settings cascade
+  (project → run → tier → box) with named styles.
+  - **Joinery and fronts:** butt, dowel, confirmat, dado or rabbet joints; slab or
+    five-piece doors and drawer fronts in partial overlay, full overlay or inset.
+  - **Parts:** drawer boxes sized from the chosen slides; adjustable and fixed shelves;
+    partitions.
+  - **Trim:** countertops (which can bridge a gap), toe kicks, crown and base molding,
+    end panels, scribe strips and wall fillers.
+  - **Finishing and hardware:** edge banding, shelf pin and hinge cup drilling, and a
+    hardware library.
+- **Fit the room:** walls take extra length and ceiling measurements. Boxes fit the
+  tightest and scribe stiles are cut to scribe to the rest.
+- **Check:** a problems panel lints the design (e.g. shelf sag from a beam model, drawers
+  with no slide that fits, crowded shelves).
+- **Outputs:**
+  - Cut list with CSV export.
+  - Guillotine sheet layouts and lumber cutting lists.
+  - Shopping list (quantities only).
+  - Printable drawing set: elevations, plans, sections and box sheets.
+  - 3D export (glTF, OBJ, STL).
+- **Local-first:** projects live in the browser (switch, duplicate, delete), with JSON
+  export and import. No accounts.
 
 ## Layout
 
 - `packages/engine`: pure TypeScript design model and derivation engine (no UI).
   - `model.ts`: the persisted design model; `derived.ts`: derived output types.
   - `units.ts` / `format.ts`: integer length ticks (1/8128"), parsing and formatting.
-  - `derive/`: flex solver, run layout, box parts, face frames, toe kick.
+  - `derive/`: the derivation pipeline:
+    - `layout.ts`: run layout and the flex solver.
+    - `box.ts`: box parts, fronts, drawers and machining.
+    - `frame.ts`: face frames.
+    - `toeKick.ts`, `countertop.ts`, `scribe.ts`, `trim.ts`: trim and fillers.
+    - `checks.ts`: engineering checks.
+  - `cutlist/`: cut list, guillotine sheet nesting, lumber optimization, shopping list, CSV.
+  - `export3d.ts`: glTF, OBJ and STL export.
   - `ops.ts`: model edit helpers used by the editor.
-- `apps/web`: the browser editor (React, react-three-fiber).
+- `apps/web`: the browser editor (React, react-three-fiber, zustand).
+  - `components/elevation`, `inspector`, `preview`: the design view.
+  - `components/outputs`: cut list, sheet layouts and shopping list views.
+  - `components/drawings`: the printable drawing set.
+  - `store/`: editor state, undo, the project library (IndexedDB) and derived results.
 
 ## Development
 

@@ -343,6 +343,19 @@ step or two off its siblings. Hold Alt/Option to drag freely.
   `Part.features` lists shelf-pin rows (front and back, 32 mm pitch, 4" clear of the opening's
   ends, 1 1/2" from the edges) on faces holding adjustable shelves, and 35 mm hinge cups 22.5 mm
   from the hinge edge, 3" from the ends, 2–5 per door by height, for concealed hinges).
+- **Implemented so far:** a drawing set per run, as landscape sheets that print one per page
+  on Letter or A4. Each has a title block (project, run, drawing, scale, date, sheet n of N)
+  and uses the largest standard scale that fits ("print at 100%, dimensions govern"), or says
+  "not to scale".
+  - **Front elevation:** all parts, gaps labeled, box numbers and section marks, and dimension
+    chains for box widths, tier heights, toe kick, countertop, overall and ceiling.
+  - **Plan:** one strip per tier showing depths, frame, fronts, countertop overhangs and the
+    toe kick setback.
+  - **Sections:** one per distinct column, with cut parts filled (sheet goods gray, lumber
+    hatched).
+  - **Box sheets:** one per box, with front and side views, opening sizes, a parts table, and
+    shelf-pin and hinge-cup positions.
+  User annotations are still to come.
 - **Auto + annotations**: drawings and dimensions regenerate from rules on every change;
   users can add notes/callouts/extra dimensions **anchored to model geometry** that survive
   regeneration.
@@ -425,5 +438,4 @@ Proves the design experience:
   "countertop over it", e.g. desk knee space; the bridged span gets the shelf sag check.)
 - **Moldings:** profile library vs. bounding-box profiles; miter returns at run ends.
 - **Grain matching** across door pairs / drawer banks beyond "group onto one sheet".
-- **Drawing layout:** pagination, sheet sizes, title block.
 - **Later milestone ordering** (Section 14).
