@@ -331,7 +331,10 @@ step or two off its siblings. Hold Alt/Option to drag freely.
 - Sections (depths, tiers, toe kick, crown, countertop overhangs)
 - Per-box assembly sheets (parts, joinery callouts)
 - Per-part drawings with drilling (shelf pins, hinge cups, slide holes) and dado locations.
-  The model therefore tracks **machining features as real geometry**.
+  The model therefore tracks **machining features as real geometry** (implemented for holes:
+  `Part.features` lists shelf-pin rows (front and back, 32 mm pitch, 4" clear of the opening's
+  ends, 1 1/2" from the edges) on faces holding adjustable shelves, and 35 mm hinge cups 22.5 mm
+  from the hinge edge, 3" from the ends, 2–5 per door by height, for concealed hinges).
 - **Auto + annotations**: drawings and dimensions regenerate from rules on every change;
   users can add notes/callouts/extra dimensions **anchored to model geometry** that survive
   regeneration.

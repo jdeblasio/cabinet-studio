@@ -909,3 +909,43 @@ describe('deriveRun: edge banding', () => {
     expect(off.result.parts.some((p) => p.banding !== undefined)).toBe(false);
   });
 });
+
+describe('deriveRun: machining', () => {
+  it('drills shelf pin rows on the faces that hold adjustable shelves', () => {
+    const { run, result } = setup();
+    const box = boxesOf(tier(run, 1))[0]!; // open upper box with 3 adjustable shelves
+    const side = part(result, `${box.id}/side-left`);
+    const holes = side.features!;
+    expect(holes.every((h) => h.label === 'Shelf pin' && h.axis === 'x' && h.diameter === mm(5))).toBe(true);
+    // Drilled on the side's inside face, in a front and a back row.
+    expect(new Set(holes.map((h) => h.x))).toEqual(new Set([side.bounds.x + side.bounds.width]));
+    const rows = [...new Set(holes.map((h) => h.z))];
+    expect(rows).toEqual([side.bounds.z + inches(1.5), side.bounds.z + side.bounds.depth - inches(1.5)]);
+    // 32 mm apart, at least 4" from the opening's top and bottom.
+    const ys = [...new Set(holes.map((h) => h.y))].sort((a, b) => a - b);
+    expect(ys[1]! - ys[0]!).toBe(mm(32));
+    expect(ys[0]).toBe(inches(31.5 + 4));
+    expect(ys.at(-1)!).toBeLessThanOrEqual(inches(95.5) - T - inches(4));
+    expect(part(result, `${box.id}/side-right`).features).toHaveLength(holes.length);
+  });
+
+  it('bores 35 mm hinge cups along the hinge edge of each door', () => {
+    const { run, result } = setup();
+    const op = boxesOf(tier(run, 0))[0]!.content.id;
+    const left = part(result, `${op}/door-left`);
+    const cups = left.features!;
+    expect(cups.map((c) => c.label)).toEqual(['Hinge cup', 'Hinge cup']);
+    expect(cups.map((c) => c.y)).toEqual([left.bounds.y + inches(3), left.bounds.y + left.bounds.height - inches(3)]);
+    expect(cups.every((c) => c.x === left.bounds.x + mm(22.5) && c.z === left.bounds.z && c.diameter === mm(35))).toBe(true);
+    const right = part(result, `${op}/door-right`);
+    expect(right.features!.every((c) => c.x === right.bounds.x + right.bounds.width - mm(22.5))).toBe(true);
+  });
+
+  it('skips cups for butt hinges', () => {
+    const { run, result } = setup((p) => {
+      p.settings = { ...p.settings, hardware: { ...p.settings.hardware, hinge: 'hinge-butt' } };
+    });
+    const op = boxesOf(tier(run, 0))[0]!.content.id;
+    expect(part(result, `${op}/door-left`).features).toBeUndefined();
+  });
+});

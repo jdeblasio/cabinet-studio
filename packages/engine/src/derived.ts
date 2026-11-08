@@ -80,6 +80,21 @@ export interface Part {
   note?: string;
   /** Total length of edge banding applied to this part (finished edge lengths). */
   banding?: Ticks;
+  /** Machining: holes drilled into this part (shelf pins, hinge cups). */
+  features?: PartFeature[];
+}
+
+/** A hole drilled into a part, in run space: centered at (x, y, z) on the part's face, along `axis`. */
+export interface PartFeature {
+  kind: 'hole';
+  /** e.g. "Shelf pin", "Hinge cup". */
+  label: string;
+  x: Ticks;
+  y: Ticks;
+  z: Ticks;
+  axis: 'x' | 'y' | 'z';
+  diameter: Ticks;
+  depth: Ticks;
 }
 
 export interface RunResult {
