@@ -13,6 +13,7 @@ function emptyResult(project: Project, runId: Id, message: string): RunResult {
     tiers: [],
     boxes: [],
     gaps: [],
+    hardware: [],
     frames: [],
     parts: [],
     issues: [{ severity: 'error', code: 'derive-failed', message, sourceId: runId }],

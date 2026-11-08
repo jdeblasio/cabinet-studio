@@ -21,7 +21,7 @@
  *    a second bottom panel closes the recess behind the rail, or, if the rail is too narrow for
  *    two panels, the single bottom panel drops flush with the carcass bottom.
  */
-import type { Part, PartFeature, Rect, SectionLayout } from '../derived';
+import type { Bounds, HardwareItem, Part, PartFeature, Rect, SectionLayout } from '../derived';
 import type { ConstructionSettings, Opening, Section } from '../model';
 import { inches, mm, snap, type Ticks } from '../units';
 import { DEFAULT_HARDWARE, hardwareOf } from '../defaults';
@@ -45,11 +45,12 @@ interface EdgeCover {
   bottom: Ticks;
 }
 
-export function deriveBox(ctx: Ctx, box: PlacedBox): { parts: Part[]; sections: SectionLayout[] } {
+export function deriveBox(ctx: Ctx, box: PlacedBox): { parts: Part[]; sections: SectionLayout[]; hardware: HardwareItem[] } {
   const s = box.settings;
   const id = box.id;
   const parts: Part[] = [];
   const sections: SectionLayout[] = [];
+  const hardware: HardwareItem[] = [];
   const add = (p: Parameters<typeof makePart>[0]) => parts.push(makePart(p));
 
   const t = ctx.thickness(s.materials.carcass, id);
@@ -73,7 +74,7 @@ export function deriveBox(ctx: Ctx, box: PlacedBox): { parts: Part[]; sections: 
 
   if (W <= 2 * t || H <= 2 * t || Ds <= 0) {
     ctx.issue('error', 'box-too-small', id, `Box is too small to build (${ctx.fmt(W)} × ${ctx.fmt(H)}).`);
-    return { parts, sections };
+    return { parts, sections, hardware };
   }
 
   // ---- Carcass ----
@@ -111,7 +112,7 @@ export function deriveBox(ctx: Ctx, box: PlacedBox): { parts: Part[]; sections: 
     : { x: railX, y: y + bottomRail, width: railW, height: H - topRail - bottomRail };
   if (R.width <= 0 || R.height <= 0) {
     ctx.issue('error', 'box-too-small', id, 'Face frame leaves no opening; the box is too small for its rails and stiles.');
-    return { parts, sections };
+    return { parts, sections, hardware };
   }
   const I: Interior = { x0: x + t, x1: x + W - t, y0: floorTop, y1: openTop ? top : top - t };
   // How much of the box's edges each front may cover: the frame members, or the carcass edges when frameless.
@@ -310,11 +311,27 @@ export function deriveBox(ctx: Ctx, box: PlacedBox): { parts: Part[]; sections: 
     const bw = w - 2 * t + 2 * groove;
     const bd = depth - 2 * t + 2 * groove;
     add({ id: `${base}-bottom`, name: 'Drawer bottom', role: 'drawerBottom', materialId: btm, bounds: { x: x0 + t - groove, y: y0 + inches(1 / 2), z: z0 + t - groove, width: bw, height: tbot, depth: bd }, grain: 'horizontal', thicknessAxis: 'y', ownerId: id, length: down(bw), width: down(bd) });
+    // The slides, for illustration: side-mount slides fill the side clearance, centered on the box
+    // side; undermount runners sit under the box in the recess below the bottom.
+    const c = slide.sideClearance;
+    for (const side of ['left', 'right'] as const) {
+      const partId = `${base}-side-${side}`;
+      let b: Bounds;
+      if (slide.mount === 'under') {
+        const drop = Math.min(mm(4), dr.bottomClearance);
+        const rw = c + t + mm(11);
+        b = { x: side === 'left' ? x0 - c + mm(1) : x0 + w - t - mm(12), y: y0 - drop, z: z0 + mm(6), width: rw, height: inches(1 / 2) - mm(1) + drop, depth: depth - mm(12) };
+      } else {
+        const sh = Math.min(mm(45), h);
+        b = { x: side === 'left' ? x0 - c : x0 + w, y: y0 + (h - sh) / 2, z: z0, width: c, height: sh, depth: depth - mm(2) };
+      }
+      hardware.push({ id: `${partId}/slide`, kind: 'drawerSlide', name: `${slide.name}, ${ctx.fmt(depth)}`, typeId: slide.id, ownerId: id, partId, shapes: [{ kind: 'box', bounds: b }] });
+    }
   };
 
   /** Interiors holding adjustable shelves (for shelf-pin holes) and doors to bore for hinges. */
-  const pinZones: Interior[] = [];
-  const hingeDoors: { partId: string; side: 'left' | 'right' }[] = [];
+  const pinZones: PinZone[] = [];
+  const hingeDoors: HingeDoor[] = [];
 
   const deriveOpening = (op: Opening, r: Rect, inner: Interior, edge: EdgeCover): void => {
     // ---- Fronts ----
@@ -343,7 +360,7 @@ export function deriveBox(ctx: Ctx, box: PlacedBox): { parts: Part[]; sections: 
         const fw = down(F.width);
         const isDoor = op.front.type === 'door';
         const front = addFront(op, isDoor ? `${op.id}/door` : `${op.id}/drawer-front`, isDoor ? 'Door' : 'Drawer front', isDoor, { x: F.x + (F.width - fw) / 2, y: fy, width: fw, height: fh });
-        if (op.front.type === 'door') hingeDoors.push({ partId: front.hingePart(op.front.hinge), side: op.front.hinge });
+        if (op.front.type === 'door') hingeDoors.push({ partId: front.hingePart(op.front.hinge), side: op.front.hinge, edgeX: op.front.hinge === 'left' ? r.x : r.x + r.width });
         if (isDoor && fw > inches(24)) {
           ctx.issue('warning', 'door-wide', op.id, `Door is ${ctx.fmt(fw)} wide; consider a pair of doors.`);
         }
@@ -354,7 +371,7 @@ export function deriveBox(ctx: Ctx, box: PlacedBox): { parts: Part[]; sections: 
         const lx = F.x + slack / 2;
         const left = addFront(op, `${op.id}/door-left`, 'Left door', true, { x: lx, y: fy, width: dw, height: fh });
         const right = addFront(op, `${op.id}/door-right`, 'Right door', true, { x: lx + dw + fr.pairGap, y: fy, width: dw, height: fh });
-        hingeDoors.push({ partId: left.hingePart('left'), side: 'left' }, { partId: right.hingePart('right'), side: 'right' });
+        hingeDoors.push({ partId: left.hingePart('left'), side: 'left', edgeX: r.x }, { partId: right.hingePart('right'), side: 'right', edgeX: r.x + r.width });
         if (dw > inches(24)) {
           ctx.issue('warning', 'door-wide', op.id, `Doors are ${ctx.fmt(dw)} wide each.`);
         }
@@ -380,17 +397,19 @@ export function deriveBox(ctx: Ctx, box: PlacedBox): { parts: Part[]; sections: 
       ctx.issue('warning', 'shelves-crowded', op.id, `Adjustable shelves are only ${ctx.fmt(gap)} apart.`);
     }
     checkShelfSag(ctx, s, op.id, 'Adjustable shelf', s.materials.shelves, sw, sd, tsh);
-    pinZones.push(inner);
+    const zone: PinZone = { ...inner, shelves: [] };
+    pinZones.push(zone);
     for (let k = 0; k < n; k++) {
       const sy = snap(inner.y0 + gap * (k + 1) + tsh * k, ctx.grid);
+      zone.shelves.push({ id: `${op.id}/adj-shelf-${k}`, y: sy });
       add({ id: `${op.id}/adj-shelf-${k}`, name: 'Adjustable shelf', role: 'adjustableShelf', materialId: s.materials.shelves, bounds: { x: inner.x0 + s.shelves.sideClearance, y: sy, z: tb, width: sw, height: tsh, depth: sd }, grain: 'horizontal', thicknessAxis: 'y', ownerId: id, length: down(sw), width: down(sd) });
     }
   };
 
   layoutSection(box.content, R, I, cover);
   applyEdgeBanding(ctx, s, frameless, parts);
-  addMachining(ctx, s, parts, pinZones, hingeDoors);
-  return { parts, sections };
+  addMachining(ctx, s, id, parts, hardware, pinZones, hingeDoors, zFrame - HINGE_ARM_REACH);
+  return { parts, sections, hardware };
 }
 
 /**
@@ -422,14 +441,43 @@ const PIN_PITCH = mm(32);
 const PIN_END_MARGIN = inches(4);
 const PIN_EDGE_INSET = inches(1.5);
 
+/** An interior with adjustable shelves: where shelf pin holes go, and the shelves' bottoms. */
+interface PinZone extends Interior {
+  shelves: { id: string; y: Ticks }[];
+}
+
+/** A door (or the stile of a five-piece door) to bore for hinges. */
+interface HingeDoor {
+  partId: string;
+  side: 'left' | 'right';
+  /** x of the opening's edge on the hinge side, where the hinge arm runs into the box. */
+  edgeX: Ticks;
+}
+
+/** How far behind the carcass front a concealed hinge's arm and plate reach (for illustration). */
+const HINGE_ARM_REACH = mm(40);
+/** Visible length of a shelf pin (for illustration). */
+const PIN_LENGTH = mm(12);
+
 /**
  * Machining as real geometry:
  *  - Shelf pin holes: two rows (front and back) on each face that holds adjustable shelves,
  *    on 32 mm centers, keeping clear of the opening's top and bottom.
  *  - Hinge cups (concealed hinges): along the hinge edge of each door's back face, 3" from the
  *    top and bottom with more hinges spread between on taller doors.
+ * Also places the hardware itself for illustration: a pin under each shelf corner, and each
+ * hinge (a concealed hinge's cup and arm, or a butt hinge's knuckle).
  */
-function addMachining(ctx: Ctx, s: ConstructionSettings, parts: Part[], pinZones: readonly { x0: Ticks; x1: Ticks; y0: Ticks; y1: Ticks }[], hingeDoors: readonly { partId: string; side: 'left' | 'right' }[]): void {
+function addMachining(
+  ctx: Ctx,
+  s: ConstructionSettings,
+  ownerId: string,
+  parts: Part[],
+  hardware: HardwareItem[],
+  pinZones: readonly PinZone[],
+  hingeDoors: readonly HingeDoor[],
+  armZ: Ticks,
+): void {
   const lib = hardwareOf(ctx.project);
   const pin = lib.shelfPins.find((p) => p.id === s.hardware?.shelfPin) ?? DEFAULT_HARDWARE.shelfPins[0]!;
   const hinge = lib.hinges.find((h) => h.id === s.hardware?.hinge) ?? DEFAULT_HARDWARE.hinges[0]!;
@@ -461,26 +509,83 @@ function addMachining(ctx: Ctx, s: ConstructionSettings, parts: Part[], pinZones
         part.id,
         ys.flatMap((y) => zs.map((z): PartFeature => ({ kind: 'hole', label: 'Shelf pin', x, y, z, axis: 'x', diameter: pin.diameter, depth: inches(3 / 8) }))),
       );
+      // A pin under each shelf at each row, sticking out of the face into the interior.
+      const left = x === zone.x0;
+      const cx = left ? x + PIN_LENGTH / 2 : x - PIN_LENGTH / 2;
+      for (const shelf of zone.shelves) {
+        hardware.push({
+          id: `${shelf.id}/pins-${left ? 'left' : 'right'}`,
+          kind: 'shelfPin',
+          name: pin.name,
+          typeId: pin.id,
+          ownerId,
+          partId: part.id,
+          shapes: zs.map((z) => ({ kind: 'cylinder', x: cx, y: shelf.y - pin.diameter / 2, z, axis: 'x', diameter: pin.diameter, length: PIN_LENGTH })),
+        });
+      }
     }
   }
 
   if (hinge.kind === 'concealed') {
     const cup = hinge.cupDiameter ?? mm(35);
+    for (const edge of hingeDoors) {
+      const { partId, side } = edge;
+      const door = parts.find((p) => p.id === partId);
+      if (!door) continue;
+      const b = door.bounds;
+      const ys = hingeHeights(b);
+      // Cup center 22.5 mm in from the door's hinge edge (on the door, not a stile's inner edge).
+      const cupX = side === 'left' ? b.x + mm(22.5) : b.x + b.width - mm(22.5);
+      addFeatures(
+        partId,
+        ys.map((y): PartFeature => ({ kind: 'hole', label: 'Hinge cup', x: cupX, y, z: b.z, axis: 'z', diameter: cup, depth: inches(1 / 2) })),
+      );
+      // The hinge: its cup in the door (proud of the back by 2 mm), and an arm running from the
+      // cup back into the box along the opening's hinge edge, where it mounts.
+      const armW = mm(16);
+      const armX = side === 'left' ? edge.edgeX : edge.edgeX - armW;
+      ys.forEach((y, k) => {
+        hardware.push({
+          id: `${partId}/hinge-${k}`,
+          kind: 'hinge',
+          name: hinge.name,
+          typeId: hinge.id,
+          ownerId,
+          partId,
+          shapes: [
+            { kind: 'cylinder', x: cupX, y, z: b.z + mm(4.5), axis: 'z', diameter: cup, length: mm(13) },
+            { kind: 'box', bounds: { x: armX, y: y - mm(8), z: armZ, width: armW, height: mm(16), depth: Math.max(mm(1), b.z - armZ) } },
+          ],
+        });
+      });
+    }
+  } else if (hinge.kind === 'butt') {
+    // Butt hinges: just the knuckle, at the door's hinge edge, proud of its face.
     for (const { partId, side } of hingeDoors) {
       const door = parts.find((p) => p.id === partId);
       if (!door) continue;
       const b = door.bounds;
-      const h = b.height;
-      const count = h <= inches(40) ? 2 : h <= inches(60) ? 3 : h <= inches(80) ? 4 : 5;
-      const top = b.y + b.height - inches(3);
-      const bottom = b.y + inches(3);
-      const ys = Array.from({ length: count }, (_, i) => Math.round(bottom + ((top - bottom) * i) / (count - 1)));
-      // Cup center 22.5 mm in from the door's hinge edge (on the door, not a stile's inner edge).
-      const edgeX = side === 'left' ? b.x + mm(22.5) : b.x + b.width - mm(22.5);
-      addFeatures(
-        partId,
-        ys.map((y): PartFeature => ({ kind: 'hole', label: 'Hinge cup', x: edgeX, y, z: b.z, axis: 'z', diameter: cup, depth: inches(1 / 2) })),
-      );
+      const d = mm(9);
+      hingeHeights(b).forEach((y, k) => {
+        hardware.push({
+          id: `${partId}/hinge-${k}`,
+          kind: 'hinge',
+          name: hinge.name,
+          typeId: hinge.id,
+          ownerId,
+          partId,
+          shapes: [{ kind: 'cylinder', x: side === 'left' ? b.x : b.x + b.width, y, z: b.z + b.depth + d / 4, axis: 'y', diameter: d, length: inches(2.5) }],
+        });
+      });
     }
   }
+}
+
+/** Hinge centers on a door: 3" from the top and bottom, more spread between on taller doors (2 up to 40", one more per 20"). */
+function hingeHeights(b: Bounds): Ticks[] {
+  const h = b.height;
+  const count = h <= inches(40) ? 2 : h <= inches(60) ? 3 : h <= inches(80) ? 4 : 5;
+  const top = b.y + b.height - inches(3);
+  const bottom = b.y + inches(3);
+  return Array.from({ length: count }, (_, i) => Math.round(bottom + ((top - bottom) * i) / (count - 1)));
 }

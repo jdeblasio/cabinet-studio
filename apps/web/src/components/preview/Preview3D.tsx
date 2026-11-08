@@ -1,4 +1,4 @@
-import { findBox, findSpan, TICKS_PER_INCH, toGLTF, toOBJ, toSTL, type Id, type Part, type Run, type RunResult, type Ticks } from '@built-in-planner/engine';
+import { findBox, findSpan, TICKS_PER_INCH, toGLTF, toOBJ, toSTL, type HardwareItem, type HardwareShape, type Id, type Part, type Run, type RunResult, type Ticks } from '@built-in-planner/engine';
 import { Edges, OrbitControls } from '@react-three/drei';
 import { Canvas, useThree, type ThreeEvent } from '@react-three/fiber';
 import { memo, useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -57,11 +57,14 @@ export function Preview3D() {
   const select = useEditor((s) => s.select);
   const mode = useEditor((s) => s.view3d);
   const setMode = useEditor((s) => s.setView3d);
+  const showHardware = useEditor((s) => s.showHardware);
+  const setShowHardware = useEditor((s) => s.setShowHardware);
   const [resetKey, setResetKey] = useState(0);
 
   const colors = useMemo(() => new Map(materials.map((m) => [m.id, m.color])), [materials]);
   const offsets = useMemo(() => (mode === 'exploded' ? explodeOffsets(result) : null), [mode, result]);
   const highlighted = useMemo(() => highlightedParts(run, result, selection), [run, result, selection]);
+  const partsById = useMemo(() => new Map(result.parts.map((p) => [p.id, p])), [result]);
 
   const W = Math.max(I(result.width), 12);
   const H = Math.max(I(result.ceilingHeight), 12);
@@ -110,6 +113,22 @@ export function Preview3D() {
             />
           ))}
         </group>
+        {showHardware && (
+          <group>
+            {result.hardware.map((h) => (
+              <HardwareMesh
+                key={h.id}
+                item={h}
+                offset={offsets?.get(h.partId)}
+                highlighted={highlighted.has(h.partId)}
+                onSelect={() => {
+                  const part = partsById.get(h.partId);
+                  if (part) onSelectPart(part);
+                }}
+              />
+            ))}
+          </group>
+        )}
         <OrbitControls target={target} makeDefault enableDamping dampingFactor={0.12} />
       </Canvas>
       <div className="preview-controls">
@@ -126,6 +145,10 @@ export function Preview3D() {
             </button>
           ))}
         </span>
+        <label className="toggle" title="Show drawer slides, hinges and shelf pins (simplified, for illustration)">
+          <input type="checkbox" checked={showHardware} onChange={(e) => setShowHardware(e.target.checked)} />
+          Hardware
+        </label>
         <button onClick={() => setResetKey((k) => k + 1)}>Reset view</button>
         <ExportMenu run={run} result={result} />
       </div>
@@ -205,6 +228,62 @@ const PartMesh = memo(function PartMesh({
     </mesh>
   );
 });
+
+const HARDWARE_COLOR: Record<HardwareItem['kind'], string> = { drawerSlide: '#8e959d', hinge: '#a9afb6', shelfPin: '#b9bec4' };
+
+/** One hardware item: simple metal solids (boxes and cylinders), drawn solid in every mode. */
+const HardwareMesh = memo(function HardwareMesh({
+  item,
+  offset,
+  highlighted,
+  onSelect,
+}: {
+  item: HardwareItem;
+  offset?: [number, number, number];
+  highlighted: boolean;
+  onSelect: () => void;
+}) {
+  const color = highlighted ? HIGHLIGHT : HARDWARE_COLOR[item.kind];
+  const [ox, oy, oz] = offset ?? [0, 0, 0];
+  const onClick = (e: ThreeEvent<MouseEvent>) => {
+    e.stopPropagation();
+    if (e.delta > 4) return;
+    onSelect();
+  };
+  return (
+    <group position={[ox, oy, oz]} onClick={onClick}>
+      {item.shapes.map((sh, i) => (
+        <HardwareShapeMesh key={i} shape={sh} color={color} />
+      ))}
+    </group>
+  );
+});
+
+function HardwareShapeMesh({ shape, color }: { shape: HardwareShape; color: string }) {
+  const material = <meshStandardMaterial color={color} metalness={0.55} roughness={0.38} />;
+  if (shape.kind === 'box') {
+    const b = shape.bounds;
+    const w = Math.max(I(b.width), 0.001);
+    const h = Math.max(I(b.height), 0.001);
+    const d = Math.max(I(b.depth), 0.001);
+    return (
+      <mesh position={[I(b.x) + w / 2, I(b.y) + h / 2, I(b.z) + d / 2]}>
+        <boxGeometry args={[w, h, d]} />
+        {material}
+        <Edges threshold={15} color="#5b6168" />
+      </mesh>
+    );
+  }
+  const r = I(shape.diameter) / 2;
+  // Cylinders run along y; turn them onto x or z.
+  const rotation: [number, number, number] = shape.axis === 'x' ? [0, 0, Math.PI / 2] : shape.axis === 'z' ? [Math.PI / 2, 0, 0] : [0, 0, 0];
+  return (
+    <mesh position={[I(shape.x), I(shape.y), I(shape.z)]} rotation={rotation}>
+      <cylinderGeometry args={[r, r, I(shape.length), 20]} />
+      {material}
+    </mesh>
+  );
+}
 
 /** Download the run's parts as a 3D model. */
 function ExportMenu({ run, result }: { run: Run; result: RunResult }) {

@@ -969,3 +969,98 @@ describe('deriveRun: machining', () => {
     expect(part(result, `${op}/door-left`).features).toBeUndefined();
   });
 });
+
+describe('deriveRun: hardware for illustration', () => {
+  const boxOf = (b: { bounds: { x: number; y: number; z: number; width: number; height: number; depth: number } }) => b.bounds;
+  const shapeBox = (h: RunResult['hardware'][number], i = 0) => {
+    const sh = h.shapes[i]!;
+    if (sh.kind !== 'box') throw new Error('expected a box');
+    return sh.bounds;
+  };
+
+  it('puts a side-mount slide in the clearance on each side of a drawer box', () => {
+    const { run, result } = setup((_, r) => {
+      boxesOf(tier(r, 0))[0]!.content = opening({ type: 'drawer' });
+    });
+    const op = boxesOf(tier(run, 0))[0]!.content.id;
+    const slides = result.hardware.filter((h) => h.kind === 'drawerSlide');
+    expect(slides.map((h) => h.id)).toEqual([`${op}/drawer-side-left/slide`, `${op}/drawer-side-right/slide`]);
+    const left = boxOf(part(result, `${op}/drawer-side-left`));
+    const right = boxOf(part(result, `${op}/drawer-side-right`));
+    const sl = shapeBox(slides[0]!);
+    const sr = shapeBox(slides[1]!);
+    // 1/2" slides against the outside of each drawer side, as long as the box (less 2 mm at the front).
+    expect([sl.x + sl.width, sl.width, sl.z, sl.depth]).toEqual([left.x, inches(1 / 2), left.z, left.depth - mm(2)]);
+    expect([sr.x, sr.width]).toEqual([right.x + right.width, inches(1 / 2)]);
+    // Centered on the side's height.
+    expect(sl.y + sl.height / 2).toBe(left.y + left.height / 2);
+    expect(slides[0]!.partId).toBe(`${op}/drawer-side-left`);
+    expect(slides[0]!.typeId).toBe('slide-side-ball');
+  });
+
+  it('puts undermount runners under the drawer bottom', () => {
+    const { run, result } = setup((p, r) => {
+      p.settings = { ...p.settings, hardware: { ...p.settings.hardware, slide: 'slide-under-full' } };
+      boxesOf(tier(r, 0))[0]!.content = opening({ type: 'drawer' });
+    });
+    const op = boxesOf(tier(run, 0))[0]!.content.id;
+    const bottom = boxOf(part(result, `${op}/drawer-bottom`));
+    const side = boxOf(part(result, `${op}/drawer-side-left`));
+    const runner = shapeBox(result.hardware.find((h) => h.kind === 'drawerSlide')!);
+    expect(runner.y + runner.height).toBeLessThan(bottom.y);
+    expect(runner.y).toBeLessThan(side.y);
+    // Under the drawer side and into the recess beside it.
+    expect(runner.x).toBeLessThan(side.x);
+    expect(runner.x + runner.width).toBeGreaterThan(side.x + side.width);
+  });
+
+  it('places a concealed hinge at each cup, with its arm running back into the box', () => {
+    const { run, result } = setup();
+    const op = boxesOf(tier(run, 0))[0]!.content.id;
+    const door = part(result, `${op}/door-left`);
+    const hinges = result.hardware.filter((h) => h.partId === door.id);
+    expect(hinges.map((h) => h.kind)).toEqual(['hinge', 'hinge']);
+    hinges.forEach((h, k) => {
+      const cup = h.shapes[0]!;
+      const hole = door.features![k]!;
+      expect(cup).toMatchObject({ kind: 'cylinder', axis: 'z', x: hole.x, y: hole.y, diameter: mm(35) });
+      const arm = shapeBox(h, 1);
+      // From behind the frame forward to the door's back face.
+      expect(arm.z + arm.depth).toBe(door.bounds.z);
+      expect(arm.z).toBeLessThan(door.bounds.z - inches(3 / 4));
+    });
+  });
+
+  it('places butt hinge knuckles on the hinge edge', () => {
+    const { run, result } = setup((p) => {
+      p.settings = { ...p.settings, hardware: { ...p.settings.hardware, hinge: 'hinge-butt' } };
+    });
+    const op = boxesOf(tier(run, 0))[0]!.content.id;
+    const door = part(result, `${op}/door-right`);
+    const knuckles = result.hardware.filter((h) => h.partId === door.id).map((h) => h.shapes[0]!);
+    expect(knuckles).toHaveLength(2);
+    expect(knuckles.every((k) => k.kind === 'cylinder' && k.axis === 'y' && k.x === door.bounds.x + door.bounds.width)).toBe(true);
+  });
+
+  it('puts four pins under each adjustable shelf', () => {
+    const { run, result } = setup();
+    const box = boxesOf(tier(run, 1))[0]!; // open upper box with 3 adjustable shelves
+    const shelves = result.parts.filter((p) => p.ownerId === box.id && p.role === 'adjustableShelf');
+    const pins = result.hardware.filter((h) => h.ownerId === box.id && h.kind === 'shelfPin');
+    expect(pins).toHaveLength(2 * shelves.length);
+    for (const shelf of shelves) {
+      const under = pins.filter((h) => h.id.startsWith(`${shelf.id}/`)).flatMap((h) => h.shapes);
+      expect(under).toHaveLength(4);
+      for (const pin of under) {
+        if (pin.kind !== 'cylinder') throw new Error('expected a cylinder');
+        // Touching the shelf's underside.
+        expect(pin.y + pin.diameter / 2).toBe(shelf.bounds.y);
+        expect(pin.axis).toBe('x');
+      }
+    }
+    // Each row of pins sits in the side's pin holes' rows.
+    const side = part(result, `${box.id}/side-left`);
+    const leftPins = pins.filter((h) => h.partId === side.id).flatMap((h) => h.shapes);
+    expect(new Set(leftPins.map((p) => (p.kind === 'cylinder' ? p.z : 0)))).toEqual(new Set(side.features!.map((f) => f.z)));
+  });
+});

@@ -97,6 +97,33 @@ export interface PartFeature {
   depth: Ticks;
 }
 
+/** A simple solid approximating a piece of hardware. */
+export type HardwareShape =
+  | { kind: 'box'; bounds: Bounds }
+  /** A cylinder centered at (x, y, z), running along `axis`. */
+  | { kind: 'cylinder'; x: Ticks; y: Ticks; z: Ticks; axis: 'x' | 'y' | 'z'; diameter: Ticks; length: Ticks };
+
+export type HardwareItemKind = 'drawerSlide' | 'hinge' | 'shelfPin';
+
+/**
+ * Hardware placed for illustration (3D view): drawer slides, hinges and shelf pins as simple
+ * solids. Not cut parts; the shopping list counts hardware separately.
+ */
+export interface HardwareItem {
+  /** Stable derived id, e.g. `${partId}/slide`. */
+  id: Id;
+  kind: HardwareItemKind;
+  /** e.g. "Drawer slide, 18"". */
+  name: string;
+  /** Hardware type from the project's library. */
+  typeId: Id;
+  /** Owning box. */
+  ownerId: Id;
+  /** The part it's fastened to; it moves with that part in an exploded view. */
+  partId: Id;
+  shapes: HardwareShape[];
+}
+
 export interface RunResult {
   runId: Id;
   /** Wall length (inside face to inside face). */
@@ -111,6 +138,8 @@ export interface RunResult {
   gaps: { spanId: Id; rect: Rect }[];
   frames: FrameGroup[];
   parts: Part[];
+  /** Hardware for illustration (slides, hinges, shelf pins). */
+  hardware: HardwareItem[];
   issues: Issue[];
 }
 

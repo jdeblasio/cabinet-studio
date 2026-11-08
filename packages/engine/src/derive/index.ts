@@ -1,4 +1,4 @@
-import type { BoxLayout, Issue, Part, RunResult } from '../derived';
+import type { BoxLayout, HardwareItem, Issue, Part, RunResult } from '../derived';
 import { formatLength } from '../format';
 import type { Id, Project } from '../model';
 import { deriveBox } from './box';
@@ -11,7 +11,7 @@ import { layoutRun } from './layout';
 import { deriveToeKick } from './toeKick';
 
 function emptyResult(runId: Id, issues: Issue[]): RunResult {
-  return { runId, width: 0, ceilingHeight: 0, ceilingGap: 0, tiers: [], boxes: [], gaps: [], frames: [], parts: [], issues };
+  return { runId, width: 0, ceilingHeight: 0, ceilingGap: 0, tiers: [], boxes: [], gaps: [], frames: [], parts: [], hardware: [], issues };
 }
 
 /** Derive layout, parts and issues for one run. Pure and deterministic. */
@@ -31,10 +31,12 @@ export function deriveRun(project: Project, runId: Id): RunResult {
   const layout = layoutRun(ctx);
 
   const parts: Part[] = [];
+  const hardware: HardwareItem[] = [];
   const boxes: BoxLayout[] = [];
   for (const placed of layout.boxes) {
-    const { parts: boxParts, sections } = deriveBox(ctx, placed);
+    const { parts: boxParts, sections, hardware: boxHardware } = deriveBox(ctx, placed);
     parts.push(...boxParts);
+    hardware.push(...boxHardware);
     boxes.push({ id: placed.id, source: placed.source, tierId: placed.tierId, carcass: placed.carcass, sections });
   }
   const { frames, parts: stiles } = deriveFrames(ctx, layout.boxes, layout.width, layout.gaps, layout.lengthVariance);
@@ -61,6 +63,7 @@ export function deriveRun(project: Project, runId: Id): RunResult {
     gaps: layout.gaps,
     frames,
     parts,
+    hardware,
     issues,
   };
 }

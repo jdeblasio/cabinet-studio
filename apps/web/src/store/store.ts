@@ -20,6 +20,8 @@ export interface EditorState {
   /** Show lengths in the other unit system (approximate). */
   showOtherUnits: boolean;
   view3d: View3D;
+  /** Draw hardware (slides, hinges, shelf pins) in the 3D preview. */
+  showHardware: boolean;
   view: AppView;
   loaded: boolean;
 
@@ -42,6 +44,7 @@ export interface EditorState {
   replaceProject: (project: Project) => void;
   setShowOtherUnits: (v: boolean) => void;
   setView3d: (v: View3D) => void;
+  setShowHardware: (v: boolean) => void;
   setView: (v: AppView) => void;
 }
 
@@ -71,6 +74,7 @@ const editorState: StateCreator<EditorState> = (set, get) => {
     activeRunId: firstRunId(initial),
     showOtherUnits: false,
     view3d: 'shaded',
+    showHardware: true,
     view: 'design',
     loaded: false,
 
@@ -165,6 +169,7 @@ const editorState: StateCreator<EditorState> = (set, get) => {
 
     setShowOtherUnits: (showOtherUnits) => set({ showOtherUnits }),
     setView3d: (view3d) => set({ view3d }),
+    setShowHardware: (showHardware) => set({ showHardware }),
     setView: (view) => set({ view }),
   };
 };

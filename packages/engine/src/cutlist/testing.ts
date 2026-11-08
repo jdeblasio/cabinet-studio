@@ -59,7 +59,7 @@ export const inside = (r: NestRect, area: NestRect): boolean => r.x >= area.x &&
 
 /** A minimal RunResult holding just `parts`. */
 export function fakeResult(parts: Part[], runId = 'run-1', extra: Partial<RunResult> = {}): RunResult {
-  return { runId, width: 0, ceilingHeight: 0, ceilingGap: 0, tiers: [], boxes: [], gaps: [], frames: [], parts, issues: [], ...extra };
+  return { runId, width: 0, ceilingHeight: 0, ceilingGap: 0, tiers: [], boxes: [], gaps: [], frames: [], parts, hardware: [], issues: [], ...extra };
 }
 
 let seq = 0;

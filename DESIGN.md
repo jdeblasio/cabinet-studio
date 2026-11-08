@@ -365,6 +365,13 @@ step or two off its siblings. Hold Alt/Option to drag freely.
 - Configurable display modes (e.g. shaded with wood tones, wireframe, exploded).
   Photoreal rendering is not a goal.
 - Moldings as simplified profiles.
+- **Hardware for illustration** (`RunResult.hardware`, toggled in the preview): simple metal
+  solids, not cut parts, each fastened to a part (and moving with it when exploded). Side-mount
+  slides fill the side clearance (45 mm tall, centered on the drawer side); undermount runners
+  sit in the recess under the drawer bottom; concealed hinges are a cup in the door plus an arm
+  running back along the opening's hinge edge; butt hinges are a knuckle on the hinge edge;
+  shelf pins sit under each adjustable shelf corner. Not yet in drawings or 3D exports; pulls
+  and knobs aren't modeled.
 
 ### Exports
 
