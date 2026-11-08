@@ -1,4 +1,4 @@
-import { inches } from '@built-in-planner/engine';
+import { inches } from '@cabinet-studio/engine';
 import { describe, expect, it } from 'vitest';
 import type { Chain } from './dimensions';
 import { FRAME, T, derive, withCounter, withDoorway } from './fixtures.test-util';

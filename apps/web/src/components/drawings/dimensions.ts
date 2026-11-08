@@ -8,7 +8,7 @@
  * or to the other side of the line, pushed along so neighbors don't overlap, with a leader when
  * it had to move off its segment.
  */
-import type { Ticks } from '@built-in-planner/engine';
+import type { Ticks } from '@cabinet-studio/engine';
 import type { Pad } from './scale';
 
 export type Side = 'top' | 'bottom' | 'left' | 'right';

@@ -7,7 +7,7 @@
  * countertops and toe kick are cut gets a signature, and each signature is drawn once, at its
  * widest stretch, at a spot clear of sides, partitions and stiles.
  */
-import type { BoxLayout, Id, Part, RunResult, Ticks } from '@built-in-planner/engine';
+import type { BoxLayout, Id, Part, RunResult, Ticks } from '@cabinet-studio/engine';
 import { chainPads, compactChains, type Chain, type ChainPoint } from './dimensions';
 import { isFrame, isFront, roleClass } from './parts';
 import { VIEW, type Pad, type ViewNeed } from './scale';

@@ -4,6 +4,7 @@
  */
 import { useCallback, useRef, useState, type KeyboardEvent, type PointerEvent, type RefObject } from 'react';
 
+/** Keeps the app's old name, like the project storage keys (see store/library.ts). */
 const STORAGE_KEY = 'built-in-planner:design-split';
 export const DEFAULT_SPLIT = 0.6;
 /** Neither pane gets smaller than this (pixels) when dragging. */

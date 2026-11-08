@@ -127,7 +127,7 @@ export function Toolbar() {
 
   return (
     <header className="toolbar">
-      <span className="brand">Built-in Planner</span>
+      <span className="brand">Cabinet Studio</span>
       <span className="toolbar-group">
         <ProjectName />
       </span>

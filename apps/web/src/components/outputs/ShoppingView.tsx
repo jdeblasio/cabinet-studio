@@ -1,5 +1,5 @@
 /** Shopping list: sheets, lumber, moldings, hardware and edge banding. Quantities only, no prices. */
-import { EDGE_BANDING_ALLOWANCE } from '@built-in-planner/engine';
+import { EDGE_BANDING_ALLOWANCE } from '@cabinet-studio/engine';
 import { OutputBoundary, OutputHeader, pct, plural, PrintButton, Swatch, useOutputFormat } from './common';
 import { useCutReport } from './state';
 import './outputs.css';

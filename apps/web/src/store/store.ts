@@ -1,4 +1,4 @@
-import { createDefaultProject, type Id, type Project } from '@built-in-planner/engine';
+import { createDefaultProject, type Id, type Project } from '@cabinet-studio/engine';
 import { produce, type Draft } from 'immer';
 import { create, type StateCreator, type StoreApi, type UseBoundStore } from 'zustand';
 import { validSelection, type Selection } from './selection';

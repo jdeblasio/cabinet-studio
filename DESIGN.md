@@ -1,4 +1,4 @@
-# Built-in Planner — Design
+# Cabinet Studio — Design
 
 Status: draft · Source: design interview, 2026-11-07
 

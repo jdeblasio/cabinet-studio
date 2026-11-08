@@ -1,4 +1,4 @@
-# Built-in Planner
+# Cabinet Studio
 
 Design software for built-in cabinets and shelving: a parametric model of a wall run
 (tiers of boxes, tall boxes, doorways) from which parts, drawings, cut lists and sheet

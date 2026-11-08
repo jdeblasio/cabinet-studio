@@ -1,4 +1,4 @@
-import { TICKS_PER_INCH, type RunResult, type Ticks } from '@built-in-planner/engine';
+import { TICKS_PER_INCH, type RunResult, type Ticks } from '@cabinet-studio/engine';
 
 /** Scene units are inches. */
 const I = (t: Ticks) => t / TICKS_PER_INCH;

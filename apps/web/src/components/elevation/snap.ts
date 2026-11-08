@@ -9,7 +9,7 @@
  * Then the flex neighbor's ratio is also nudged so its size differs from its siblings by a grid
  * step or two. Equal boxes stay equal whenever the plain search succeeds.
  */
-import { resizeBoundary, type BoxLayout, type Id, type Project, type RunResult, type SizeSpec, type Ticks } from '@built-in-planner/engine';
+import { resizeBoundary, type BoxLayout, type Id, type Project, type RunResult, type SizeSpec, type Ticks } from '@cabinet-studio/engine';
 import { produce } from 'immer';
 import { getRunResult } from '../../store/derived';
 import type { BoundaryHandle } from './geometry';

@@ -1,4 +1,4 @@
-import { finishesOf } from '@built-in-planner/engine';
+import { finishesOf } from '@cabinet-studio/engine';
 import { useMemo } from 'react';
 import { useEditor } from '../store/store';
 

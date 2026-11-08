@@ -1,4 +1,4 @@
-import { inches, mm, type Part, type PartFeature } from '@built-in-planner/engine';
+import { inches, mm, type Part, type PartFeature } from '@cabinet-studio/engine';
 import { describe, expect, it } from 'vitest';
 import { cupChain, edgeDistance, holeSummary, pinRowChains } from './features';
 

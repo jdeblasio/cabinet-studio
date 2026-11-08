@@ -8,7 +8,7 @@ import {
   type Project,
   type Run,
   type RunResult,
-} from '@built-in-planner/engine';
+} from '@cabinet-studio/engine';
 
 export type Selection =
   | { kind: 'run'; runId: Id }

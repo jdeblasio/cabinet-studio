@@ -10,7 +10,7 @@ importers:
 
   apps/web:
     dependencies:
-      '@built-in-planner/engine':
+      '@cabinet-studio/engine':
         specifier: workspace:*
         version: link:../../packages/engine
       '@react-three/drei':

@@ -1,5 +1,5 @@
 /** Sheet layouts (guillotine) and lumber boards, with the optimizer settings. */
-import { inches, type GlueUp, type LumberPlan, type Project, type SheetNesting, type UnplacedPart } from '@built-in-planner/engine';
+import { inches, type GlueUp, type LumberPlan, type Project, type SheetNesting, type UnplacedPart } from '@cabinet-studio/engine';
 import { IssueSummary, OutputBoundary, OutputHeader, pct, plural, PrintButton, Swatch, useOutputFormat } from './common';
 import { BoardBar, SheetDiagram } from './diagrams';
 import { OptionsPanel } from './OptionsPanel';

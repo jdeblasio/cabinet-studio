@@ -1,4 +1,4 @@
-import { DEFAULT_GRID, formatLength, parseLength, snap, type Ticks, type UnitSystem } from '@built-in-planner/engine';
+import { DEFAULT_GRID, formatLength, parseLength, snap, type Ticks, type UnitSystem } from '@cabinet-studio/engine';
 import { useMemo } from 'react';
 import { useEditor } from '../store/store';
 

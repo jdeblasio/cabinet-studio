@@ -1,4 +1,4 @@
-import { inches } from '@built-in-planner/engine';
+import { inches } from '@cabinet-studio/engine';
 import { describe, expect, it } from 'vitest';
 import type { Chain as DimChain } from './dimensions';
 import { boxChains, boxView, elevationChains, frontLeaves } from './elevation';

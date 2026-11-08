@@ -2,7 +2,7 @@
  * Plan view (top down), one footprint per tier. World axes in a plan: u = x along the run,
  * v = z out from the wall (the wall is at the top of the page, the room below).
  */
-import type { Id, Part, RunResult, Ticks, TierLayout } from '@built-in-planner/engine';
+import type { Id, Part, RunResult, Ticks, TierLayout } from '@cabinet-studio/engine';
 import { compactChains, type Chain, type ChainPoint } from './dimensions';
 import { isFrame, roleClass } from './parts';
 import { isKickFront } from './section';

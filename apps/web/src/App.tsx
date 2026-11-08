@@ -1,4 +1,4 @@
-import { findBox, findSpan, removeBox, removeSpan } from '@built-in-planner/engine';
+import { findBox, findSpan, removeBox, removeSpan } from '@cabinet-studio/engine';
 import { useEffect, useRef } from 'react';
 import { BuildView } from './components/build/BuildView';
 import { DrawingsView } from './components/drawings/DrawingsView';

@@ -18,7 +18,7 @@ import {
   type Project,
   type SettingsScope,
   type Ticks,
-} from '@built-in-planner/engine';
+} from '@cabinet-studio/engine';
 import { useFormatter } from '../../lib/units';
 import { useEditor } from '../../store/store';
 import { LengthInput, NumberInput, Section, Select } from './fields';

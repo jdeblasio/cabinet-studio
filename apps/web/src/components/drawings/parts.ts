@@ -2,7 +2,7 @@
  * Parts for drawings: how each role is drawn, box numbering, and grouping identical parts for
  * the per-box parts tables.
  */
-import { describeBandedEdges, type Id, type Part, type PartRole, type Run, type RunResult, type Ticks } from '@built-in-planner/engine';
+import { describeBandedEdges, type Id, type Part, type PartRole, type Run, type RunResult, type Ticks } from '@cabinet-studio/engine';
 
 /** How a part is drawn. Unknown roles draw as carcass parts. */
 export type RoleClass = 'carcass' | 'interior' | 'frame' | 'front' | 'panel' | 'countertop' | 'kick' | 'trim';

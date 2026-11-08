@@ -1,4 +1,4 @@
-import type { SizeSpec, Ticks } from '@built-in-planner/engine';
+import type { SizeSpec, Ticks } from '@cabinet-studio/engine';
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { fmtRatio, useFormatter } from '../../lib/units';
 

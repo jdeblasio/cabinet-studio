@@ -1,4 +1,4 @@
-import type { Severity } from '@built-in-planner/engine';
+import type { Severity } from '@cabinet-studio/engine';
 import { useRunResult } from '../store/derived';
 import { selectionForId } from '../store/selection';
 import { useActiveRun, useEditor } from '../store/store';

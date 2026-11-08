@@ -1,4 +1,4 @@
-import { createDefaultProject, deriveRun, TICKS_PER_INCH } from '@built-in-planner/engine';
+import { createDefaultProject, deriveRun, TICKS_PER_INCH } from '@cabinet-studio/engine';
 import { describe, expect, it } from 'vitest';
 import { explodeOffsets } from './explode';
 

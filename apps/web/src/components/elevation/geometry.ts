@@ -12,7 +12,7 @@ import {
   type RunResult,
   type SizeSpec,
   type Ticks,
-} from '@built-in-planner/engine';
+} from '@cabinet-studio/engine';
 import type { Selection } from '../../store/selection';
 
 const contains = (r: Rect, x: Ticks, y: Ticks) => x >= r.x && x <= r.x + r.width && y >= r.y && y <= r.y + r.height;

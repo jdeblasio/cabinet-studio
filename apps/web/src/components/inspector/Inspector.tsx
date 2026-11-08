@@ -51,7 +51,7 @@ import {
   type Span,
   type Split,
   type Tier,
-} from '@built-in-planner/engine';
+} from '@cabinet-studio/engine';
 import { useState } from 'react';
 import { useFormatter } from '../../lib/units';
 import { useRunResult } from '../../store/derived';

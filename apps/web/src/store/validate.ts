@@ -1,4 +1,4 @@
-import { DEFAULT_MATERIALS, DEFAULT_SETTINGS, mergeSettings, SCHEMA_VERSION, type Project } from '@built-in-planner/engine';
+import { DEFAULT_MATERIALS, DEFAULT_SETTINGS, mergeSettings, SCHEMA_VERSION, type Project } from '@cabinet-studio/engine';
 
 /** Check an unknown value is a usable project and normalize it. Throws with a readable message. */
 export function validateProject(data: unknown): Project {
@@ -7,7 +7,7 @@ export function validateProject(data: unknown): Project {
   if (p.schemaVersion !== SCHEMA_VERSION) {
     throw new Error(
       p.schemaVersion === undefined
-        ? 'Not a Built-in Planner project (no schemaVersion).'
+        ? 'Not a Cabinet Studio project (no schemaVersion).'
         : `Unsupported project version ${String(p.schemaVersion)} (this app reads version ${SCHEMA_VERSION}).`,
     );
   }

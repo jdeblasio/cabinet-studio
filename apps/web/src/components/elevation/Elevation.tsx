@@ -1,4 +1,4 @@
-import { inches, TICKS_PER_INCH, type Part, type Rect, type RunResult, type Ticks } from '@built-in-planner/engine';
+import { inches, TICKS_PER_INCH, type Part, type Rect, type RunResult, type Ticks } from '@cabinet-studio/engine';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { usePartColor } from '../../lib/colors';
 import { BANDING_COLOR, BandingToggle, RAW_EDGE_COLOR } from '../BandingToggle';

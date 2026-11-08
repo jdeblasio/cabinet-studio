@@ -1,4 +1,4 @@
-import { inches, type Part } from '@built-in-planner/engine';
+import { inches, type Part } from '@cabinet-studio/engine';
 import { describe, expect, it } from 'vitest';
 import { derive, tierBoxes } from './fixtures.test-util';
 import { boxLabels, boxParts, commonName, frontToBack, groupParts, roleClass } from './parts';

@@ -1,5 +1,5 @@
 /** Shared pieces of the output views: header, issue summary, number formatting, error boundary. */
-import { formatLength, inches, sqft, toMm, type CutIssue, type Severity, type Ticks } from '@built-in-planner/engine';
+import { formatLength, inches, sqft, toMm, type CutIssue, type Severity, type Ticks } from '@cabinet-studio/engine';
 import { Component, useState, type ErrorInfo, type ReactNode } from 'react';
 import { useFormatter } from '../../lib/units';
 import { locateOwner } from './state';

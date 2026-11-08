@@ -1,4 +1,4 @@
-import type { Id, Material, RunResult, Ticks } from '@built-in-planner/engine';
+import type { Id, Material, RunResult, Ticks } from '@cabinet-studio/engine';
 import { useMemo } from 'react';
 import type { Chain } from './dimensions';
 import { holesOf } from './features';

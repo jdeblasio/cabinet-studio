@@ -1,4 +1,4 @@
-import { TICKS_PER_MM, formatLength, inches, isOnGrid, type BoxLayout, type Front, type Material, type RunResult, type Ticks, type UnitSystem } from '@built-in-planner/engine';
+import { TICKS_PER_MM, formatLength, inches, isOnGrid, type BoxLayout, type Front, type Material, type RunResult, type Ticks, type UnitSystem } from '@cabinet-studio/engine';
 import { useMemo } from 'react';
 import { chainPads, compactChains, type Chain } from './dimensions';
 import { boxChains, boxView, frontLeaves } from './elevation';

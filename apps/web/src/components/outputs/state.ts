@@ -12,7 +12,7 @@ import {
   type DeepPartial,
   type PartOwner,
   type Project,
-} from '@built-in-planner/engine';
+} from '@cabinet-studio/engine';
 import { create } from 'zustand';
 import { getProjectResults, getRunResult } from '../../store/derived';
 import { selectionForId } from '../../store/selection';

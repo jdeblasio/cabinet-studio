@@ -1,4 +1,4 @@
-import { createDefaultProject, inches, newId, opening, type Box, type Project, type Split, type Ticks } from '@built-in-planner/engine';
+import { createDefaultProject, inches, newId, opening, type Box, type Project, type Split, type Ticks } from '@cabinet-studio/engine';
 import { describe, expect, it } from 'vitest';
 import { getRunResult } from '../../store/derived';
 import { computeHandles, type BoundaryHandle } from './geometry';

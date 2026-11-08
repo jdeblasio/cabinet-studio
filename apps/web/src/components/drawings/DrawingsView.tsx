@@ -1,4 +1,4 @@
-import type { Material, Ticks, UnitSystem } from '@built-in-planner/engine';
+import type { Material, Ticks, UnitSystem } from '@cabinet-studio/engine';
 import { useMemo } from 'react';
 import { useFormatter } from '../../lib/units';
 import { useProjectResults } from '../../store/derived';

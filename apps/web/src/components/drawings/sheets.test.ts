@@ -1,4 +1,4 @@
-import { deriveRun, newId } from '@built-in-planner/engine';
+import { deriveRun, newId } from '@cabinet-studio/engine';
 import { describe, expect, it } from 'vitest';
 import { derive, withDrawers } from './fixtures.test-util';
 import { buildSheets } from './sheets';

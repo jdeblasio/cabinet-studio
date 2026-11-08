@@ -3,7 +3,7 @@
  * at an outside corner (e.g. a toe kick front board and its return) show one clean corner
  * instead of overlapping blocks. The corners come from the engine (shared with the 3D exports).
  */
-import { BLOCK_FACES, blockCorners, type Mitre } from '@built-in-planner/engine';
+import { BLOCK_FACES, blockCorners, type Mitre } from '@cabinet-studio/engine';
 import { BufferGeometry, Float32BufferAttribute } from 'three';
 
 /** The block's 8 corners, centered on the origin (`size` = width, height, depth), mitered ends cut. */

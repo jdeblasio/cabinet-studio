@@ -4,7 +4,7 @@
  *
  * Paper units are points (1/72"); world units are ticks.
  */
-import { TICKS_PER_INCH, type Ticks, type UnitSystem } from '@built-in-planner/engine';
+import { TICKS_PER_INCH, type Ticks, type UnitSystem } from '@cabinet-studio/engine';
 
 export const PT_PER_IN = 72;
 

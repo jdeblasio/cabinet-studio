@@ -1,4 +1,4 @@
-import { findBox, findSpan, finishesOf, TICKS_PER_INCH, toGLTF, toOBJ, toSTL, type EdgeFace, type HardwareItem, type HardwareShape, type Id, type Part, type Run, type RunResult, type Ticks } from '@built-in-planner/engine';
+import { findBox, findSpan, finishesOf, TICKS_PER_INCH, toGLTF, toOBJ, toSTL, type EdgeFace, type HardwareItem, type HardwareShape, type Id, type Part, type Run, type RunResult, type Ticks } from '@cabinet-studio/engine';
 import { Edges, OrbitControls } from '@react-three/drei';
 import { Canvas, useThree, type ThreeEvent } from '@react-three/fiber';
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';

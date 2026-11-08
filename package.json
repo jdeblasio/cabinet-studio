@@ -1,10 +1,10 @@
 {
-  "name": "built-in-planner",
+  "name": "cabinet-studio",
   "private": true,
   "license": "AGPL-3.0-only",
   "type": "module",
   "scripts": {
-    "dev": "pnpm --filter @built-in-planner/web dev",
+    "dev": "pnpm --filter @cabinet-studio/web dev",
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck"

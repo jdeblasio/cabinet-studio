@@ -3,7 +3,7 @@
  * section, hinge cups seen (hidden) on doors in the front view, their dimension chains, and a
  * per-label summary for notes.
  */
-import type { Part, PartFeature, Ticks } from '@built-in-planner/engine';
+import type { Part, PartFeature, Ticks } from '@cabinet-studio/engine';
 import type { Chain } from './dimensions';
 
 export const holesOf = (p: Part): PartFeature[] => (p.features ?? []).filter((f) => f.kind === 'hole');

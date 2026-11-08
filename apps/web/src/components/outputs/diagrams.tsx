@@ -1,5 +1,5 @@
 /** Drawings for the sheet layouts view: one SVG per sheet, and lumber boards as bars. */
-import { inches, type LumberBoard, type LumberOptions, type SheetLayout, type SheetNesting, type Ticks } from '@built-in-planner/engine';
+import { inches, type LumberBoard, type LumberOptions, type SheetLayout, type SheetNesting, type Ticks } from '@cabinet-studio/engine';
 import { useId } from 'react';
 import { useOutputFormat } from './common';
 import { locateOwner } from './state';

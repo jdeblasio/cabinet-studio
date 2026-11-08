@@ -1,5 +1,5 @@
 {
-  "name": "@built-in-planner/web",
+  "name": "@cabinet-studio/web",
   "version": "0.0.0",
   "private": true,
   "license": "AGPL-3.0-only",
@@ -12,7 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@built-in-planner/engine": "workspace:*",
+    "@cabinet-studio/engine": "workspace:*",
     "@react-three/drei": "^10.7.9",
     "@react-three/fiber": "^9.8.2",
     "idb-keyval": "^6.3.0",

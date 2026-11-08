@@ -1,5 +1,5 @@
 /** Shared fixtures for drawing helper tests: the default project and a few variants, derived. */
-import { createDefaultProject, deriveRun, inches, newId, opening, type Box, type Project, type Run, type RunResult } from '@built-in-planner/engine';
+import { createDefaultProject, deriveRun, inches, newId, opening, type Box, type Project, type Run, type RunResult } from '@cabinet-studio/engine';
 
 export const T = inches(23 / 32);
 export const FRAME = inches(3 / 4);

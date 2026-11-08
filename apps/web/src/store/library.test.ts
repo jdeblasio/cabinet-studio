@@ -1,4 +1,4 @@
-import { createDefaultProject, type Project } from '@built-in-planner/engine';
+import { createDefaultProject, type Project } from '@cabinet-studio/engine';
 import { describe, expect, it } from 'vitest';
 import { deleteProject, duplicateProject, LEGACY_KEY, listProjects, loadProject, openInitial, prepareImport, saveProject, setCurrent, type KV } from './library';
 

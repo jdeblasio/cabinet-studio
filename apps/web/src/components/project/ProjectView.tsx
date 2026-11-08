@@ -21,7 +21,7 @@ import {
   updateHardware,
   updateMaterial,
   type Id,
-} from '@built-in-planner/engine';
+} from '@cabinet-studio/engine';
 import { useEffect, useState } from 'react';
 import { useFormatter } from '../../lib/units';
 import { useEditor } from '../../store/store';

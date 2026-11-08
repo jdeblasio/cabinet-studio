@@ -1,4 +1,4 @@
-import { createDefaultProject } from '@built-in-planner/engine';
+import { createDefaultProject } from '@cabinet-studio/engine';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { useEditor, type EditorState } from '../../store/store';

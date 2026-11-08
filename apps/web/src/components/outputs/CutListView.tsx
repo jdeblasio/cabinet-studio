@@ -1,5 +1,5 @@
 /** Cut list: every part to cut, grouped by material and size, with CSV export and print. */
-import { cutListCsv, describeRowNote, type CutListGroup, type CutListRow, type RowNote } from '@built-in-planner/engine';
+import { cutListCsv, describeRowNote, type CutListGroup, type CutListRow, type RowNote } from '@cabinet-studio/engine';
 import { IssueSummary, OutputBoundary, OutputHeader, PrintButton, plural, Swatch, useOutputFormat } from './common';
 import { locateOwner, useCutReport } from './state';
 import './outputs.css';

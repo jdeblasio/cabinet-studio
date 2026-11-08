@@ -1,5 +1,5 @@
 /** Shared SVG pieces for drawing sheets. Paper units: 1 SVG unit = 1 pt. */
-import type { Ticks } from '@built-in-planner/engine';
+import type { Ticks } from '@cabinet-studio/engine';
 import { useId } from 'react';
 import { DIM, layoutChain, rowOffset, type Chain, type ChainLayout, type Side } from './dimensions';
 import type { Pad, Placed, Proj } from './scale';

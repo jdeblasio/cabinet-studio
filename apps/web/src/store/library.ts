@@ -3,7 +3,7 @@
  * id of the one that was open last. Written against a small async key-value interface so it can
  * be tested without IndexedDB (persistence.ts wires it to idb-keyval).
  */
-import { createDefaultProject, newId, type Id, type Project } from '@built-in-planner/engine';
+import { createDefaultProject, newId, type Id, type Project } from '@cabinet-studio/engine';
 import { validateProject } from './validate';
 
 export interface KV {
@@ -26,6 +26,8 @@ interface SavedRecord {
 }
 
 /** Where versions before the library kept their single project. */
+// Storage keys keep the app's old name (Built-in Planner) so projects saved before the rename
+// to Cabinet Studio still open. Don't rename them without migrating saved data.
 export const LEGACY_KEY = 'built-in-planner:current-project';
 const PREFIX = 'built-in-planner:project:';
 const CURRENT_KEY = 'built-in-planner:current-id';

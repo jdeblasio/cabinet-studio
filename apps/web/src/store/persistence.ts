@@ -2,7 +2,7 @@
  * Browser storage: the project library in IndexedDB (see library.ts), autosave of the open
  * project, and switching between projects. Also JSON export/import.
  */
-import { createDefaultProject, type Id, type Project } from '@built-in-planner/engine';
+import { createDefaultProject, type Id, type Project } from '@cabinet-studio/engine';
 import { del, entries, get, set } from 'idb-keyval';
 import { create } from 'zustand';
 import { downloadFile, fileSlug } from '../lib/download';

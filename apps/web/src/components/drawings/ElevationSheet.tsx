@@ -1,4 +1,4 @@
-import type { Id, Part, Run, RunResult, Ticks, UnitSystem } from '@built-in-planner/engine';
+import type { Id, Part, Run, RunResult, Ticks, UnitSystem } from '@cabinet-studio/engine';
 import { useMemo } from 'react';
 import { chainPads } from './dimensions';
 import { elevationChains, frontLeaves, type FrontLeaf } from './elevation';

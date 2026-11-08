@@ -3,7 +3,7 @@
  * the door and drawer-front leaves (for hinge-side swing marks).
  * World axes: u = x along the run, v = y up.
  */
-import type { BoxLayout, Id, Part, Rect, RunResult, Ticks } from '@built-in-planner/engine';
+import type { BoxLayout, Id, Part, Rect, RunResult, Ticks } from '@cabinet-studio/engine';
 import { compactChains, type Chain, type ChainPoint } from './dimensions';
 import { isFront, isFrame, roleClass } from './parts';
 

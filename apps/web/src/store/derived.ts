@@ -1,4 +1,4 @@
-import { deriveRun, type Id, type Project, type RunResult } from '@built-in-planner/engine';
+import { deriveRun, type Id, type Project, type RunResult } from '@cabinet-studio/engine';
 import { useEditor } from './store';
 
 const cache = new WeakMap<Project, Map<Id, RunResult>>();

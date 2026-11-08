@@ -1,5 +1,5 @@
 /** Optimizer settings: kerf, trim, grain, stock lengths, board width. */
-import { DEFAULT_CUTLIST_OPTIONS, type Ticks } from '@built-in-planner/engine';
+import { DEFAULT_CUTLIST_OPTIONS, type Ticks } from '@cabinet-studio/engine';
 import { useEffect, useRef, useState } from 'react';
 import { useFormatter } from '../../lib/units';
 import { Field, LengthInput } from '../inspector/fields';

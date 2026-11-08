@@ -79,7 +79,7 @@ export const BLOCK_FACES: { quad: [number, number, number, number]; normal: [num
 const fmtNum = (n: number) => String(Math.round(n * 1e5) / 1e5);
 
 /** OBJ text: one object per part, named after it; lengths in the project's units (inches or mm). */
-export function toOBJ(parts: readonly Part[], system: UnitSystem, title = 'Built-in Planner export'): string {
+export function toOBJ(parts: readonly Part[], system: UnitSystem, title = 'Cabinet Studio export'): string {
   const perUnit = system === 'metric' ? TICKS_PER_MM : TICKS_PER_INCH;
   const lines = [`# ${title}`, `# Units: ${system === 'metric' ? 'millimeters' : 'inches'}, y up`];
   let base = 1;
@@ -97,7 +97,7 @@ export function toSTL(parts: readonly Part[]): ArrayBuffer {
   const triangles = parts.length * 12;
   const buf = new ArrayBuffer(84 + triangles * 50);
   const view = new DataView(buf);
-  const header = 'Built-in Planner export, millimeters';
+  const header = 'Cabinet Studio export, millimeters';
   for (let i = 0; i < header.length && i < 80; i++) view.setUint8(i, header.charCodeAt(i));
   view.setUint32(80, triangles, true);
   let o = 84;
@@ -149,7 +149,7 @@ function colorOf(hex: string): [number, number, number, number] {
  * glTF 2.0 JSON (embedded buffer). A unit cube (flat-shaded: 24 vertices, 36 indices) is shared
  * by one mesh per material; each part is a node that scales and places it. Meters, y up.
  */
-export function toGLTF(parts: readonly Part[], materials: readonly Material[], title = 'Built-in Planner export', finishes: readonly Finish[] = []): string {
+export function toGLTF(parts: readonly Part[], materials: readonly Material[], title = 'Cabinet Studio export', finishes: readonly Finish[] = []): string {
   const toMeters = (t: Ticks) => (t / TICKS_PER_INCH) * 0.0254;
   const perMeter = TICKS_PER_INCH / 0.0254;
 
@@ -236,7 +236,7 @@ export function toGLTF(parts: readonly Part[], materials: readonly Material[], t
   });
 
   const gltf = {
-    asset: { version: '2.0', generator: 'Built-in Planner' },
+    asset: { version: '2.0', generator: 'Cabinet Studio' },
     scene: 0,
     scenes: [{ name: title, nodes: parts.map((_, i) => i) }],
     nodes: parts.map((p, i) => {

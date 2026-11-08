@@ -1,5 +1,5 @@
 /** The drawing set's sheet list: what each sheet shows, in order. Pure, so it can be tested. */
-import type { BoxLayout, Id, Project, Run, RunResult, UnitSystem } from '@built-in-planner/engine';
+import type { BoxLayout, Id, Project, Run, RunResult, UnitSystem } from '@cabinet-studio/engine';
 import { boxLabels, type BoxLabel } from './parts';
 import { planTiers } from './plan';
 import { AREA, VIEW, packViews, type Scale } from './scale';

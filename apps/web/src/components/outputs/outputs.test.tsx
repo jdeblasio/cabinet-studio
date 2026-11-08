@@ -1,4 +1,4 @@
-import { createDefaultProject, DEFAULT_COUNTERTOP, DEFAULT_CUTLIST_OPTIONS, inches, opening, type Project } from '@built-in-planner/engine';
+import { createDefaultProject, DEFAULT_COUNTERTOP, DEFAULT_CUTLIST_OPTIONS, inches, opening, type Project } from '@cabinet-studio/engine';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { useEditor } from '../../store/store';
