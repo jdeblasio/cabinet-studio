@@ -210,7 +210,7 @@ export function layoutRun(ctx: Ctx): RunLayoutResult {
       const reserve = (bx: Box | undefined, side: 'left' | 'right', open: boolean): Ticks => {
         if (!bx || !open) return 0;
         const bs = resolveSettings(ctx.project, [run, tier, bx]);
-        if (bs.faceFrame.endStiles[side] !== 'full') return 0;
+        if (bs.construction === 'frameless' || bs.faceFrame.endStiles[side] !== 'full') return 0;
         return snap(ctx.thickness(bs.materials.carcass, bx.id) + bs.faceFrame.lip, grid, 'up');
       };
       const resL = reserve(regionBoxes[0], 'left', openBeside(leftSlot, run.ends.left === 'wall'));

@@ -48,7 +48,8 @@ export function deriveFrames(
   runWidth: Ticks,
   gaps: readonly { spanId: Id; rect: Rect }[] = [],
 ): { frames: FrameGroup[]; parts: Part[] } {
-  const edges: Edges[] = boxes.map((b) => ({
+  // Frameless boxes have no face frame.
+  const edges: Edges[] = boxes.filter((b) => b.settings.construction !== 'frameless').map((b) => ({
     box: b,
     x0: b.carcass.x,
     x1: b.carcass.x + b.carcass.width,

@@ -9,5 +9,6 @@ import type { PlacedBox } from './layout';
  */
 export function endReach(ctx: Ctx, box: PlacedBox, side: 'left' | 'right'): Ticks {
   const s = box.settings;
+  if (s.construction === 'frameless') return 0;
   return s.faceFrame.endStiles[side] === 'full' ? ctx.thickness(s.materials.carcass, box.id) + s.faceFrame.lip : 0;
 }

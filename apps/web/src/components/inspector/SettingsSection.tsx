@@ -42,7 +42,7 @@ const SETTINGS: SettingDef[] = [
   {
     path: 'construction',
     label: 'Construction',
-    tip: 'Face frame: a hardwood frame across the front of the boxes. Frameless (European) construction arrives in a later milestone; face frame is shown for now.',
+    tip: 'Face frame: a hardwood frame across the front of the boxes; fronts sit on the frame. Frameless (European): no frame; fronts sit on the box edges (usually full overlay), with fillers at walls.',
     type: 'select',
     options: [
       ['faceFrame', 'Face frame'],

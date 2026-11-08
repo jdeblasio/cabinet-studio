@@ -17,7 +17,7 @@ export function deriveToeKick(ctx: Ctx, layout: RunLayoutResult): Part[] {
   if (!kick) return [];
   const s = kick.settings;
   const tk = ctx.thickness(s.materials.toeKick, kick.tierId);
-  const tf = ctx.thickness(s.materials.faceFrame, kick.tierId);
+  const tf = s.construction === 'frameless' ? 0 : ctx.thickness(s.materials.faceFrame, kick.tierId);
   const floorBoxes = layout.boxes
     .filter((b) => b.carcass.y === kick.height)
     .sort((a, b) => a.carcass.x - b.carcass.x);

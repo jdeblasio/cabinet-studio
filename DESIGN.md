@@ -140,7 +140,7 @@ step or two off its siblings. Hold Alt/Option to drag freely.
 - Default lip: **flush inside** (frame inner edges line up with box side inner faces, so
   drawer slides mount without spacers). A shared stile is then exactly 2 × side thickness.
 
-### Derivation conventions (milestone 1, face frame + butt joints)
+### Derivation conventions (face frame and frameless, butt joints)
 
 - Sides run full height; top and bottom are captured between the sides.
 - An applied back covers the full rear of the box; sides/top/bottom are (depth − back) deep.
@@ -178,6 +178,13 @@ step or two off its siblings. Hold Alt/Option to drag freely.
   Fronts stop half a reveal short of an open edge instead of overlaying a rail that isn't
   there. Uses: open shelves over a countertop (the counter is the bottom shelf), or shelving
   that continues into the box above.
+- **Frameless** (per project or per box): no face frame. The face opening is the box
+  interior, fronts sit on the carcass edges (full overlay covers the side less half the
+  reveal; between openings, half a shelf/partition edge each), the bottom panel is flush with
+  the carcass bottom, panel dividers are just the shelf or partition, and frame-only dividers
+  vanish so stacked drawers meet at the reveal. Full-width end stiles don't apply. At a
+  wall, a filler in the plane of the fronts closes the scribe space. Countertops and toe
+  kicks measure from the carcass front.
 - **Fronts:** each door or drawer front is a **slab** (front material) or **five-piece**
   (`fronts.doorStyle` / `fronts.drawerStyle`): two full-height stiles, two rails between them
   whose cut length adds a stub tenon (the groove depth) at each end, and a panel that fills

@@ -47,7 +47,7 @@ export function deriveCountertops(ctx: Ctx, layout: RunLayoutResult, stiles: rea
         if (ox0 >= right && ox0 < xb) xb = ox0;
       }
 
-      const tf = ctx.thickness(settings.materials.faceFrame, tier.id);
+      const tf = settings.construction === 'frameless' ? 0 : ctx.thickness(settings.materials.faceFrame, tier.id);
       const depth = first.carcass.depth + tf + ct.frontOverhang;
       const part = makePart({
         id: `${tier.id}/countertop-${si}`,

@@ -10,7 +10,7 @@ import { makePart, type Ctx } from './context';
 import type { PlacedBox, RunLayoutResult } from './layout';
 
 export function deriveScribeStrips(ctx: Ctx, layout: RunLayoutResult): Part[] {
-  const parts: Part[] = [];
+  const parts: Part[] = [...deriveWallFillers(ctx, layout)];
   const counter = new Map(layout.tiers.map((t) => [t.tierId, t.countertop]));
   // Top surface a box presents to the box above: its carcass top, or its tier's countertop.
   const topOf = (o: PlacedBox) => o.carcass.y + o.carcass.height + (o.source === 'tier' ? (counter.get(o.tierId) ?? 0) : 0);
@@ -43,6 +43,39 @@ export function deriveScribeStrips(ctx: Ctx, layout: RunLayoutResult): Part[] {
           // Runs front to back; ripped to the scribe width (scribe it to the wall on site).
           length: depth,
           width: x1 - x0,
+        }),
+      );
+    }
+  }
+  return parts;
+}
+
+/**
+ * Frameless boxes have no scribe stile, so at a wall a filler in the plane of the fronts closes
+ * the scribe space (scribed to the wall on site), full carcass height.
+ */
+function deriveWallFillers(ctx: Ctx, layout: RunLayoutResult): Part[] {
+  const parts: Part[] = [];
+  for (const b of layout.boxes) {
+    if (b.settings.construction !== 'frameless') continue;
+    for (const side of ['left', 'right'] as const) {
+      const atWall = side === 'left' ? b.atLeftWall : b.atRightWall;
+      if (!atWall) continue;
+      const x0 = side === 'left' ? 0 : b.carcass.x + b.carcass.width;
+      const x1 = side === 'left' ? b.carcass.x : layout.width;
+      if (x1 <= x0) continue;
+      const fm = b.settings.materials.fronts;
+      const t = ctx.thickness(fm, b.id);
+      parts.push(
+        makePart({
+          id: `${b.id}/wall-filler-${side}`,
+          name: 'Wall filler',
+          role: 'filler',
+          materialId: fm,
+          bounds: { x: x0, y: b.carcass.y, z: b.carcass.z + b.carcass.depth, width: x1 - x0, height: b.carcass.height, depth: t },
+          grain: 'vertical',
+          thicknessAxis: 'z',
+          ownerId: b.id,
         }),
       );
     }

@@ -31,9 +31,7 @@ export function deriveRun(project: Project, runId: Id): RunResult {
 
   const parts: Part[] = [];
   const boxes: BoxLayout[] = [];
-  let frameless = false;
   for (const placed of layout.boxes) {
-    if (placed.settings.construction === 'frameless') frameless = true;
     const { parts: boxParts, sections } = deriveBox(ctx, placed);
     parts.push(...boxParts);
     boxes.push({ id: placed.id, source: placed.source, tierId: placed.tierId, carcass: placed.carcass, sections });
@@ -41,9 +39,6 @@ export function deriveRun(project: Project, runId: Id): RunResult {
   const { frames, parts: stiles } = deriveFrames(ctx, layout.boxes, layout.width, layout.gaps);
   parts.push(...stiles, ...deriveToeKick(ctx, layout), ...deriveCountertops(ctx, layout, stiles), ...deriveScribeStrips(ctx, layout));
 
-  if (frameless) {
-    issues.push({ severity: 'warning', code: 'frameless-unsupported', message: 'Frameless construction arrives in a later milestone; face-frame construction is shown.', sourceId: run.id });
-  }
   for (const id of ctx.offGridMaterials) {
     const m = project.materials.find((mat) => mat.id === id);
     if (!m) continue;

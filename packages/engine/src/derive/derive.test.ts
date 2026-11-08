@@ -688,3 +688,55 @@ describe('deriveRun: five-piece fronts', () => {
     void run;
   });
 });
+
+describe('deriveRun: frameless construction', () => {
+  const frameless = (more?: (p: Project, r: Run) => void) =>
+    setup((p, r) => {
+      p.settings = { ...p.settings, construction: 'frameless', fronts: { ...p.settings.fronts, mounting: 'fullOverlay' } };
+      more?.(p, r);
+    });
+
+  it('has no face frame; full overlay fronts sit on the carcass edges', () => {
+    const { run, result } = frameless();
+    expect(result.issues).toEqual([]);
+    expect(result.parts.filter((p) => p.role === 'stile' || p.role === 'rail')).toEqual([]);
+    expect(result.frames).toEqual([]);
+    const b0 = boxesOf(tier(run, 0))[0]!;
+    const door = part(result, `${b0.content.id}/door-left`);
+    // 29 3/4" box: the pair covers the carcass less half a reveal at each outer edge.
+    expect([door.width, door.length]).toEqual([inches(14 + 25 / 32), inches(26 + 7 / 16)]);
+    expect(door.bounds.z).toBe(inches(16));
+    expect(door.bounds.x).toBe(inches(0.5 + 1 / 32));
+    // Bottom panel flush with the carcass bottom.
+    expect(part(result, `${b0.id}/bottom`).bounds.y).toBe(inches(3.5));
+    // Toe kick face 3" back from the carcass front.
+    const kick = result.parts.find((p) => p.id.endsWith('kick-0-front'))!;
+    expect(kick.bounds.z + kick.bounds.depth).toBe(inches(13));
+  });
+
+  it('closes the scribe space at each wall with a filler in the plane of the fronts', () => {
+    const { result } = frameless();
+    const fillers = result.parts.filter((p) => p.name === 'Wall filler');
+    // One per wall end for each tier.
+    expect(fillers).toHaveLength(4);
+    const left = fillers.find((p) => p.bounds.x === 0)!;
+    expect(left.bounds).toMatchObject({ width: inches(0.5), z: inches(16), depth: T });
+  });
+
+  it('stacks frameless drawers with only the reveal between their fronts', () => {
+    const { run, result } = frameless((_, r) => {
+      boxesOf(tier(r, 0))[0]!.content = {
+        kind: 'split',
+        id: newId(),
+        direction: 'rows',
+        divider: 'frameOnly',
+        children: [0, 1].map(() => ({ size: { kind: 'flex' as const, ratio: 1 }, section: opening({ type: 'drawer' }) })),
+      };
+    });
+    expect(nonInfo(result)).toEqual([]);
+    const split = boxesOf(tier(run, 0))[0]!.content as Split;
+    const [upper, lower] = split.children.map((c) => part(result, `${c.section.id}/drawer-front`));
+    expect(upper!.bounds.y - (lower!.bounds.y + lower!.bounds.height)).toBe(inches(1 / 16));
+    expect(result.parts.some((p) => p.role === 'fixedShelf')).toBe(false);
+  });
+});

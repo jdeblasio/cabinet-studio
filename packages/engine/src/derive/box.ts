@@ -14,6 +14,9 @@
  *    `midStileWidth` applies to stile-only dividers.
  *  - An 'open' top or bottom (settings.carcass) has no panel and no rail on that edge; the
  *    opening and interior run to the carcass edge, and fronts stop half a reveal short of it.
+ *  - Frameless (32 mm / European) boxes have no face frame: the opening is the interior, fronts
+ *    sit on the carcass edges (covering half of each shared shelf/partition edge), panel dividers
+ *    are just the shelf or partition, and frame-only dividers vanish (fronts meet at the reveal).
  *  - An exposed bottom (box over a gap or open space) is finished flush with the bottom rail:
  *    a second bottom panel closes the recess behind the rail, or, if the rail is too narrow for
  *    two panels, the single bottom panel drops flush with the carcass bottom.
@@ -49,11 +52,13 @@ export function deriveBox(ctx: Ctx, box: PlacedBox): { parts: Part[]; sections: 
 
   const t = ctx.thickness(s.materials.carcass, id);
   const tb = s.back === 'applied' ? ctx.thickness(s.materials.back, id) : 0;
-  const tf = ctx.thickness(s.materials.faceFrame, id);
+  const frameless = s.construction === 'frameless';
+  // Frameless boxes have no face frame: fronts sit right on the carcass front (zFrame + 0).
+  const tf = frameless ? 0 : ctx.thickness(s.materials.faceFrame, id);
   const tfr = ctx.thickness(s.materials.fronts, id);
   const tsh = ctx.thickness(s.materials.shelves, id);
   const ff = s.faceFrame;
-  const lip = ff.lip;
+  const lip = frameless ? 0 : ff.lip;
   const { x, y, width: W, height: H, depth: D } = box.carcass;
   const top = y + H;
   const Ds = D - tb;
@@ -61,8 +66,8 @@ export function deriveBox(ctx: Ctx, box: PlacedBox): { parts: Part[]; sections: 
   const down = ctx.down;
   const openTop = s.carcass.top === 'open';
   const openBottom = s.carcass.bottom === 'open';
-  const topRail = openTop ? 0 : ff.topRailWidth;
-  const bottomRail = openBottom ? 0 : ff.bottomRailWidth;
+  const topRail = openTop || frameless ? 0 : ff.topRailWidth;
+  const bottomRail = openBottom || frameless ? 0 : ff.bottomRailWidth;
 
   if (W <= 2 * t || H <= 2 * t || Ds <= 0) {
     ctx.issue('error', 'box-too-small', id, `Box is too small to build (${ctx.fmt(W)} × ${ctx.fmt(H)}).`);
@@ -95,13 +100,18 @@ export function deriveBox(ctx: Ctx, box: PlacedBox): { parts: Part[]; sections: 
     add({ id: `${id}/rail-bottom`, name: 'Bottom rail', role: 'rail', materialId: fm, bounds: { x: railX, y, z: zFrame, width: railW, height: bottomRail, depth: tf }, grain: 'horizontal', thicknessAxis: 'z', ownerId: id, length: down(railW) });
   }
 
-  const R: Rect = { x: railX, y: y + bottomRail, width: railW, height: H - topRail - bottomRail };
+  const R: Rect = frameless
+    ? { x: x + t, y: floorTop, width: innerW, height: (openTop ? top : top - t) - floorTop }
+    : { x: railX, y: y + bottomRail, width: railW, height: H - topRail - bottomRail };
   if (R.width <= 0 || R.height <= 0) {
     ctx.issue('error', 'box-too-small', id, 'Face frame leaves no opening; the box is too small for its rails and stiles.');
     return { parts, sections };
   }
   const I: Interior = { x0: x + t, x1: x + W - t, y0: floorTop, y1: openTop ? top : top - t };
-  const cover: EdgeCover = { left: t + lip, right: t + lip, top: topRail, bottom: bottomRail };
+  // How much of the box's edges each front may cover: the frame members, or the carcass edges when frameless.
+  const cover: EdgeCover = frameless
+    ? { left: t, right: t, top: openTop ? 0 : t, bottom: openBottom ? 0 : t }
+    : { left: t + lip, right: t + lip, top: topRail, bottom: bottomRail };
 
   const layoutSection = (sec: Section, r: Rect, inner: Interior, edge: EdgeCover, parentId?: string): void => {
     const entry: SectionLayout = { sectionId: sec.id, kind: sec.kind, rect: r };
@@ -119,7 +129,17 @@ export function deriveBox(ctx: Ctx, box: PlacedBox): { parts: Part[]; sections: 
       return;
     }
     const rows = sec.direction === 'rows';
-    const member = rows ? ff.midRailWidth : sec.divider === 'panel' ? snap(2 * (t + lip), ctx.grid) : ff.midStileWidth;
+    const member = frameless
+      ? sec.divider === 'panel'
+        ? rows
+          ? tsh
+          : t
+        : 0
+      : rows
+        ? ff.midRailWidth
+        : sec.divider === 'panel'
+          ? snap(2 * (t + lip), ctx.grid)
+          : ff.midStileWidth;
     const span = rows ? r.height : r.width;
     const sol = solveLine(span - (n - 1) * member, sec.children.map((c) => c.size), ctx.grid);
     if (sol.overflow > 0) {
@@ -147,7 +167,7 @@ export function deriveBox(ctx: Ctx, box: PlacedBox): { parts: Part[]; sections: 
         let nextIy1 = iy1;
         if (!isLast) {
           const railY = cy - member;
-          add({ id: `${sec.id}/rail-${i}`, name: 'Mid rail', role: 'rail', materialId: fm, bounds: { x: r.x, y: railY, z: zFrame, width: r.width, height: member, depth: tf }, grain: 'horizontal', thicknessAxis: 'z', ownerId: id, length: down(r.width) });
+          if (!frameless) add({ id: `${sec.id}/rail-${i}`, name: 'Mid rail', role: 'rail', materialId: fm, bounds: { x: r.x, y: railY, z: zFrame, width: r.width, height: member, depth: tf }, grain: 'horizontal', thicknessAxis: 'z', ownerId: id, length: down(r.width) });
           if (sec.divider === 'panel') {
             const w = inner.x1 - inner.x0;
             add({ id: `${sec.id}/shelf-${i}`, name: 'Fixed shelf', role: 'fixedShelf', materialId: s.materials.shelves, bounds: { x: inner.x0, y: cy - tsh, z: tb, width: w, height: tsh, depth: Ds }, grain: 'horizontal', thicknessAxis: 'y', ownerId: id, length: down(w), width: down(Ds) });
@@ -174,7 +194,7 @@ export function deriveBox(ctx: Ctx, box: PlacedBox): { parts: Part[]; sections: 
         let nextIx0 = ix0;
         if (!isLast) {
           const sx = cursor + w;
-          add({ id: `${sec.id}/stile-${i}`, name: 'Mid stile', role: 'stile', materialId: fm, bounds: { x: sx, y: r.y, z: zFrame, width: member, height: r.height, depth: tf }, grain: 'vertical', thicknessAxis: 'z', ownerId: id, length: down(r.height) });
+          if (!frameless) add({ id: `${sec.id}/stile-${i}`, name: 'Mid stile', role: 'stile', materialId: fm, bounds: { x: sx, y: r.y, z: zFrame, width: member, height: r.height, depth: tf }, grain: 'vertical', thicknessAxis: 'z', ownerId: id, length: down(r.height) });
           const c = sx + member / 2;
           if (sec.divider === 'panel') {
             const h = inner.y1 - inner.y0;
