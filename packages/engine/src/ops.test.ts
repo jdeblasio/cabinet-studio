@@ -1,16 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import { createDefaultProject } from './defaults';
 import type { Box, Opening, Project, Run, Split } from './model';
+import { deriveRun } from './derive/index';
 import {
   addBox,
+  addMaterial,
   addSpan,
   addSplitChild,
   addTier,
   clearOverride,
   findBox,
   findSectionInRun,
+  materialUsage,
   placeSpanSlots,
   removeBox,
+  removeMaterial,
   removeSection,
   removeSpan,
   removeTier,
@@ -23,6 +27,7 @@ import {
   setSpanTiers,
   splitOpening,
   unsplit,
+  updateMaterial,
 } from './ops';
 import { resolveSettings, settingSource } from './settings';
 import { inches } from './units';
@@ -272,5 +277,41 @@ describe('resizeBoundary', () => {
 
     const r2 = resizeBoundary({ spec: flex(1, { max: inches(12) }), size: inches(10) }, { spec: flex(1), size: inches(10) }, inches(5), { grid: GRID });
     expect(r2.delta).toBe(inches(2));
+  });
+});
+
+describe('materials', () => {
+  const half = { name: 'Plywood 1/2"', kind: 'sheet' as const, thickness: inches(15 / 32), color: '#e0c9a0' };
+
+  it('adds a material and counts where it is used across the cascade', () => {
+    const { project, run } = setup();
+    const id = addMaterial(project, half);
+    expect(project.materials.find((m) => m.id === id)).toMatchObject(half);
+    expect(materialUsage(project, id)).toBe(0);
+    setOverride(boxes(run, 0)[0]!, 'materials.back', id);
+    setOverride(run.tiers[1]!, 'materials.shelves', id);
+    expect(materialUsage(project, id)).toBe(2);
+    // The default plywood is used for carcass, shelves, fronts and toe kick.
+    expect(materialUsage(project, 'ply-23-32')).toBe(4);
+  });
+
+  it('only removes materials nothing uses', () => {
+    const { project, run } = setup();
+    const id = addMaterial(project, half);
+    setOverride(run, 'materials.carcass', id);
+    expect(removeMaterial(project, id)).toBe(false);
+    clearOverride(run, 'materials.carcass');
+    expect(removeMaterial(project, id)).toBe(true);
+    expect(project.materials.some((m) => m.id === id)).toBe(false);
+    expect(removeMaterial(project, 'ply-23-32')).toBe(false);
+  });
+
+  it('changing a material thickness re-derives the parts that use it', () => {
+    const { project, run } = setup();
+    updateMaterial(project, 'ply-23-32', { thickness: inches(3 / 4) });
+    const result = deriveRun(project, run.id);
+    const side = result.parts.find((p) => p.id === `${boxes(run, 0)[0]!.id}/side-left`)!;
+    expect(side.thickness).toBe(inches(3 / 4));
+    expect(updateMaterial(project, 'nope', { thickness: 1 })).toBe(false);
   });
 });

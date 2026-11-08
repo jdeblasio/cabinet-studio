@@ -1,11 +1,11 @@
-import { createDefaultProject, findBox, findSpan, removeBox, removeSpan } from '@built-in-planner/engine';
+import { findBox, findSpan, removeBox, removeSpan } from '@built-in-planner/engine';
 import { useEffect } from 'react';
 import { Elevation } from './components/elevation/Elevation';
 import { Inspector } from './components/inspector/Inspector';
 import { Preview3D } from './components/preview/Preview3D';
 import { Problems } from './components/Problems';
 import { Toolbar } from './components/Toolbar';
-import { loadSavedProject, startAutosave } from './store/persistence';
+import { loadInitialProject, startAutosave } from './store/persistence';
 import { parentSelection } from './store/selection';
 import { useEditor } from './store/store';
 
@@ -59,8 +59,8 @@ export function App() {
 
   useEffect(() => {
     let cancelled = false;
-    void loadSavedProject().then((saved) => {
-      if (!cancelled && !useEditor.getState().loaded) useEditor.getState().replaceProject(saved ?? createDefaultProject());
+    void loadInitialProject().then((project) => {
+      if (!cancelled && !useEditor.getState().loaded) useEditor.getState().replaceProject(project);
     });
     const stop = startAutosave();
     return () => {

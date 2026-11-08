@@ -13,6 +13,7 @@ import type {
   EndCondition,
   Front,
   Id,
+  Material,
   Opening,
   Project,
   Run,
@@ -592,6 +593,53 @@ export function clearOverride(scope: SettingsScope, path: string): void {
 /** Set a project-level default (the root of the cascade). */
 export function setProjectSetting(project: Project, path: string, value: unknown): void {
   setDeep(project.settings as unknown as Obj, path, value);
+}
+
+// ---------------------------------------------------------------------------
+// Materials
+// ---------------------------------------------------------------------------
+
+/** Every material assignment in the project: project settings, styles, and run/tier/box/span overrides. */
+function materialSlots(project: Project): Partial<Record<string, Id>>[] {
+  const slots: Partial<Record<string, Id>>[] = [project.settings.materials];
+  for (const style of project.styles) if (style.settings.materials) slots.push(style.settings.materials);
+  const scopes: SettingsScope[] = [];
+  for (const run of project.runs) {
+    scopes.push(run, ...run.spans);
+    for (const tier of run.tiers) {
+      scopes.push(tier);
+      for (const item of tier.items) if (item.kind === 'box') scopes.push(item);
+    }
+  }
+  for (const scope of scopes) if (scope.overrides?.materials) slots.push(scope.overrides.materials);
+  return slots;
+}
+
+/** How many material assignments (anywhere in the settings cascade) use a material. */
+export function materialUsage(project: Project, id: Id): number {
+  return materialSlots(project).reduce((n, slot) => n + Object.values(slot).filter((v) => v === id).length, 0);
+}
+
+/** Add a material to the project's library. Returns its id. */
+export function addMaterial(project: Project, material: Omit<Material, 'id'>): Id {
+  const id = newId();
+  project.materials.push({ ...material, id });
+  return id;
+}
+
+export function updateMaterial(project: Project, id: Id, patch: Partial<Omit<Material, 'id'>>): boolean {
+  const material = project.materials.find((m) => m.id === id);
+  if (!material) return false;
+  Object.assign(material, patch);
+  return true;
+}
+
+/** Remove a material nothing uses. Returns false if it's in use or missing. */
+export function removeMaterial(project: Project, id: Id): boolean {
+  const i = project.materials.findIndex((m) => m.id === id);
+  if (i < 0 || materialUsage(project, id) > 0) return false;
+  project.materials.splice(i, 1);
+  return true;
 }
 
 // ---------------------------------------------------------------------------

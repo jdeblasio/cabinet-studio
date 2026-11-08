@@ -25,7 +25,7 @@ first-class views of it:
 |---|---|
 | Platform | Web app (browser) |
 | Stack | TypeScript, React, react-three-fiber (three.js) for 3D, SVG for 2D |
-| Storage | Local-first: IndexedDB + export/import of project files. No accounts, no backend, works offline |
+| Storage | Local-first: IndexedDB + export/import of project files. No accounts, no backend, works offline. The browser keeps a library of projects (one record each; switch, new, duplicate, delete); importing a file whose project is already saved creates a copy |
 | Distribution | Free / open source, static hosting |
 | License | AGPL-3.0 |
 | Shop usage | Print-first. Desktop-sized UI; the shop works from the PDF set. No touch/tablet optimization |

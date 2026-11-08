@@ -1,5 +1,6 @@
 import {
   addBox,
+  addMaterial,
   addSpan,
   addSplitChild,
   addTier,
@@ -9,7 +10,9 @@ import {
   findSpan,
   findTier,
   inches,
+  materialUsage,
   removeBox,
+  removeMaterial,
   removeSection,
   removeSpan,
   removeTier,
@@ -33,6 +36,7 @@ import {
   setWallLength,
   splitOpening,
   unsplit,
+  updateMaterial,
   type Front,
   type Id,
   type Opening,
@@ -43,7 +47,7 @@ import {
   type Split,
   type Tier,
 } from '@built-in-planner/engine';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useFormatter } from '../../lib/units';
 import { useRunResult } from '../../store/derived';
 import { useActiveRun, useEditor } from '../../store/store';
@@ -173,8 +177,90 @@ function ProjectPanel() {
           />
         </Field>
       </Section>
+      <MaterialsSection />
       <SettingsSection scope={{ kind: 'project' }} title="Construction (project defaults)" />
     </>
+  );
+}
+
+/** Color picker that commits once, when the picker closes (not on every drag step). */
+function ColorInput({ value, onCommit, ariaLabel }: { value: string; onCommit: (v: string) => void; ariaLabel: string }) {
+  const [draft, setDraft] = useState(value);
+  useEffect(() => setDraft(value), [value]);
+  return (
+    <input
+      type="color"
+      className="color-input"
+      value={draft}
+      aria-label={ariaLabel}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={() => draft !== value && onCommit(draft)}
+    />
+  );
+}
+
+/** The project's material library: each material's thickness drives every part made from it. */
+function MaterialsSection() {
+  const project = useEditor((s) => s.project);
+  const edit = useEditor((s) => s.edit);
+  return (
+    <Section
+      title="Materials"
+      actions={
+        <button
+          title="Add a sheet material"
+          onClick={() =>
+            edit((d) =>
+              void addMaterial(d, {
+                name: 'New sheet',
+                kind: 'sheet',
+                thickness: inches(3 / 4),
+                color: '#d8b98b',
+                sheet: { length: inches(96), width: inches(48), grain: 'length' },
+              }),
+            )
+          }
+        >
+          + Material
+        </button>
+      }
+    >
+      <p className="muted small">Thickness comes from the material. Choose which material each part uses under Construction.</p>
+      <div className="materials">
+        {project.materials.map((m) => {
+          const used = materialUsage(project, m.id);
+          return (
+            <div key={m.id} className="material-row">
+              <ColorInput value={m.color} ariaLabel={`${m.name} color`} onCommit={(color) => edit((d) => void updateMaterial(d, m.id, { color }))} />
+              <span className="material-name">
+                <TextInput value={m.name} ariaLabel="Material name" onCommit={(name) => edit((d) => void updateMaterial(d, m.id, { name: name || m.name }))} />
+              </span>
+              <span className="material-thickness">
+                <LengthInput value={m.thickness} min={inches(1 / 32)} ariaLabel={`${m.name} thickness`} onCommit={(thickness) => edit((d) => void updateMaterial(d, m.id, { thickness }))} />
+              </span>
+              <Select
+                value={m.kind}
+                ariaLabel={`${m.name} kind`}
+                options={[
+                  ['sheet', 'Sheet'],
+                  ['lumber', 'Lumber'],
+                ]}
+                onChange={(kind) => edit((d) => void updateMaterial(d, m.id, { kind }))}
+              />
+              <button
+                className="link"
+                disabled={used > 0}
+                title={used > 0 ? `In use (${used} assignment${used === 1 ? '' : 's'})` : 'Remove this material'}
+                aria-label={`Remove ${m.name}`}
+                onClick={() => edit((d) => void removeMaterial(d, m.id))}
+              >
+                ×
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </Section>
   );
 }
 

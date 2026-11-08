@@ -1,67 +1,146 @@
-import { DEFAULT_MATERIALS, DEFAULT_SETTINGS, mergeSettings, SCHEMA_VERSION, type Project } from '@built-in-planner/engine';
-import { get, set } from 'idb-keyval';
+/**
+ * Browser storage: the project library in IndexedDB (see library.ts), autosave of the open
+ * project, and switching between projects. Also JSON export/import.
+ */
+import { createDefaultProject, type Id, type Project } from '@built-in-planner/engine';
+import { del, entries, get, set } from 'idb-keyval';
+import { create } from 'zustand';
+import {
+  deleteProject,
+  duplicateProject,
+  listProjects,
+  loadProject,
+  openInitial,
+  prepareImport,
+  saveProject,
+  setCurrent,
+  type KV,
+  type ProjectSummary,
+} from './library';
 import { useEditor } from './store';
+import { validateProject } from './validate';
 
-const KEY = 'built-in-planner:current-project';
-const SAVE_DELAY_MS = 500;
+export { validateProject };
 
-/** Check an unknown value is a usable project file and normalize it. Throws with a readable message. */
-export function validateProject(data: unknown): Project {
-  if (typeof data !== 'object' || data === null) throw new Error('Not a project file.');
-  const p = data as Partial<Project>;
-  if (p.schemaVersion !== SCHEMA_VERSION) {
-    throw new Error(
-      p.schemaVersion === undefined
-        ? 'Not a Built-in Planner project (no schemaVersion).'
-        : `Unsupported project version ${String(p.schemaVersion)} (this app reads version ${SCHEMA_VERSION}).`,
-    );
-  }
-  if (!Array.isArray(p.runs) || p.runs.length === 0) throw new Error('Project has no wall runs.');
-  if (!p.units || (p.units.system !== 'imperial' && p.units.system !== 'metric')) throw new Error('Project units are missing or invalid.');
-  if (!Array.isArray(p.materials)) throw new Error('Project materials are missing.');
-  for (const run of p.runs) {
-    if (!Array.isArray(run.tiers) || !Array.isArray(run.wall) || run.wall.length === 0) throw new Error(`Run "${run.name ?? run.id}" is malformed.`);
-    if (!Array.isArray(run.spans)) run.spans = [];
-  }
-  // Fill in settings added since the file was written, and any default materials they refer to.
-  const settings = mergeSettings(DEFAULT_SETTINGS, p.settings);
-  const used = new Set(Object.values(settings.materials));
-  const materials = [...p.materials, ...DEFAULT_MATERIALS.filter((m) => used.has(m.id) && !p.materials!.some((pm) => pm.id === m.id))];
-  return {
-    ...(p as Project),
-    name: typeof p.name === 'string' ? p.name : 'Untitled built-in',
-    styles: Array.isArray(p.styles) ? p.styles : [],
-    settings,
-    materials,
-  };
+const kv: KV = {
+  get: (key) => get(key),
+  set: (key, value) => set(key, value),
+  del: (key) => del(key),
+  entries: () => entries(),
+};
+
+/** The saved projects, for the project picker. */
+export const useLibrary = create<{ projects: ProjectSummary[] }>(() => ({ projects: [] }));
+
+async function refreshLibrary(): Promise<void> {
+  useLibrary.setState({ projects: await listProjects(kv) });
 }
 
-export async function loadSavedProject(): Promise<Project | null> {
+/** The project to open at startup (migrating a project saved by an older version). */
+export async function loadInitialProject(): Promise<Project> {
   try {
-    const data = await get(KEY);
-    return data ? validateProject(data) : null;
+    const project = await openInitial(kv);
+    await refreshLibrary();
+    return project;
   } catch (err) {
-    console.warn('Could not load saved project', err);
-    return null;
+    console.warn('Could not open the saved projects', err);
+    return createDefaultProject();
   }
 }
 
+// ---- Autosave ----
+
+const SAVE_DELAY_MS = 500;
 let timer: ReturnType<typeof setTimeout> | undefined;
 
-/** Debounced autosave of the current project to IndexedDB. Returns an unsubscribe function. */
+async function saveOpenProject(): Promise<void> {
+  timer = undefined;
+  try {
+    await saveProject(kv, useEditor.getState().project);
+    await refreshLibrary();
+  } catch (err) {
+    console.warn('Autosave failed', err);
+  }
+}
+
+/** Save now if an autosave is pending (before switching away from the open project). */
+async function flushAutosave(): Promise<void> {
+  if (timer === undefined) return;
+  clearTimeout(timer);
+  await saveOpenProject();
+}
+
+function cancelAutosave(): void {
+  clearTimeout(timer);
+  timer = undefined;
+}
+
+/** Debounced autosave of the open project. Returns an unsubscribe function. */
 export function startAutosave(): () => void {
   const unsub = useEditor.subscribe((state, prev) => {
     if (!state.loaded || state.project === prev.project || state.dragBase) return;
+    // Switching projects saves explicitly; this is for edits to the open one.
+    if (!prev.loaded || state.project.id !== prev.project.id) return;
     clearTimeout(timer);
-    timer = setTimeout(() => {
-      void set(KEY, useEditor.getState().project).catch((err) => console.warn('Autosave failed', err));
-    }, SAVE_DELAY_MS);
+    timer = setTimeout(() => void saveOpenProject(), SAVE_DELAY_MS);
   });
   return () => {
-    clearTimeout(timer);
+    cancelAutosave();
     unsub();
   };
 }
+
+// ---- Switching projects ----
+
+/** Show `project` in the editor (fresh undo history), saving it first when `save` is set. */
+async function show(project: Project, save: boolean): Promise<void> {
+  if (save) await saveProject(kv, project);
+  else await setCurrent(kv, project.id);
+  useEditor.getState().replaceProject(project);
+  await refreshLibrary();
+}
+
+export async function openProject(id: Id): Promise<void> {
+  if (id === useEditor.getState().project.id) return;
+  await flushAutosave();
+  const project = await loadProject(kv, id);
+  if (!project) {
+    window.alert('That project could not be opened.');
+    await refreshLibrary();
+    return;
+  }
+  await show(project, false);
+}
+
+export async function newProject(): Promise<void> {
+  await flushAutosave();
+  await show(createDefaultProject(), true);
+}
+
+export async function duplicateOpenProject(): Promise<void> {
+  await flushAutosave();
+  await show(duplicateProject(useEditor.getState().project), true);
+}
+
+/** Import a project file as a new project (a copy, if a project with its id is already saved). */
+export async function importProjectFile(file: File): Promise<void> {
+  const project = await readProjectFile(file);
+  await flushAutosave();
+  await show(await prepareImport(kv, project), true);
+}
+
+/** Delete the open project from this browser and open the most recent other one (or a new one). */
+export async function deleteOpenProject(): Promise<void> {
+  cancelAutosave();
+  await deleteProject(kv, useEditor.getState().project.id);
+  for (const s of await listProjects(kv)) {
+    const project = await loadProject(kv, s.id);
+    if (project) return show(project, false);
+  }
+  await show(createDefaultProject(), true);
+}
+
+// ---- Files ----
 
 function fileSlug(name: string): string {
   return name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'built-in';

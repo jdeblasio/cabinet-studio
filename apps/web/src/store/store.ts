@@ -33,11 +33,8 @@ export interface EditorState {
   undo: () => void;
   redo: () => void;
   select: (selection: Selection | null) => void;
-  /**
-   * Replace the whole project. Loading clears history; with `undoable` (New, Import) the
-   * previous project is kept as an undo step instead.
-   */
-  replaceProject: (project: Project, opts?: { undoable?: boolean }) => void;
+  /** Open a different project (load, switch, new, import). Starts a fresh undo history. */
+  replaceProject: (project: Project) => void;
   setShowOtherUnits: (v: boolean) => void;
   setView3d: (v: View3D) => void;
 }
@@ -144,10 +141,10 @@ export const useEditor = create<EditorState>()((set, get) => {
 
     select: (selection) => set({ selection }),
 
-    replaceProject: (project, opts) =>
+    replaceProject: (project) =>
       set({
         project,
-        past: opts?.undoable && get().loaded ? [...get().past, get().project].slice(-HISTORY_LIMIT) : [],
+        past: [],
         future: [],
         dragBase: null,
         selection: null,

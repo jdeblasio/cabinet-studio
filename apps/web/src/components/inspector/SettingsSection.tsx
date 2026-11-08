@@ -13,11 +13,13 @@ import {
   type SettingsScope,
   type Ticks,
 } from '@built-in-planner/engine';
+import { useFormatter } from '../../lib/units';
 import { useEditor } from '../../store/store';
 import { LengthInput, Section, Select } from './fields';
 
 type SettingDef =
   | { path: string; label: string; type: 'length' }
+  | { path: string; label: string; type: 'material' }
   | { path: string; label: string; type: 'select'; options: readonly (readonly [string, string])[] };
 
 const END_STILE_OPTIONS = [
@@ -75,6 +77,14 @@ const SETTINGS: SettingDef[] = [
     ],
   },
   { path: 'ceilingScribe', label: 'Ceiling scribe', type: 'length' },
+  // Which material (and so which thickness) each kind of part uses.
+  { path: 'materials.carcass', label: 'Carcass material', type: 'material' },
+  { path: 'materials.back', label: 'Back material', type: 'material' },
+  { path: 'materials.shelves', label: 'Shelf material', type: 'material' },
+  { path: 'materials.faceFrame', label: 'Face frame material', type: 'material' },
+  { path: 'materials.fronts', label: 'Door/drawer material', type: 'material' },
+  { path: 'materials.toeKick', label: 'Toe kick material', type: 'material' },
+  { path: 'materials.countertop', label: 'Countertop material', type: 'material' },
 ];
 
 /** Where a settings edit lands: the project root, or an override on a run/tier/box/span. */
@@ -136,10 +146,15 @@ function scopeInDraft(draft: Project, ref: ScopeRef): SettingsScope | undefined 
 export function SettingsSection({ scope, title }: { scope: ScopeRef; title?: string }) {
   const project = useEditor((s) => s.project);
   const edit = useEditor((s) => s.edit);
+  const { fmt } = useFormatter();
   const info = chainFor(project, scope);
   if (!info) return null;
   const { chain, names } = info;
   const effective = resolveSettings(project, chain);
+  const materialOptions = (current: string): (readonly [string, string])[] => {
+    const opts = project.materials.map((m) => [m.id, `${m.name} · ${fmt(m.thickness)}`] as const);
+    return opts.some(([id]) => id === current) ? opts : [[current, '(missing material)'], ...opts];
+  };
   const here = chain.length - 1;
 
   const setValue = (path: string, value: unknown) =>
@@ -170,6 +185,8 @@ export function SettingsSection({ scope, title }: { scope: ScopeRef; title?: str
               <span className="field-control">
                 {def.type === 'length' ? (
                   <LengthInput value={value as Ticks} onCommit={(t) => setValue(def.path, t)} ariaLabel={def.label} />
+                ) : def.type === 'material' ? (
+                  <Select value={value as string} options={materialOptions(value as string)} onChange={(v) => setValue(def.path, v)} ariaLabel={def.label} />
                 ) : (
                   <Select value={value as string} options={def.options} onChange={(v) => setValue(def.path, v)} ariaLabel={def.label} />
                 )}
