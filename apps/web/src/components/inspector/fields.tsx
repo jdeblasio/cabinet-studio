@@ -2,9 +2,10 @@ import type { SizeSpec, Ticks } from '@built-in-planner/engine';
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { fmtRatio, useFormatter } from '../../lib/units';
 
-export function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: ReactNode }) {
+/** A labeled control. `tip` is a short description shown on hover. */
+export function Field({ label, children, hint, tip }: { label: string; children: ReactNode; hint?: ReactNode; tip?: string }) {
   return (
-    <label className="field">
+    <label className="field" title={tip}>
       <span className="field-label">{label}</span>
       <span className="field-control">{children}</span>
       {hint && <span className="field-hint">{hint}</span>}
@@ -258,16 +259,18 @@ export function SizeSpecEditor({
   resolved,
   onChange,
   label,
+  tip,
 }: {
   spec: SizeSpec;
   resolved?: Ticks;
   onChange: (s: SizeSpec) => void;
   label: string;
+  tip?: string;
 }) {
   const { fmt } = useFormatter();
   return (
     <div className="sizespec">
-      <Field label={label}>
+      <Field label={label} tip={tip ?? 'Fixed: an exact size. Flex: shares the remaining space with other flex items, in proportion to its ratio.'}>
         <Segmented
           value={spec.kind}
           options={[
@@ -282,15 +285,15 @@ export function SizeSpecEditor({
         />
       </Field>
       {spec.kind === 'fixed' ? (
-        <Field label="Size">
+        <Field label="Size" tip="The exact size.">
           <LengthInput value={spec.size} onCommit={(size) => onChange({ kind: 'fixed', size })} ariaLabel={`${label} size`} />
         </Field>
       ) : (
         <>
-          <Field label="Ratio" hint={resolved !== undefined ? `= ${fmt(resolved)}` : undefined}>
+          <Field label="Ratio" hint={resolved !== undefined ? `= ${fmt(resolved)}` : undefined} tip="Share of the leftover space relative to other flex items (2 gets twice as much as 1). Flex sizes round down to the grid.">
             <NumberInput value={spec.ratio} min={0.01} onCommit={(ratio) => onChange({ ...spec, ratio })} ariaLabel={`${label} ratio`} />
           </Field>
-          <Field label="Min / max">
+          <Field label="Min / max" tip="Optional limits on the flexible size. Leave blank for none.">
             <span className="pair">
               <OptionalLengthInput
                 value={spec.min}

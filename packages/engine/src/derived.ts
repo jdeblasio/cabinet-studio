@@ -48,7 +48,9 @@ export type PartRole =
   | 'door'
   | 'drawerFront'
   | 'toeKick'
-  | 'countertop';
+  | 'countertop'
+  /** Scribe strips and fillers. */
+  | 'filler';
 
 /** A single rectangular piece of material, placed in run space. */
 export interface Part {

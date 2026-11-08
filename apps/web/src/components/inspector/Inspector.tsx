@@ -97,13 +97,13 @@ function RunPanel({ run, result }: { run: Run; result: RunResult }) {
   return (
     <>
       <Section title="Wall run">
-        <Field label="Name">
+        <Field label="Name" tip="A name for this wall run.">
           <TextInput value={run.name} onCommit={(name) => editRun((r) => void (r.name = name || r.name))} />
         </Field>
-        <Field label="Wall length">
+        <Field label="Wall length" tip="Wall length, inside corner to inside corner (or end to end).">
           <LengthInput value={seg.length} min={inches(6)} onCommit={(t) => editRun((r) => setWallLength(r, t))} ariaLabel="Wall length" />
         </Field>
-        <Field label="Ceiling height">
+        <Field label="Ceiling height" tip="Floor-to-ceiling height along this wall.">
           <LengthInput value={seg.ceilingHeight} min={inches(12)} onCommit={(t) => editRun((r) => setCeilingHeight(r, t))} ariaLabel="Ceiling height" />
         </Field>
         {(['left', 'right'] as const).map((side) => (
@@ -158,10 +158,10 @@ function ProjectPanel() {
   return (
     <>
       <Section title="Project">
-        <Field label="Name">
+        <Field label="Name" tip="A name for this project; also the export file name.">
           <TextInput value={project.name} onCommit={(name) => edit((d) => void (d.name = name || d.name))} />
         </Field>
-        <Field label="Units" hint={`Snaps to ${fmt(project.units.grid)}`}>
+        <Field label="Units" tip="Unit system for this project. All sizes snap to its grid; the other system can be shown approximately." hint={`Snaps to ${fmt(project.units.grid)}`}>
           <Segmented
             value={project.units.system}
             options={[
@@ -231,13 +231,16 @@ function MaterialsSection() {
           const used = materialUsage(project, m.id);
           return (
             <div key={m.id} className="material-row">
-              <ColorInput value={m.color} ariaLabel={`${m.name} color`} onCommit={(color) => edit((d) => void updateMaterial(d, m.id, { color }))} />
-              <span className="material-name">
+              <span title="Display color in the drawings and 3D view" className="material-color">
+                <ColorInput value={m.color} ariaLabel={`${m.name} color`} onCommit={(color) => edit((d) => void updateMaterial(d, m.id, { color }))} />
+              </span>
+              <span className="material-name" title="Material name">
                 <TextInput value={m.name} ariaLabel="Material name" onCommit={(name) => edit((d) => void updateMaterial(d, m.id, { name: name || m.name }))} />
               </span>
-              <span className="material-thickness">
+              <span className="material-thickness" title="Actual thickness. Every part made from this material uses it.">
                 <LengthInput value={m.thickness} min={inches(1 / 32)} ariaLabel={`${m.name} thickness`} onCommit={(thickness) => edit((d) => void updateMaterial(d, m.id, { thickness }))} />
               </span>
+              <span title="Sheet goods are nested on sheets; lumber is cut from boards.">
               <Select
                 value={m.kind}
                 ariaLabel={`${m.name} kind`}
@@ -247,6 +250,7 @@ function MaterialsSection() {
                 ]}
                 onChange={(kind) => edit((d) => void updateMaterial(d, m.id, { kind }))}
               />
+              </span>
               <button
                 className="link"
                 disabled={used > 0}
@@ -278,7 +282,7 @@ function AddSpanSection({ run, fromTierId }: { run: Run; fromTierId?: Id }) {
   const options = tiers.map((t) => [t.id, t.name] as const);
   return (
     <Section title="Add tall box / gap">
-      <Field label="Kind">
+      <Field label="Kind" tip="Tall box: one box spanning several tiers. Gap: space kept clear, e.g. a doorway or window.">
         <Segmented
           value={kind}
           options={[
@@ -288,13 +292,13 @@ function AddSpanSection({ run, fromTierId }: { run: Run; fromTierId?: Id }) {
           onChange={setKind}
         />
       </Field>
-      <Field label="From tier">
+      <Field label="From tier" tip="The lowest tier it spans.">
         <Select value={fromId} options={options} onChange={setFrom} ariaLabel="From tier" />
       </Field>
-      <Field label="To tier">
+      <Field label="To tier" tip="The highest tier it spans.">
         <Select value={toId} options={options} onChange={setTo} ariaLabel="To tier" />
       </Field>
-      <Field label="Position">
+      <Field label="Position" tip="Which end of the run its position is measured from.">
         <Segmented
           value={anchor}
           options={[
@@ -305,7 +309,7 @@ function AddSpanSection({ run, fromTierId }: { run: Run; fromTierId?: Id }) {
           onChange={setAnchor}
         />
       </Field>
-      <Field label="Width">
+      <Field label="Width" tip="Overall width, including its share of the face frame.">
         <LengthInput value={width} min={inches(1)} onCommit={setWidth} ariaLabel="Span width" />
       </Field>
       <button
@@ -336,10 +340,10 @@ function TierPanel({ run, tier, result }: { run: Run; tier: Tier; result: RunRes
   return (
     <>
       <Section title="Tier">
-        <Field label="Name">
+        <Field label="Name" tip="A name for this tier.">
           <TextInput value={tier.name} onCommit={(n) => editRun((r) => setTierName(r, tier.id, n || tier.name))} />
         </Field>
-        <Field label="Kind">
+        <Field label="Kind" tip="Boxes: a band of cabinets. Open space: an empty band, e.g. above a counter.">
           <Segmented
             value={tier.kind}
             options={[
@@ -349,13 +353,13 @@ function TierPanel({ run, tier, result }: { run: Run; tier: Tier; result: RunRes
             onChange={(k) => editRun((r) => setTierKind(r, tier.id, k))}
           />
         </Field>
-        <SizeSpecEditor label="Height" spec={tier.height} resolved={tl?.height} onChange={(s) => editRun((r) => setTierHeight(r, tier.id, s))} />
-        <Field label="Depth" hint="Carcass, incl. back">
+        <SizeSpecEditor label="Height" tip="Tier height, including any toe kick and countertop. Fixed, or flex to share the wall height with other tiers." spec={tier.height} resolved={tl?.height} onChange={(s) => editRun((r) => setTierHeight(r, tier.id, s))} />
+        <Field label="Depth" tip="Carcass depth including the back panel, not counting the face frame or fronts." hint="Carcass, incl. back">
           <LengthInput value={tier.depth} min={inches(2)} onCommit={(t) => editRun((r) => setTierDepth(r, tier.id, t))} ariaLabel="Tier depth" />
         </Field>
         {isBottom && (
           <>
-            <Field label="Toe kick">
+            <Field label="Toe kick" tip="A recessed base platform under the bottom tier, with a kick board set back from the face.">
               <input
                 type="checkbox"
                 checked={!!tier.toeKick}
@@ -366,14 +370,14 @@ function TierPanel({ run, tier, result }: { run: Run; tier: Tier; result: RunRes
             </Field>
             {tier.toeKick && (
               <>
-                <Field label="Kick height">
+                <Field label="Kick height" tip="Height of the toe kick platform; the boxes sit on top of it.">
                   <LengthInput
                     value={tier.toeKick.height}
                     onCommit={(height) => editRun((r) => setToeKick(r, tier.id, { ...tier.toeKick!, height }))}
                     ariaLabel="Toe kick height"
                   />
                 </Field>
-                <Field label="Kick setback" hint="From the frame face">
+                <Field label="Kick setback" tip="How far the kick board sits back from the face of the face frame." hint="From the frame face">
                   <LengthInput
                     value={tier.toeKick.setback}
                     onCommit={(setback) => editRun((r) => setToeKick(r, tier.id, { ...tier.toeKick!, setback }))}
@@ -386,7 +390,7 @@ function TierPanel({ run, tier, result }: { run: Run; tier: Tier; result: RunRes
         )}
         {tier.kind === 'boxes' && (
           <>
-            <Field label="Countertop" hint="Inside the tier height">
+            <Field label="Countertop" tip="A finished top over this tier’s boxes. It fits inside the tier height, so the boxes get shorter." hint="Inside the tier height">
               <input
                 type="checkbox"
                 aria-label="Countertop"
@@ -396,7 +400,7 @@ function TierPanel({ run, tier, result }: { run: Run; tier: Tier; result: RunRes
             </Field>
             {tier.countertop && (
               <>
-                <Field label="Top thickness">
+                <Field label="Top thickness" tip="Countertop thickness. The countertop material (Construction) sets its species and color.">
                   <LengthInput
                     value={tier.countertop.thickness}
                     min={inches(1 / 4)}
@@ -404,7 +408,7 @@ function TierPanel({ run, tier, result }: { run: Run; tier: Tier; result: RunRes
                     ariaLabel="Countertop thickness"
                   />
                 </Field>
-                <Field label="Front overhang" hint="Past the frame face">
+                <Field label="Front overhang" tip="How far the countertop projects past the face of the face frame." hint="Past the frame face">
                   <LengthInput
                     value={tier.countertop.frontOverhang}
                     min={0}
@@ -412,7 +416,7 @@ function TierPanel({ run, tier, result }: { run: Run; tier: Tier; result: RunRes
                     ariaLabel="Countertop front overhang"
                   />
                 </Field>
-                <Field label="End overhang" hint="At open ends and gaps">
+                <Field label="End overhang" tip="How far the countertop projects past the finished end at open ends and gaps. At walls it runs to the wall." hint="At open ends and gaps">
                   <LengthInput
                     value={tier.countertop.endOverhang}
                     min={0}
@@ -465,7 +469,7 @@ function CarcassReadout({ result, id }: { result: RunResult; id: Id }) {
   const b = result.boxes.find((x) => x.id === id);
   if (!b) return null;
   return (
-    <Field label="Carcass">
+    <Field label="Carcass" tip="Outside size of this box’s carcass (without face frame or fronts).">
       <span className="readout">
         {fmt(b.carcass.width)} W × {fmt(b.carcass.height)} H × {fmt(b.carcass.depth)} D
       </span>
@@ -476,7 +480,7 @@ function CarcassReadout({ result, id }: { result: RunResult; id: Id }) {
 function FaceSummary({ run, ownerId, root }: { run: Run; ownerId: Id; root: Opening | Split }) {
   const select = useEditor((s) => s.select);
   return (
-    <Field label="Face">
+    <Field label="Face" tip="What fills the face: open, doors, drawers, or a split into several openings. Click to edit.">
       <button className="link" onClick={() => select({ kind: 'section', runId: run.id, ownerId, sectionId: root.id })}>
         {root.kind === 'opening'
           ? `${frontLabel(root.front)}${root.adjustableShelves ? `, ${root.adjustableShelves} shelves` : ''}`
@@ -497,10 +501,10 @@ function BoxPanel({ run, boxId, result }: { run: Run; boxId: Id; result: RunResu
   return (
     <>
       <Section title={box.name || `Box ${index + 1} · ${tier.name}`}>
-        <Field label="Name">
+        <Field label="Name" tip="A name for this box (optional).">
           <TextInput value={box.name ?? ''} onCommit={(n) => editRun((r) => setBoxName(r, box.id, n))} />
         </Field>
-        <SizeSpecEditor label="Width" spec={box.width} resolved={resolved} onChange={(s) => editRun((r) => setBoxWidth(r, box.id, s))} />
+        <SizeSpecEditor label="Width" tip="Box width. Fixed, or flex to share the tier's width with other flex boxes." spec={box.width} resolved={resolved} onChange={(s) => editRun((r) => setBoxWidth(r, box.id, s))} />
         <CarcassReadout result={result} id={box.id} />
         <FaceSummary run={run} ownerId={box.id} root={box.content} />
         {box.content.kind === 'opening' && <OpeningControls run={run} ownerId={box.id} opening={box.content} />}
@@ -548,7 +552,7 @@ function SpanPanel({ run, span, result }: { run: Run; span: Span; result: RunRes
   return (
     <>
       <Section title={span.name || (span.kind === 'box' ? 'Tall box' : 'Gap')}>
-        <Field label="Name">
+        <Field label="Name" tip="A name for this tall box or gap, e.g. “door”.">
           <TextInput
             value={span.name ?? ''}
             onCommit={(n) =>
@@ -559,7 +563,7 @@ function SpanPanel({ run, span, result }: { run: Run; span: Span; result: RunRes
             }
           />
         </Field>
-        <Field label="Kind">
+        <Field label="Kind" tip="Tall box: one box spanning several tiers. Gap: space kept clear, e.g. a doorway or window.">
           <Segmented
             value={span.kind}
             options={[
@@ -574,13 +578,13 @@ function SpanPanel({ run, span, result }: { run: Run; span: Span; result: RunRes
             }
           />
         </Field>
-        <Field label="From tier">
+        <Field label="From tier" tip="The lowest tier it spans.">
           <Select value={span.tiers.from} options={tierOptions} onChange={(id) => edit((d) => void setSpanTiers(d, run.id, span.id, id, span.tiers.to))} ariaLabel="From tier" />
         </Field>
-        <Field label="To tier">
+        <Field label="To tier" tip="The highest tier it spans.">
           <Select value={span.tiers.to} options={tierOptions} onChange={(id) => edit((d) => void setSpanTiers(d, run.id, span.id, span.tiers.from, id))} ariaLabel="To tier" />
         </Field>
-        <Field label="Anchor">
+        <Field label="Anchor" tip="Which end of the run its position is measured from (or the center).">
           <Segmented
             value={span.x.anchor}
             options={[
@@ -591,14 +595,14 @@ function SpanPanel({ run, span, result }: { run: Run; span: Span; result: RunRes
             onChange={(anchor) => geom({ x: { ...span.x, anchor } })}
           />
         </Field>
-        <Field label="Offset" hint={span.x.anchor === 'center' ? 'From center' : `From the ${span.x.anchor} end`}>
+        <Field label="Offset" tip="Distance from the anchor end (or from the center)." hint={span.x.anchor === 'center' ? 'From center' : `From the ${span.x.anchor} end`}>
           <LengthInput value={span.x.offset} min={-inches(10000)} onCommit={(offset) => geom({ x: { ...span.x, offset } })} ariaLabel="Span offset" />
         </Field>
-        <Field label="Width">
+        <Field label="Width" tip="Overall width.">
           <LengthInput value={span.width} min={inches(1)} onCommit={(width) => geom({ width })} ariaLabel="Span width" />
         </Field>
         {span.kind === 'box' && (
-          <Field label="Depth" hint={span.depth === undefined ? 'From bottom tier' : undefined}>
+          <Field label="Depth" tip="Carcass depth. Leave it to follow the bottom tier it spans." hint={span.depth === undefined ? 'From bottom tier' : undefined}>
             <LengthInput value={span.depth ?? bottomDepth} min={inches(2)} onCommit={(depth) => geom({ depth })} ariaLabel="Span depth" />
           </Field>
         )}
@@ -662,13 +666,13 @@ function OpeningControls({ run, ownerId, opening }: { run: Run; ownerId: Id; ope
   };
   return (
     <>
-      <Field label="Front">
+      <Field label="Front" tip="Door, pair of doors, drawer front, or open.">
         <Select value={frontKey(opening.front)} options={FRONT_OPTIONS} onChange={(k) => editRun((r) => setFront(r, opening.id, frontFromKey(k)))} ariaLabel="Front" />
       </Field>
-      <Field label="Adj. shelves">
+      <Field label="Adj. shelves" tip="Number of adjustable shelves, spaced evenly.">
         <NumberInput value={opening.adjustableShelves} min={0} max={20} integer onCommit={(n) => editRun((r) => setAdjustableShelves(r, opening.id, n))} ariaLabel="Adjustable shelves" />
       </Field>
-      <Field label="Split into">
+      <Field label="Split into" tip="Divide this opening into rows (stacked) or columns (side by side).">
         <span className="pair">
           <Select
             value={count}
@@ -703,7 +707,7 @@ function SectionPanel({ run, sectionId, result }: { run: Run; sectionId: Id; res
   return (
     <Section title={section.kind === 'opening' ? 'Opening' : `Split (${section.direction})`}>
       {layout && (
-        <Field label="Clear opening">
+        <Field label="Clear opening" tip="Size of the opening inside the face frame.">
           <span className="readout">
             {fmt(layout.rect.width)} W × {fmt(layout.rect.height)} H
           </span>
@@ -721,7 +725,7 @@ function SectionPanel({ run, sectionId, result }: { run: Run; sectionId: Id; res
         <OpeningControls run={run} ownerId={owner.id} opening={section} />
       ) : (
         <>
-          <Field label="Dividers">
+          <Field label="Dividers" tip="What separates the openings: a panel (fixed shelf or partition) with its frame member, or the frame member only.">
             <Select
               value={section.divider}
               options={[
@@ -732,7 +736,7 @@ function SectionPanel({ run, sectionId, result }: { run: Run; sectionId: Id; res
               ariaLabel="Dividers"
             />
           </Field>
-          <Field label="Children">
+          <Field label="Children" tip="The openings in this split and their sizes.">
             <span className="readout">{section.children.length}</span>
           </Field>
         </>

@@ -530,6 +530,10 @@ button.link:hover {
   width: 100%;
   min-width: 0;
 }
+.material-row > span {
+  display: flex;
+  min-width: 0;
+}
 .color-input {
   width: 26px;
   height: 24px;

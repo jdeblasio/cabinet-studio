@@ -17,10 +17,11 @@ import { useFormatter } from '../../lib/units';
 import { useEditor } from '../../store/store';
 import { LengthInput, Section, Select } from './fields';
 
+/** One row of the settings list. `tip` is a short description shown on hover. */
 type SettingDef =
-  | { path: string; label: string; type: 'length' }
-  | { path: string; label: string; type: 'material' }
-  | { path: string; label: string; type: 'select'; options: readonly (readonly [string, string])[] };
+  | { path: string; label: string; tip: string; type: 'length' }
+  | { path: string; label: string; tip: string; type: 'material' }
+  | { path: string; label: string; tip: string; type: 'select'; options: readonly (readonly [string, string])[] };
 
 const END_STILE_OPTIONS = [
   ['flush', 'Flush stile'],
@@ -36,6 +37,7 @@ const SETTINGS: SettingDef[] = [
   {
     path: 'construction',
     label: 'Construction',
+    tip: 'Face frame: a hardwood frame across the front of the boxes. Frameless (European) construction arrives in a later milestone; face frame is shown for now.',
     type: 'select',
     options: [
       ['faceFrame', 'Face frame'],
@@ -45,6 +47,7 @@ const SETTINGS: SettingDef[] = [
   {
     path: 'fronts.mounting',
     label: 'Front mounting',
+    tip: 'How doors and drawer fronts sit. Partial overlay: lapped onto the face frame. Full overlay: covering nearly all of the frame. Inset: inside the frame openings, flush with the frame.',
     type: 'select',
     options: [
       ['partialOverlay', 'Partial overlay'],
@@ -52,39 +55,40 @@ const SETTINGS: SettingDef[] = [
       ['inset', 'Inset'],
     ],
   },
-  { path: 'fronts.overlay', label: 'Overlay', type: 'length' },
-  { path: 'fronts.reveal', label: 'Reveal', type: 'length' },
-  { path: 'fronts.pairGap', label: 'Pair gap', type: 'length' },
-  { path: 'faceFrame.topRailWidth', label: 'Top rail', type: 'length' },
-  { path: 'faceFrame.bottomRailWidth', label: 'Bottom rail', type: 'length' },
-  { path: 'faceFrame.midRailWidth', label: 'Mid rail', type: 'length' },
+  { path: 'fronts.overlay', label: 'Overlay', tip: 'Partial overlay: how far each door or drawer front laps onto the face frame on each side.', type: 'length' },
+  { path: 'fronts.reveal', label: 'Reveal', tip: 'Inset: the gap around each front. Full overlay: the gap between neighboring fronts.', type: 'length' },
+  { path: 'fronts.pairGap', label: 'Pair gap', tip: 'The gap between the two doors of a pair.', type: 'length' },
+  { path: 'faceFrame.topRailWidth', label: 'Top rail', tip: 'Height of the face frame rail along the top of each box.', type: 'length' },
+  { path: 'faceFrame.bottomRailWidth', label: 'Bottom rail', tip: 'Height of the face frame rail along the bottom of each box. The bottom panel sits flush with its top edge.', type: 'length' },
+  { path: 'faceFrame.midRailWidth', label: 'Mid rail', tip: 'Height of the rail between stacked openings (e.g. a drawer over a door).', type: 'length' },
   // Stiles over partitions match shared stiles; this is for stile-only dividers.
-  { path: 'faceFrame.midStileWidth', label: 'Stile-only divider', type: 'length' },
+  { path: 'faceFrame.midStileWidth', label: 'Stile-only divider', tip: 'Width of the stile between side-by-side openings when there\'s no partition behind it. Stiles over partitions match the stiles shared between boxes.', type: 'length' },
   // Only affects edges with no neighbor and no wall (beside a gap, at an open end).
-  { path: 'faceFrame.endStiles.left', label: 'Open left end', type: 'select', options: END_STILE_OPTIONS },
-  { path: 'faceFrame.endStiles.right', label: 'Open right end', type: 'select', options: END_STILE_OPTIONS },
-  { path: 'faceFrame.lip', label: 'Frame lip', type: 'length' },
-  { path: 'faceFrame.scribeAllowance', label: 'Scribe allowance', type: 'length' },
-  { path: 'carcass.top', label: 'Top', type: 'select', options: CARCASS_END_OPTIONS },
-  { path: 'carcass.bottom', label: 'Bottom', type: 'select', options: CARCASS_END_OPTIONS },
+  { path: 'faceFrame.endStiles.left', label: 'Open left end', tip: 'The stile on a box\'s left edge when nothing is beside it (a gap or an open end). Flush: stops at the box side. Full width: as wide as a shared stile so it lines up with stiles above or below; the boxes shrink to make room and an end panel fills in behind it.', type: 'select', options: END_STILE_OPTIONS },
+  { path: 'faceFrame.endStiles.right', label: 'Open right end', tip: 'The stile on a box\'s right edge when nothing is beside it (a gap or an open end). Flush: stops at the box side. Full width: as wide as a shared stile so it lines up with stiles above or below; the boxes shrink to make room and an end panel fills in behind it.', type: 'select', options: END_STILE_OPTIONS },
+  { path: 'faceFrame.lip', label: 'Frame lip', tip: 'How far the face frame overhangs the inside of each box side. 0 is flush inside, so drawer slides mount without spacers.', type: 'length' },
+  { path: 'faceFrame.scribeAllowance', label: 'Scribe allowance', tip: 'Space left between a wall and the end box. The end stile covers it and is scribed to the wall.', type: 'length' },
+  { path: 'carcass.top', label: 'Top', tip: 'Panel: a top panel and top rail. Open: neither, so shelving continues into the box above.', type: 'select', options: CARCASS_END_OPTIONS },
+  { path: 'carcass.bottom', label: 'Bottom', tip: 'Panel: a bottom panel and bottom rail. Open: neither, e.g. so a countertop below shows as the bottom shelf.', type: 'select', options: CARCASS_END_OPTIONS },
   {
     path: 'back',
     label: 'Back',
+    tip: 'Applied: a back panel on the rear of each box. None: no back.',
     type: 'select',
     options: [
       ['applied', 'Applied'],
       ['none', 'None'],
     ],
   },
-  { path: 'ceilingScribe', label: 'Ceiling scribe', type: 'length' },
+  { path: 'ceilingScribe', label: 'Ceiling scribe', tip: 'Space left at the ceiling above the top tier, for scribing to an uneven ceiling.', type: 'length' },
   // Which material (and so which thickness) each kind of part uses.
-  { path: 'materials.carcass', label: 'Carcass material', type: 'material' },
-  { path: 'materials.back', label: 'Back material', type: 'material' },
-  { path: 'materials.shelves', label: 'Shelf material', type: 'material' },
-  { path: 'materials.faceFrame', label: 'Face frame material', type: 'material' },
-  { path: 'materials.fronts', label: 'Door/drawer material', type: 'material' },
-  { path: 'materials.toeKick', label: 'Toe kick material', type: 'material' },
-  { path: 'materials.countertop', label: 'Countertop material', type: 'material' },
+  { path: 'materials.carcass', label: 'Carcass material', tip: 'Material for box sides, tops, bottoms, partitions and end panels. Its thickness sets theirs.', type: 'material' },
+  { path: 'materials.back', label: 'Back material', tip: 'Material for box backs.', type: 'material' },
+  { path: 'materials.shelves', label: 'Shelf material', tip: 'Material for fixed and adjustable shelves.', type: 'material' },
+  { path: 'materials.faceFrame', label: 'Face frame material', tip: 'Lumber for face frame stiles and rails.', type: 'material' },
+  { path: 'materials.fronts', label: 'Door/drawer material', tip: 'Material for slab doors and drawer fronts.', type: 'material' },
+  { path: 'materials.toeKick', label: 'Toe kick material', tip: 'Material for the toe kick platform and kick boards.', type: 'material' },
+  { path: 'materials.countertop', label: 'Countertop material', tip: 'Material (species and color) for countertops. Thickness is set on the tier.', type: 'material' },
 ];
 
 /** Where a settings edit lands: the project root, or an override on a run/tier/box/span. */
@@ -180,7 +184,7 @@ export function SettingsSection({ scope, title }: { scope: ScopeRef; title?: str
           const overridden = scope.kind !== 'project' && source === here;
           const from = source === -1 ? 'project' : names[source];
           return (
-            <div key={def.path} className={`setting${overridden ? ' overridden' : ''}`}>
+            <div key={def.path} className={`setting${overridden ? ' overridden' : ''}`} title={def.tip}>
               <span className="field-label">{def.label}</span>
               <span className="field-control">
                 {def.type === 'length' ? (

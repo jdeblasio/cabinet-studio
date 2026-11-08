@@ -5,6 +5,7 @@ import { deriveBox } from './box';
 import { deriveCountertops } from './countertop';
 import { makeCtx } from './context';
 import { deriveFrames } from './frame';
+import { deriveScribeStrips } from './scribe';
 import { layoutRun } from './layout';
 import { deriveToeKick } from './toeKick';
 
@@ -38,7 +39,7 @@ export function deriveRun(project: Project, runId: Id): RunResult {
     boxes.push({ id: placed.id, source: placed.source, tierId: placed.tierId, carcass: placed.carcass, sections });
   }
   const { frames, parts: stiles } = deriveFrames(ctx, layout.boxes, layout.width, layout.gaps);
-  parts.push(...stiles, ...deriveToeKick(ctx, layout), ...deriveCountertops(ctx, layout, stiles));
+  parts.push(...stiles, ...deriveToeKick(ctx, layout), ...deriveCountertops(ctx, layout, stiles), ...deriveScribeStrips(ctx, layout));
 
   if (frameless) {
     issues.push({ severity: 'warning', code: 'frameless-unsupported', message: 'Frameless construction arrives in a later milestone; face-frame construction is shown.', sourceId: run.id });

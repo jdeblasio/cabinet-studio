@@ -186,7 +186,13 @@ step or two off its siblings. Hold Alt/Option to drag freely.
   runs up past it (shared with a tall box) gets a lint note to notch the top. Its thickness
   is set on the tier; the countertop material only supplies species and color.
 - Toe kick: a separate ladder-frame platform per contiguous, same-depth run of floor
-  boxes; the kick face is set back from the face of the face frame.
+  boxes; the kick face is set back from the face of the face frame. At an open end with a
+  full-width end stile the platform runs under the end panel, flush with the finished end;
+  at a wall the front kick board runs on to the wall (scribed).
+- **Scribe strips:** a box held off a wall by the scribe allowance leaves a slot behind its
+  scribe stile. Normally the box below at the same wall (or the floor) closes it; when
+  nothing does (e.g. a box over a doorway that runs to the wall), a strip of face-frame
+  stock fills the slot at the box bottom, flush with it, ripped to the scribe width.
 - Fronts: partial overlay adds the overlay on every edge; inset subtracts the reveal; full
   overlay covers this opening's share of each frame member, leaving `reveal` between
   neighboring fronts. Front and interior part sizes snap down to the grid.

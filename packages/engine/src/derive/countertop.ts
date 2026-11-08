@@ -6,9 +6,9 @@
  */
 import type { Part } from '../derived';
 import { resolveSettings } from '../settings';
-import type { Ticks } from '../units';
 import { makePart, type Ctx } from './context';
 import type { PlacedBox, RunLayoutResult } from './layout';
+import { endReach } from './reach';
 
 export function deriveCountertops(ctx: Ctx, layout: RunLayoutResult, stiles: readonly Part[]): Part[] {
   const parts: Part[] = [];
@@ -38,12 +38,8 @@ export function deriveCountertops(ctx: Ctx, layout: RunLayoutResult, stiles: rea
       const last = seg[seg.length - 1]!;
       const left = first.carcass.x;
       const right = last.carcass.x + last.carcass.width;
-      /** How far the end box's frame reaches past its side (a full-width end stile overhangs it). */
-      const stileReach = (b: PlacedBox, side: 'left' | 'right'): Ticks =>
-        b.settings.faceFrame.endStiles[side] === 'full' ? ctx.thickness(b.settings.materials.carcass, b.id) + b.settings.faceFrame.lip : 0;
-
-      let xa = first.atLeftWall ? 0 : left - stileReach(first, 'left') - ct.endOverhang;
-      let xb = last.atRightWall ? layout.width : right + stileReach(last, 'right') + ct.endOverhang;
+      let xa = first.atLeftWall ? 0 : left - endReach(ctx, first, 'left') - ct.endOverhang;
+      let xb = last.atRightWall ? layout.width : right + endReach(ctx, last, 'right') + ct.endOverhang;
       for (const o of blocks) {
         const ox0 = o.carcass.x;
         const ox1 = ox0 + o.carcass.width;

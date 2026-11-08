@@ -58,7 +58,7 @@ function keepRunId(project: Project, runId: Id): Id {
   return project.runs.some((r) => r.id === runId) ? runId : firstRunId(project);
 }
 
-export const useEditor = create<EditorState>()((set, get) => {
+const createEditorStore = () => create<EditorState>()((set, get) => {
   const initial = createDefaultProject();
   return {
     project: initial,
@@ -162,6 +162,14 @@ export const useEditor = create<EditorState>()((set, get) => {
     setView: (view) => set({ view }),
   };
 });
+
+/**
+ * The editor store. In development the same instance survives hot module reloads, so editing a
+ * module the store depends on doesn't reset it to an empty, unloaded project.
+ */
+export const useEditor: ReturnType<typeof createEditorStore> =
+  (import.meta.hot?.data.useEditor as ReturnType<typeof createEditorStore> | undefined) ?? createEditorStore();
+if (import.meta.hot) import.meta.hot.data.useEditor = useEditor;
 
 /** The active run (throws if the project somehow has none). */
 export function useActiveRun() {

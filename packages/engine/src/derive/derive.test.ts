@@ -107,7 +107,9 @@ describe('deriveRun: default project', () => {
   it('builds one toe kick platform under the contiguous base boxes', () => {
     const kick = result.parts.filter((p) => p.role === 'toeKick');
     const front = kick.find((p) => p.id.endsWith('-front'))!;
-    expect(front.length).toBe(inches(119));
+    // The front board runs wall to wall; the platform behind it sits under the carcasses.
+    expect(front.length).toBe(inches(120));
+    expect(kick.find((p) => p.id.endsWith('-back'))!.length).toBe(inches(119));
     expect(front.width).toBe(inches(3.5));
     // Kick face 3" back from the face of the frame.
     expect(front.bounds.z + front.bounds.depth).toBe(inches(16 + 0.75 - 3));
@@ -184,9 +186,9 @@ describe('deriveRun: spans', () => {
     expect(shared.name).toBe('Shared stile');
     expect([shared.bounds.y, shared.bounds.height]).toEqual([inches(3.5), inches(92)]);
     expect(part(result, `${span.id}/stile-right`).name).toBe('Scribe stile');
-    // Toe kick runs under the tall box too.
+    // Toe kick runs under the tall box too, and its front board on to both walls.
     const front = result.parts.find((p) => p.id.endsWith('kick-0-front'))!;
-    expect(front.length).toBe(inches(119));
+    expect(front.length).toBe(inches(120));
     void run;
   });
 
@@ -277,6 +279,25 @@ describe('deriveRun: spans', () => {
       expect([lower.bounds.x, lower.width]).toEqual([upper.bounds.x, upper.width]);
       expect(lower.bounds.x + lower.width).toBe(aligned.gaps[0]!.rect.x);
       expect(lower.bounds.z).not.toBe(upper.bounds.z);
+    });
+
+    it('runs the toe kick under the end panel, flush with the finished end', () => {
+      const { run, result } = setup((_, r) => {
+        centeredGap(r);
+        boxesOf(tier(r, 0))[1]!.overrides = { faceFrame: { endStiles: { right: 'full' } } };
+      });
+      const kick = result.parts.filter((p) => p.ownerId === tier(run, 0).id && p.id.includes('/kick-0-'));
+      const front = kick.find((p) => p.id.endsWith('-front'))!;
+      const back = kick.find((p) => p.id.endsWith('-back'))!;
+      // Gap edge at 42": the platform ends flush with the end panel's outer face.
+      expect(back.bounds.x + back.bounds.width).toBe(inches(42));
+      expect(front.bounds.x).toBe(0); // and runs to the left wall
+      expect(front.bounds.x + front.bounds.width).toBe(inches(42));
+      const crosses = kick.filter((p) => p.name === 'Toe kick (cross)');
+      expect(Math.max(...crosses.map((c) => c.bounds.x + c.bounds.width))).toBe(inches(42));
+      // The other platform, beside a flush end stile, stops at the carcass side.
+      const other = result.parts.find((p) => p.id.endsWith('/kick-1-back'))!;
+      expect(other.bounds.x).toBe(inches(78));
     });
 
     it('makes room beside a box with a different face plane instead of overrunning it', () => {
@@ -562,5 +583,30 @@ describe('deriveRun: exposed bottoms', () => {
 
   it('leaves boxes that rest on other boxes alone', () => {
     expect(setup().result.parts.filter((p) => p.name === 'Finished bottom')).toEqual([]);
+    expect(setup().result.parts.filter((p) => p.role === 'filler')).toEqual([]);
+  });
+
+  it('fills the wall scribe space under a box over an opening that runs to the wall', () => {
+    // A doorway at the right end of the base tier: the upper box above it sits 1/2" off the
+    // right wall with nothing below that space.
+    const { run, result } = setup((_, r) => {
+      const id = newId();
+      r.spans.push({ id, kind: 'gap', x: { anchor: 'right', offset: 0 }, width: inches(30), tiers: { from: tier(r, 0).id, to: tier(r, 0).id }, content: opening() });
+      tier(r, 0).items.push({ kind: 'slot', spanId: id });
+    });
+    const upperRight = boxesOf(tier(run, 1)).at(-1)!.id;
+    const strips = result.parts.filter((p) => p.role === 'filler');
+    expect(strips.map((p) => p.id)).toEqual([`${upperRight}/scribe-strip-right`]);
+    const strip = strips[0]!;
+    expect(strip.bounds).toEqual({ x: inches(119.5), y: inches(30), z: 0, width: inches(0.5), height: inches(0.75), depth: inches(12) });
+    expect([strip.length, strip.width, strip.thickness]).toEqual([inches(12), inches(0.5), inches(0.75)]);
+    expect(strip.materialId).toBe('poplar-3-4');
+  });
+
+  it('needs no scribe strip where a countertop runs to the wall below', () => {
+    const { result } = setup((_, r) => {
+      tier(r, 0).countertop = { thickness: inches(1.5), frontOverhang: inches(1), endOverhang: inches(1) };
+    });
+    expect(result.parts.filter((p) => p.role === 'filler')).toEqual([]);
   });
 });

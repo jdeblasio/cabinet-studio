@@ -29,8 +29,12 @@ const kv: KV = {
   entries: () => entries(),
 };
 
-/** The saved projects, for the project picker. */
-export const useLibrary = create<{ projects: ProjectSummary[] }>(() => ({ projects: [] }));
+const createLibraryStore = () => create<{ projects: ProjectSummary[] }>(() => ({ projects: [] }));
+
+/** The saved projects, for the project picker (kept across hot reloads in development). */
+export const useLibrary: ReturnType<typeof createLibraryStore> =
+  (import.meta.hot?.data.useLibrary as ReturnType<typeof createLibraryStore> | undefined) ?? createLibraryStore();
+if (import.meta.hot) import.meta.hot.data.useLibrary = useLibrary;
 
 async function refreshLibrary(): Promise<void> {
   useLibrary.setState({ projects: await listProjects(kv) });
