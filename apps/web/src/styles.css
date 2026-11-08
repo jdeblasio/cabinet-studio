@@ -194,18 +194,55 @@ button.link:hover {
 
 .center {
   display: grid;
-  grid-template-rows: minmax(0, 3fr) auto minmax(0, 2fr);
+  grid-template-rows: minmax(0, 3fr) auto auto minmax(0, 2fr);
   min-height: 0;
   min-width: 0;
+}
+
+/* Divider between the elevation and the 3D preview: a 1px line with a taller grab area. */
+.splitter {
+  position: relative;
+  z-index: 2;
+  height: 1px;
+  background: var(--line);
+  cursor: row-resize;
+  touch-action: none;
+}
+.splitter::before {
+  content: '';
+  position: absolute;
+  inset: -4px 0;
+}
+.splitter::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -2px;
+  width: 36px;
+  height: 5px;
+  margin-left: -18px;
+  border-radius: 3px;
+  background: var(--line-strong);
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.splitter:hover,
+.splitter:focus-visible,
+.splitter.dragging {
+  background: var(--accent);
+  outline: none;
+}
+.splitter:hover::after,
+.splitter:focus-visible::after,
+.splitter.dragging::after {
+  opacity: 1;
+  background: var(--accent);
 }
 
 .pane {
   position: relative;
   min-height: 0;
   overflow: hidden;
-}
-.preview-pane {
-  border-top: 1px solid var(--line);
 }
 
 /* Elevation ------------------------------------------------------------ */

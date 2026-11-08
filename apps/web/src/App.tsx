@@ -1,5 +1,5 @@
 import { findBox, findSpan, removeBox, removeSpan } from '@built-in-planner/engine';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { DrawingsView } from './components/drawings/DrawingsView';
 import { Elevation } from './components/elevation/Elevation';
 import { Inspector } from './components/inspector/Inspector';
@@ -9,6 +9,7 @@ import { ShoppingView } from './components/outputs/ShoppingView';
 import { ViewTabs } from './components/ViewTabs';
 import { Preview3D } from './components/preview/Preview3D';
 import { Problems } from './components/Problems';
+import { Splitter, useSplit } from './components/Splitter';
 import { Toolbar } from './components/Toolbar';
 import { loadInitialProject, startAutosave } from './store/persistence';
 import { parentSelection } from './store/selection';
@@ -75,6 +76,25 @@ function OutputView() {
   }
 }
 
+/** The elevation over the 3D preview, with a draggable divider between them. */
+function DesignCenter() {
+  const [split, setSplit] = useSplit();
+  const elevation = useRef<HTMLElement>(null);
+  const preview = useRef<HTMLElement>(null);
+  return (
+    <div className="center" style={{ gridTemplateRows: `minmax(0, ${split}fr) auto auto minmax(0, ${1 - split}fr)` }}>
+      <section ref={elevation} className="pane elevation-pane" aria-label="Front elevation">
+        <Elevation />
+      </section>
+      <Problems />
+      <Splitter upper={elevation} lower={preview} split={split} onChange={setSplit} label="Resize the elevation and 3D preview" />
+      <section ref={preview} className="pane preview-pane" aria-label="3D preview">
+        <Preview3D />
+      </section>
+    </div>
+  );
+}
+
 export function App() {
   const loaded = useEditor((s) => s.loaded);
   const view = useEditor((s) => s.view);
@@ -100,15 +120,7 @@ export function App() {
       <ViewTabs />
       {view === 'design' ? (
         <main className="main">
-          <div className="center">
-            <section className="pane elevation-pane" aria-label="Front elevation">
-              <Elevation />
-            </section>
-            <Problems />
-            <section className="pane preview-pane" aria-label="3D preview">
-              <Preview3D />
-            </section>
-          </div>
+          <DesignCenter />
           <Inspector />
         </main>
       ) : (

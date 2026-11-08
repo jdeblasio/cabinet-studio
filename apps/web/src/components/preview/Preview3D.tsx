@@ -1,12 +1,13 @@
 import { findBox, findSpan, TICKS_PER_INCH, toGLTF, toOBJ, toSTL, type Id, type Part, type Run, type RunResult, type Ticks } from '@built-in-planner/engine';
 import { Edges, OrbitControls } from '@react-three/drei';
 import { Canvas, useThree, type ThreeEvent } from '@react-three/fiber';
-import { memo, useLayoutEffect, useMemo, useState } from 'react';
+import { memo, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { PerspectiveCamera, Vector3 } from 'three';
 import { downloadFile, fileSlug } from '../../lib/download';
 import { useRunResult } from '../../store/derived';
 import { selectionForId, type Selection } from '../../store/selection';
 import { useActiveRun, useEditor, type View3D } from '../../store/store';
+import { explodeOffsets, sceneExtent } from './explode';
 
 /** Scene units are inches. */
 const I = (t: Ticks) => t / TICKS_PER_INCH;
@@ -65,7 +66,11 @@ export function Preview3D() {
   const W = Math.max(I(result.width), 12);
   const H = Math.max(I(result.ceilingHeight), 12);
   const size = Math.max(W, H);
-  const target: [number, number, number] = [W / 2, H / 2, 8];
+  // Frame the wall, or in the exploded view everything as spread out (which runs taller and wider).
+  const extent = useMemo(() => (offsets ? sceneExtent(result, offsets) : null), [result, offsets]);
+  const fitW = extent ? Math.max(extent.maxX - extent.minX, 12) : W;
+  const fitH = extent ? Math.max(extent.maxY, 12) : H;
+  const target: [number, number, number] = extent ? [(extent.minX + extent.maxX) / 2, fitH / 2, Math.max(8, extent.maxZ / 3)] : [W / 2, H / 2, 8];
 
   const onSelectPart = (part: Part) => {
     if (findBox(run, part.ownerId) || findSpan(run, part.ownerId) || run.tiers.some((t) => t.id === part.ownerId)) {
@@ -76,7 +81,7 @@ export function Preview3D() {
   return (
     <div className="preview">
       <Canvas key={`${run.id}:${resetKey}`} camera={{ fov: 35, near: 1, far: size * 20 }} dpr={[1, 2]}>
-        <FitCamera width={W} height={H} target={target} />
+        <FitCamera width={fitW} height={fitH} target={target} fitKey={mode === 'exploded' ? 'exploded' : 'assembled'} />
         <color attach="background" args={['#f3f1ec']} />
         <hemisphereLight intensity={0.85} groundColor="#b8ad9b" />
         <directionalLight position={[W * 0.2, H * 1.6, size * 1.2]} intensity={1.3} />
@@ -113,7 +118,7 @@ export function Preview3D() {
             [
               ['shaded', 'Shaded', 'Solid parts in their material colors'],
               ['wireframe', 'Wireframe', 'See-through outlines of every part'],
-              ['exploded', 'Exploded', 'Parts pulled apart from each box center to show how it goes together'],
+              ['exploded', 'Exploded', 'Parts pulled apart from each box center to show how it goes together (lifted so nothing sinks into the floor or wall)'],
             ] as const
           ).map(([m, label, title]) => (
             <button key={m} className={mode === m ? 'on' : ''} title={title} onClick={() => setMode(m)}>
@@ -128,12 +133,16 @@ export function Preview3D() {
   );
 }
 
-/** Place the camera so the whole wall fits the canvas (on mount, i.e. per run / reset). */
-function FitCamera({ width, height, target }: { width: number; height: number; target: [number, number, number] }) {
+/**
+ * Place the camera so the whole wall fits the canvas: on mount (i.e. per run / reset) and when
+ * `fitKey` changes (into or out of the exploded view).
+ */
+function FitCamera({ width, height, target, fitKey }: { width: number; height: number; target: [number, number, number]; fitKey: string }) {
   const camera = useThree((s) => s.camera);
   const aspect = useThree((s) => s.size.width / Math.max(1, s.size.height));
   const controls = useThree((s) => s.controls) as { target: Vector3; update: () => void } | null;
-  const [done, setDone] = useState(false);
+  const fitted = useRef<string | null>(null);
+  const done = fitted.current === fitKey;
   // Dev-only handle for inspecting the 3D view (like window.__editor for the store).
   if (import.meta.env.DEV) (globalThis as Record<string, unknown>).__preview3d = { camera, controls };
   useLayoutEffect(() => {
@@ -148,9 +157,9 @@ function FitCamera({ width, height, target }: { width: number; height: number; t
     if (controls) {
       controls.target.copy(t);
       controls.update();
-      setDone(true);
+      fitted.current = fitKey;
     }
-  }, [camera, aspect, controls, width, height, target, done]);
+  }, [camera, aspect, controls, width, height, target, done, fitKey]);
   return null;
 }
 
@@ -226,30 +235,4 @@ function ExportMenu({ run, result }: { run: Run; result: RunResult }) {
       <option value="stl">STL (.stl, mm)</option>
     </select>
   );
-}
-
-/**
- * Exploded view: move each box's parts away from the box center (sides out, top up, fronts
- * forward), and spread boxes apart from the run's center so they don't collide.
- */
-function explodeOffsets(result: RunResult): Map<string, [number, number, number]> {
-  const PART = 0.35;
-  const BOX = 0.25;
-  const centers = new Map(
-    result.boxes.map((b) => [b.id, [I(b.carcass.x + b.carcass.width / 2), I(b.carcass.y + b.carcass.height / 2), I(b.carcass.z + b.carcass.depth / 2)] as const]),
-  );
-  const runCenter = [I(result.width) / 2, I(result.ceilingHeight) / 2, 0] as const;
-  const out = new Map<string, [number, number, number]>();
-  for (const p of result.parts) {
-    const c = centers.get(p.ownerId);
-    const b = p.bounds;
-    const pc = [I(b.x + b.width / 2), I(b.y + b.height / 2), I(b.z + b.depth / 2)] as const;
-    if (!c) {
-      // Run- or tier-level parts (toe kicks, countertops, moldings): push out from the run center.
-      out.set(p.id, [(pc[0] - runCenter[0]) * BOX, (pc[1] - runCenter[1]) * BOX, pc[2] * BOX]);
-      continue;
-    }
-    out.set(p.id, [(pc[0] - c[0]) * PART + (c[0] - runCenter[0]) * BOX, (pc[1] - c[1]) * PART + (c[1] - runCenter[1]) * BOX, (pc[2] - c[2]) * PART * 2]);
-  }
-  return out;
 }
