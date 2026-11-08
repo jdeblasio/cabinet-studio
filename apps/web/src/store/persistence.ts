@@ -5,6 +5,7 @@
 import { createDefaultProject, type Id, type Project } from '@built-in-planner/engine';
 import { del, entries, get, set } from 'idb-keyval';
 import { create } from 'zustand';
+import { downloadFile, fileSlug } from '../lib/download';
 import {
   deleteProject,
   duplicateProject,
@@ -146,20 +147,8 @@ export async function deleteOpenProject(): Promise<void> {
 
 // ---- Files ----
 
-function fileSlug(name: string): string {
-  return name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'built-in';
-}
-
 export function exportProject(project: Project): void {
-  const blob = new Blob([JSON.stringify(project, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `${fileSlug(project.name)}.json`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  downloadFile(`${fileSlug(project.name)}.json`, JSON.stringify(project, null, 2), 'application/json');
 }
 
 export async function readProjectFile(file: File): Promise<Project> {

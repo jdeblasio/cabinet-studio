@@ -1,8 +1,9 @@
-import { findBox, findSpan, TICKS_PER_INCH, type Id, type Part, type Run, type RunResult, type Ticks } from '@built-in-planner/engine';
+import { findBox, findSpan, TICKS_PER_INCH, toGLTF, toOBJ, toSTL, type Id, type Part, type Run, type RunResult, type Ticks } from '@built-in-planner/engine';
 import { Edges, OrbitControls } from '@react-three/drei';
 import { Canvas, useThree, type ThreeEvent } from '@react-three/fiber';
 import { memo, useLayoutEffect, useMemo, useState } from 'react';
 import { PerspectiveCamera, Vector3 } from 'three';
+import { downloadFile, fileSlug } from '../../lib/download';
 import { useRunResult } from '../../store/derived';
 import { selectionForId, type Selection } from '../../store/selection';
 import { useActiveRun, useEditor, type View3D } from '../../store/store';
@@ -113,6 +114,7 @@ export function Preview3D() {
           ))}
         </span>
         <button onClick={() => setResetKey((k) => k + 1)}>Reset view</button>
+        <ExportMenu run={run} result={result} />
       </div>
     </div>
   );
@@ -183,3 +185,34 @@ const PartMesh = memo(function PartMesh({
     </mesh>
   );
 });
+
+/** Download the run's parts as a 3D model. */
+function ExportMenu({ run, result }: { run: Run; result: RunResult }) {
+  const project = useEditor((s) => s.project);
+  const exportAs = (format: string) => {
+    const name = `${fileSlug(project.name)}-${fileSlug(run.name, 'run')}`;
+    const title = `${project.name}: ${run.name}`;
+    if (format === 'gltf') downloadFile(`${name}.gltf`, toGLTF(result.parts, project.materials, title), 'model/gltf+json');
+    else if (format === 'obj') downloadFile(`${name}.obj`, toOBJ(result.parts, project.units.system, title), 'text/plain');
+    else if (format === 'stl') downloadFile(`${name}.stl`, toSTL(result.parts), 'model/stl');
+  };
+  return (
+    <select
+      className="input export-3d"
+      value=""
+      aria-label="Export 3D model"
+      title="Download this wall run as a 3D model"
+      onChange={(e) => {
+        exportAs(e.target.value);
+        e.target.value = '';
+      }}
+    >
+      <option value="" disabled>
+        Export 3D…
+      </option>
+      <option value="gltf">glTF (.gltf, with colors)</option>
+      <option value="obj">OBJ (.obj, {project.units.system === 'metric' ? 'mm' : 'inches'})</option>
+      <option value="stl">STL (.stl, mm)</option>
+    </select>
+  );
+}

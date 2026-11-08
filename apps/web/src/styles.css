@@ -547,3 +547,7 @@ button.link:hover {
   font-size: 12px;
   margin: 0 0 8px;
 }
+
+.export-3d {
+  width: auto;
+}
