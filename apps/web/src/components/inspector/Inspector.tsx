@@ -123,7 +123,7 @@ function MoldingFields({ run, which }: { run: Run; which: 'crown' | 'base' }) {
         tip={
           which === 'crown'
             ? 'Crown along the front of the top tier, up against the ceiling. At open ends it returns along the side to the wall. Shown as a simplified profile.'
-            : 'Base molding along the front of the bottom tier at the floor (for runs without a toe kick). Returns along open ends.'
+            : "Base molding along the front of the bottom tier at the floor, returning along open ends. With a toe kick it covers the kick board: set the kick's setback to 0 so the molding sits flat on it, and the platform still levels the boxes. Keep it below the lowest doors and drawers."
         }
       >
         <input type="checkbox" aria-label={label} checked={!!m} onChange={(e) => set(e.target.checked ? { ...(which === 'crown' ? DEFAULT_CROWN : DEFAULT_BASE_MOLDING) } : undefined)} />

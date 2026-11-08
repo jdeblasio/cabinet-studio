@@ -303,7 +303,9 @@ export function buildInstructions(project: Project, results: readonly RunResult[
           how: [
             key === 'crown'
               ? 'Crown sits on the top of the boxes against the ceiling; scribe or caulk the gap at the ceiling.'
-              : 'Base molding runs along the bottom of the boxes at the floor; scribe it to the floor.',
+              : result.tiers.some((t) => t.toeKick > 0)
+                ? 'Base molding covers the toe kick board along the bottom of the boxes; scribe it to the floor and nail it to the kick board and the bottom rail.'
+                : 'Base molding runs along the bottom of the boxes at the floor; scribe it to the floor.',
             ...(returns ? ['At open ends, miter the front piece and the return (45°) and return it to the wall.'] : []),
             ...(pieced ? ['Runs longer than your stock are pieced: join them with a scarf joint over a stile (see the cut list notes); glue and pin it.'] : []),
             'Nail it to the frame and the box tops (into solid wood), and set the nails for filling.',

@@ -47,7 +47,7 @@ export function deriveRun(project: Project, runId: Id): RunResult {
     boxPartIds.set(placed.id, new Set(boxParts.map((p) => p.id)));
   }
   const { frames, parts: stiles } = deriveFrames(ctx, layout.boxes, layout.width, layout.gaps, layout.lengthVariance);
-  parts.push(...stiles, ...deriveToeKick(ctx, layout), ...deriveCountertops(ctx, layout, stiles), ...deriveScribeStrips(ctx, layout), ...deriveTrim(ctx, layout));
+  parts.push(...stiles, ...deriveToeKick(ctx, layout), ...deriveCountertops(ctx, layout, stiles), ...deriveScribeStrips(ctx, layout), ...deriveTrim(ctx, layout, parts));
   chooseCorners(ctx, layout, parts, hardware, sectionsOf, boxPartIds);
   const boxes: BoxLayout[] = layout.boxes.map((placed) => ({ id: placed.id, source: placed.source, tierId: placed.tierId, carcass: placed.carcass, sections: sectionsOf.get(placed.id) ?? [] }));
 

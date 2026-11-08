@@ -879,23 +879,51 @@ describe('deriveRun: moldings', () => {
     const ret = result.parts.find((p) => p.name === 'Crown return')!;
     // Open right end: the boxes reach the end of the run; the front miters around the corner.
     expect(front.bounds.x + front.bounds.width).toBe(inches(120 + 2.5));
-    expect(ret.bounds).toMatchObject({ x: inches(120), z: 0, depth: inches(12.75), width: inches(2.5) });
+    // The return runs from the wall to the outside corner, where the two meet in a 45° miter.
+    expect(ret.bounds).toMatchObject({ x: inches(120), z: 0, depth: inches(12.75 + 2.5), width: inches(2.5) });
     expect(ret.length).toBe(inches(12.75 + 2.5));
+    expect(front.mitres).toEqual([{ face: 'right', outer: 'front' }]);
+    expect(ret.mitres).toEqual([{ face: 'front', outer: 'right' }]);
   });
 
-  it('puts base molding at the floor only without a toe kick', () => {
+  it('puts base molding at the floor, against the face of the frame', () => {
     const base = { height: inches(3.5), projection: inches(0.75) };
-    const withKick = setup((_, r) => {
-      r.trim = { base };
-    }).result;
-    expect(withKick.parts.some((p) => p.role === 'molding')).toBe(false);
-    expect(withKick.issues.map((i) => i.code)).toContain('base-molding-ignored');
     const noKick = setup((_, r) => {
       r.trim = { base };
       delete tier(r, 0).toeKick;
     }).result;
     const m = noKick.parts.find((p) => p.name === 'Base molding')!;
     expect(m.bounds).toMatchObject({ y: 0, z: inches(16.75), height: inches(3.5), depth: inches(0.75) });
+  });
+
+  it('covers a flush toe kick, so the platform still levels the boxes', () => {
+    const { run, result } = setup((_, r) => {
+      r.trim = { base: { height: inches(4), projection: inches(0.75) } };
+      tier(r, 0).toeKick = { height: inches(3.5), setback: 0 };
+    });
+    const m = result.parts.find((p) => p.name === 'Base molding')!;
+    const kick = result.parts.find((p) => p.ownerId === tier(run, 0).id && p.id.includes('/kick-0-front'))!;
+    // Its back sits on the kick board's face, which is flush with the frame.
+    expect(m.bounds.y).toBe(0);
+    expect(m.bounds.z).toBe(kick.bounds.z + kick.bounds.depth);
+    expect(m.bounds.z).toBe(inches(16.75));
+    expect(result.issues.map((i) => i.code)).not.toContain('base-molding-recess');
+    expect(result.issues.map((i) => i.code)).not.toContain('base-molding-tall');
+  });
+
+  it('notes a set-back kick behind the molding, and warns when it would cover the doors', () => {
+    const setBack = setup((_, r) => {
+      r.trim = { base: { height: inches(3.5), projection: inches(0.75) } };
+    }).result;
+    expect(setBack.issues.find((i) => i.code === 'base-molding-recess')!.message).toMatch(/set back 3"/);
+    // Doors start 4 1/2" up (3 1/2" kick + 1 1/2" rail − 1/2" overlay): a 6" molding covers them.
+    const tall = setup((_, r) => {
+      r.trim = { base: { height: inches(6), projection: inches(1) } };
+      tier(r, 0).toeKick = { height: inches(3.5), setback: 0 };
+    }).result;
+    const warning = tall.issues.find((i) => i.code === 'base-molding-tall')!;
+    expect(warning.severity).toBe('warning');
+    expect(warning.message).toMatch(/fronts start 4 1\/2" above the floor/);
   });
 });
 

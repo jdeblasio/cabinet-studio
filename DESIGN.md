@@ -279,7 +279,11 @@ step or two off its siblings. Hold Alt/Option to drag freely.
   exposed and noted per box. A **Band exposed edges** setting bands them instead. The
   elevation and 3D view highlight banded (magenta) and raw (orange) edges on demand; box
   sheets list banded edges per part.
-- Crown molding, base molding, countertops/top panels with overhangs
+- Crown molding, base molding, countertops/top panels with overhangs. Base molding runs along the bottom tier
+  at the floor; over a toe kick it covers the kick board (flush with the frame when the kick's
+  setback is 0, noted otherwise), so a tall molding can sit on a leveling platform. It warns if
+  it would cover the lowest fronts or the bottom of open boxes. Moldings miter around open ends
+  (true 45° geometry, like the toe kick returns).
 
 ## 7. Materials and hardware
 
