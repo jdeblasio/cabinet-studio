@@ -1,4 +1,4 @@
-import { SCHEMA_VERSION, type Box, type ConstructionSettings, type Front, type Id, type Material, type Project, type Section } from './model';
+import { SCHEMA_VERSION, type Box, type ConstructionSettings, type Front, type Id, type Material, type Project, type Run, type Section } from './model';
 import { DEFAULT_GRID, inches } from './units';
 
 export function newId(): Id {
@@ -110,6 +110,36 @@ export function flexBox(content: Section, ratio = 1): Box {
 }
 
 /** A classic face-frame built-in: base cabinets with door pairs, open bookcases above. */
+/** A wall run with the default base and upper tiers. */
+export function createDefaultRun(name = 'Wall 1'): Run {
+  return {
+    id: newId(),
+    name,
+    wall: [{ id: newId(), length: inches(120), ceilingHeight: inches(96) }],
+    ends: { left: 'wall', right: 'wall' },
+    spans: [],
+    tiers: [
+      {
+        id: newId(),
+        name: 'Base',
+        kind: 'boxes',
+        height: { kind: 'fixed', size: inches(30) },
+        depth: inches(16),
+        toeKick: { height: inches(3.5), setback: inches(3) },
+        items: [0, 1, 2, 3].map(() => flexBox(opening({ type: 'doorPair' }, 1))),
+      },
+      {
+        id: newId(),
+        name: 'Upper',
+        kind: 'boxes',
+        height: { kind: 'flex', ratio: 1 },
+        depth: inches(12),
+        items: [0, 1, 2, 3].map(() => flexBox(opening({ type: 'none' }, 3))),
+      },
+    ],
+  };
+}
+
 export function createDefaultProject(): Project {
   return {
     schemaVersion: SCHEMA_VERSION,
@@ -119,33 +149,6 @@ export function createDefaultProject(): Project {
     settings: DEFAULT_SETTINGS,
     styles: [],
     materials: DEFAULT_MATERIALS,
-    runs: [
-      {
-        id: newId(),
-        name: 'Wall 1',
-        wall: [{ id: newId(), length: inches(120), ceilingHeight: inches(96) }],
-        ends: { left: 'wall', right: 'wall' },
-        spans: [],
-        tiers: [
-          {
-            id: newId(),
-            name: 'Base',
-            kind: 'boxes',
-            height: { kind: 'fixed', size: inches(30) },
-            depth: inches(16),
-            toeKick: { height: inches(3.5), setback: inches(3) },
-            items: [0, 1, 2, 3].map(() => flexBox(opening({ type: 'doorPair' }, 1))),
-          },
-          {
-            id: newId(),
-            name: 'Upper',
-            kind: 'boxes',
-            height: { kind: 'flex', ratio: 1 },
-            depth: inches(12),
-            items: [0, 1, 2, 3].map(() => flexBox(opening({ type: 'none' }, 3))),
-          },
-        ],
-      },
-    ],
+    runs: [createDefaultRun()],
   };
 }

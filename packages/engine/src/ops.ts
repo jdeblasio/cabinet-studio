@@ -6,7 +6,7 @@
  * that return false/undefined so the editor can call them speculatively.
  */
 import type { RunResult } from './derived';
-import { newId } from './defaults';
+import { createDefaultRun, newId } from './defaults';
 import { deriveRun } from './derive/index';
 import type {
   Box,
@@ -531,6 +531,22 @@ export function setSpanGeometry(
 // ---------------------------------------------------------------------------
 // Run / wall
 // ---------------------------------------------------------------------------
+
+/** Add a wall run (default tiers) named "Wall N". Returns its id. */
+export function addRun(project: Project, name?: string): Id {
+  const run = createDefaultRun(name ?? `Wall ${project.runs.length + 1}`);
+  project.runs.push(run);
+  return run.id;
+}
+
+/** Remove a wall run; a project always keeps at least one. */
+export function removeRun(project: Project, runId: Id): boolean {
+  if (project.runs.length <= 1) return false;
+  const i = project.runs.findIndex((r) => r.id === runId);
+  if (i < 0) return false;
+  project.runs.splice(i, 1);
+  return true;
+}
 
 export function setWallLength(run: Run, length: Ticks): boolean {
   const seg = run.wall[0];

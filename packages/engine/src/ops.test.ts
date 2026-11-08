@@ -5,6 +5,8 @@ import { deriveRun } from './derive/index';
 import {
   addBox,
   addMaterial,
+  addRun,
+  removeRun,
   addStyle,
   removeStyle,
   saveOverridesAsStyle,
@@ -363,5 +365,17 @@ describe('named styles', () => {
     expect(tier.overrides).toBeUndefined();
     expect(tier.styleId).toBe(id);
     expect(resolveSettings(project, [run, tier])).toEqual(before);
+  });
+});
+
+describe('runs', () => {
+  it('adds and removes wall runs, keeping at least one', () => {
+    const { project, run } = setup();
+    const id = addRun(project);
+    expect(project.runs.map((r) => r.name)).toEqual(['Wall 1', 'Wall 2']);
+    expect(project.runs[1]!.tiers.map((t) => t.name)).toEqual(['Base', 'Upper']);
+    expect(removeRun(project, run.id)).toBe(true);
+    expect(project.runs.map((r) => r.id)).toEqual([id]);
+    expect(removeRun(project, id)).toBe(false);
   });
 });

@@ -1,6 +1,6 @@
 import { createDefaultProject, type Id, type Project } from '@built-in-planner/engine';
 import { produce, type Draft } from 'immer';
-import { create } from 'zustand';
+import { create, type StateCreator, type StoreApi, type UseBoundStore } from 'zustand';
 import { validSelection, type Selection } from './selection';
 
 const HISTORY_LIMIT = 200;
@@ -36,6 +36,8 @@ export interface EditorState {
   undo: () => void;
   redo: () => void;
   select: (selection: Selection | null) => void;
+  /** Show a different wall run in the editor. */
+  setActiveRun: (runId: Id) => void;
   /** Open a different project (load, switch, new, import). Starts a fresh undo history. */
   replaceProject: (project: Project) => void;
   setShowOtherUnits: (v: boolean) => void;
@@ -58,7 +60,7 @@ function keepRunId(project: Project, runId: Id): Id {
   return project.runs.some((r) => r.id === runId) ? runId : firstRunId(project);
 }
 
-const createEditorStore = () => create<EditorState>()((set, get) => {
+const editorState: StateCreator<EditorState> = (set, get) => {
   const initial = createDefaultProject();
   return {
     project: initial,
@@ -145,6 +147,10 @@ const createEditorStore = () => create<EditorState>()((set, get) => {
     },
 
     select: (selection) => set({ selection }),
+    setActiveRun: (runId) => {
+      if (!get().project.runs.some((r) => r.id === runId)) return;
+      set({ activeRunId: runId, selection: { kind: 'run', runId } });
+    },
 
     replaceProject: (project) =>
       set({
@@ -161,14 +167,20 @@ const createEditorStore = () => create<EditorState>()((set, get) => {
     setView3d: (view3d) => set({ view3d }),
     setView: (view) => set({ view }),
   };
-});
+};
 
 /**
  * The editor store. In development the same instance survives hot module reloads, so editing a
  * module the store depends on doesn't reset it to an empty, unloaded project.
  */
-export const useEditor: ReturnType<typeof createEditorStore> =
-  (import.meta.hot?.data.useEditor as ReturnType<typeof createEditorStore> | undefined) ?? createEditorStore();
+const kept = import.meta.hot?.data.useEditor as StoreApi<EditorState> | undefined;
+export const useEditor: UseBoundStore<StoreApi<EditorState>> = (kept as UseBoundStore<StoreApi<EditorState>> | undefined) ?? create<EditorState>()(editorState);
+if (kept) {
+  // Keep the data, but take this version's actions (bound to the kept store) and any new fields.
+  const fresh = editorState(kept.setState, kept.getState, kept);
+  const current = kept.getState() as unknown as Record<string, unknown>;
+  kept.setState(Object.fromEntries(Object.entries(fresh).filter(([k, v]) => typeof v === 'function' || !(k in current))) as Partial<EditorState>);
+}
 if (import.meta.hot) import.meta.hot.data.useEditor = useEditor;
 
 /** The active run (throws if the project somehow has none). */

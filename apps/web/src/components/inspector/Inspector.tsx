@@ -1,6 +1,8 @@
 import {
   addBox,
   addMaterial,
+  addRun,
+  removeRun,
   addStyle,
   removeStyle,
   renameStyle,
@@ -93,14 +95,45 @@ export function Inspector() {
 // Run + project
 // ---------------------------------------------------------------------------
 
+/** Pick, add and remove wall runs (e.g. one per wall of a room). */
+function RunPicker({ run }: { run: Run }) {
+  const runs = useEditor((s) => s.project.runs);
+  const edit = useEditor((s) => s.edit);
+  const setActiveRun = useEditor((s) => s.setActiveRun);
+  return (
+    <span className="style-controls">
+      <select className="input" aria-label="Wall run" title="Wall runs in this project (e.g. one per wall)" value={run.id} onChange={(e) => setActiveRun(e.target.value)}>
+        {runs.map((r) => (
+          <option key={r.id} value={r.id}>
+            {r.name}
+          </option>
+        ))}
+      </select>
+      <button
+        title="Add another wall run with default tiers"
+        onClick={() => {
+          let id: Id | undefined;
+          edit((d) => void (id = addRun(d)));
+          if (id) setActiveRun(id);
+        }}
+      >
+        + Wall
+      </button>
+    </span>
+  );
+}
+
 function RunPanel({ run, result }: { run: Run; result: RunResult }) {
   const editRun = useEditRun();
+  const edit = useEditor((s) => s.edit);
   const select = useEditor((s) => s.select);
+  const setActiveRun = useEditor((s) => s.setActiveRun);
+  const runCount = useEditor((s) => s.project.runs.length);
   const { fmt } = useFormatter();
   const seg = run.wall[0]!;
   return (
     <>
-      <Section title="Wall run">
+      <Section title="Wall run" actions={<RunPicker run={run} />}>
         <Field label="Name" tip="A name for this wall run.">
           <TextInput value={run.name} onCommit={(name) => editRun((r) => void (r.name = name || r.name))} />
         </Field>
@@ -122,6 +155,21 @@ function RunPanel({ run, result }: { run: Run; result: RunResult }) {
             />
           </Field>
         ))}
+        {runCount > 1 && (
+          <div className="actions">
+            <button
+              className="danger"
+              title="Delete this wall run and everything on it (undoable)"
+              onClick={() => {
+                const next = useEditor.getState().project.runs.find((r) => r.id !== run.id);
+                edit((d) => void removeRun(d, run.id));
+                if (next) setActiveRun(next.id);
+              }}
+            >
+              Delete wall run
+            </button>
+          </div>
+        )}
       </Section>
       <Section
         title="Tiers"
