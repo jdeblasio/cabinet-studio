@@ -15,11 +15,12 @@ import {
 } from '@built-in-planner/engine';
 import { useFormatter } from '../../lib/units';
 import { useEditor } from '../../store/store';
-import { LengthInput, Section, Select } from './fields';
+import { LengthInput, NumberInput, Section, Select } from './fields';
 
 /** One row of the settings list. `tip` is a short description shown on hover. */
 type SettingDef =
   | { path: string; label: string; tip: string; type: 'length' }
+  | { path: string; label: string; tip: string; type: 'number'; unit: string; min: number }
   | { path: string; label: string; tip: string; type: 'material' }
   | { path: string; label: string; tip: string; type: 'select'; options: readonly (readonly [string, string])[] };
 
@@ -107,6 +108,8 @@ const SETTINGS: SettingDef[] = [
       ['none', 'None'],
     ],
   },
+  { path: 'shelves.designLoad', label: 'Shelf load', tip: 'Load for the shelf sag check, in pounds per square foot of shelf. 20 is roughly a full shelf of books.', type: 'number', unit: 'lb/ft²', min: 0 },
+  { path: 'shelves.maxSagPerFoot', label: 'Max shelf sag', tip: 'Largest acceptable shelf sag, in inches per foot of span. 0.02 is about where sag becomes visible.', type: 'number', unit: 'in/ft', min: 0.001 },
   { path: 'ceilingScribe', label: 'Ceiling scribe', tip: 'Space left at the ceiling above the top tier, for scribing to an uneven ceiling.', type: 'length' },
   // Which material (and so which thickness) each kind of part uses.
   { path: 'materials.carcass', label: 'Carcass material', tip: 'Material for box sides, tops, bottoms, partitions and end panels. Its thickness sets theirs.', type: 'material' },
@@ -220,6 +223,11 @@ export function SettingsSection({ scope, title }: { scope: ScopeRef; title?: str
               <span className="field-control">
                 {def.type === 'length' ? (
                   <LengthInput value={value as Ticks} onCommit={(t) => setValue(def.path, t)} ariaLabel={def.label} />
+                ) : def.type === 'number' ? (
+                  <span className="pair">
+                    <NumberInput value={value as number} min={def.min} onCommit={(n) => setValue(def.path, n)} ariaLabel={def.label} />
+                    <span className="muted">{def.unit}</span>
+                  </span>
                 ) : def.type === 'material' ? (
                   <Select value={value as string} options={materialOptions(value as string)} onChange={(v) => setValue(def.path, v)} ariaLabel={def.label} />
                 ) : (

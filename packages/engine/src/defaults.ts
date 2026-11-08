@@ -94,6 +94,8 @@ export const DEFAULT_SETTINGS: ConstructionSettings = {
   shelves: {
     sideClearance: inches(1 / 32),
     frontSetback: inches(1 / 4),
+    designLoad: 20,
+    maxSagPerFoot: 0.02,
   },
   ceilingScribe: inches(0.5),
 };

@@ -40,6 +40,8 @@ export interface Material {
   color: string;
   /** Sheet goods only; used by the optimizer (milestone 2). */
   sheet?: { length: Ticks; width: Ticks; grain: 'length' | 'none' };
+  /** Stiffness (modulus of elasticity) in psi, for the shelf sag check. Defaults by kind. */
+  modulus?: number;
 }
 
 export type ConstructionStyle = 'faceFrame' | 'frameless';
@@ -144,6 +146,10 @@ export interface ConstructionSettings {
     sideClearance: Ticks;
     /** Adjustable shelf setback from the front of the carcass. */
     frontSetback: Ticks;
+    /** Load for the shelf sag check, pounds per square foot of shelf. */
+    designLoad: number;
+    /** Largest acceptable sag, inches per foot of span. */
+    maxSagPerFoot: number;
   };
   /** Minimum gap left at the ceiling for scribing (top of the highest tier). */
   ceilingScribe: Ticks;

@@ -281,7 +281,11 @@ step or two off its siblings. Hold Alt/Option to drag freely.
   click-to-locate.
 - Geometric/fit checks: part exceeds any sheet, overlaps, no slide fits drawer depth, door
   too wide, rounding notes from Section 8, etc.
-- **Engineering checks**: shelf sag from span, material, and load.
+- **Engineering checks**: shelf sag from span, material, and load (implemented). Each
+  adjustable or fixed shelf is a simply supported beam under a uniform load:
+  δ = 5wL⁴ / (384 E I), I = b h³ / 12. Defaults: 20 lb/ft² of shelf, flagged above 0.02" of
+  sag per foot of span, E = 1,000,000 psi for sheet goods and 1,400,000 psi for lumber
+  (overridable per material). Load and limit are settings.
 
 ## 11. Outputs
 
@@ -383,6 +387,5 @@ Proves the design experience:
   size-only, not in the cut list) be an option? Should a top bridge a gap (desk knee space)?
 - **Moldings:** profile library vs. bounding-box profiles; miter returns at run ends.
 - **Grain matching** across door pairs / drawer banks beyond "group onto one sheet".
-- **Shelf sag model:** which formula and default load assumptions.
 - **Drawing layout:** pagination, sheet sizes, title block.
 - **Later milestone ordering** (Section 14).

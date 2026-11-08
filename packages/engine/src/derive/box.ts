@@ -24,6 +24,7 @@
 import type { Part, Rect, SectionLayout } from '../derived';
 import type { Opening, Section } from '../model';
 import { inches, snap, type Ticks } from '../units';
+import { checkShelfSag } from './checks';
 import { makePart, type Ctx } from './context';
 import type { PlacedBox } from './layout';
 import { solveLine } from './solveLine';
@@ -171,6 +172,7 @@ export function deriveBox(ctx: Ctx, box: PlacedBox): { parts: Part[]; sections: 
           if (sec.divider === 'panel') {
             const w = inner.x1 - inner.x0;
             add({ id: `${sec.id}/shelf-${i}`, name: 'Fixed shelf', role: 'fixedShelf', materialId: s.materials.shelves, bounds: { x: inner.x0, y: cy - tsh, z: tb, width: w, height: tsh, depth: Ds }, grain: 'horizontal', thicknessAxis: 'y', ownerId: id, length: down(w), width: down(Ds) });
+            checkShelfSag(ctx, s, sec.id, 'Fixed shelf', s.materials.shelves, w, Ds, tsh);
             iy0 = cy;
             nextIy1 = cy - tsh;
           } else {
@@ -363,9 +365,7 @@ export function deriveBox(ctx: Ctx, box: PlacedBox): { parts: Part[]; sections: 
     if (gap < inches(2)) {
       ctx.issue('warning', 'shelves-crowded', op.id, `Adjustable shelves are only ${ctx.fmt(gap)} apart.`);
     }
-    if (sw > inches(36)) {
-      ctx.issue('warning', 'shelf-span', op.id, `Adjustable shelf spans ${ctx.fmt(sw)}; 3/4" plywood may sag beyond about 36".`);
-    }
+    checkShelfSag(ctx, s, op.id, 'Adjustable shelf', s.materials.shelves, sw, sd, tsh);
     for (let k = 0; k < n; k++) {
       const sy = snap(inner.y0 + gap * (k + 1) + tsh * k, ctx.grid);
       add({ id: `${op.id}/adj-shelf-${k}`, name: 'Adjustable shelf', role: 'adjustableShelf', materialId: s.materials.shelves, bounds: { x: inner.x0 + s.shelves.sideClearance, y: sy, z: tb, width: sw, height: tsh, depth: sd }, grain: 'horizontal', thicknessAxis: 'y', ownerId: id, length: down(sw), width: down(sd) });
