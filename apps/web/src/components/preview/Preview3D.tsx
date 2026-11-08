@@ -59,6 +59,7 @@ export function Preview3D() {
   const [resetKey, setResetKey] = useState(0);
 
   const colors = useMemo(() => new Map(materials.map((m) => [m.id, m.color])), [materials]);
+  const offsets = useMemo(() => (mode === 'exploded' ? explodeOffsets(result) : null), [mode, result]);
   const highlighted = useMemo(() => highlightedParts(run, result, selection), [run, result, selection]);
 
   const W = Math.max(I(result.width), 12);
@@ -98,6 +99,7 @@ export function Preview3D() {
               part={p}
               color={colors.get(p.materialId) ?? '#cccccc'}
               mode={mode}
+              offset={offsets?.get(p.id)}
               highlighted={highlighted.has(p.id)}
               onSelect={onSelectPart}
             />
@@ -107,9 +109,15 @@ export function Preview3D() {
       </Canvas>
       <div className="preview-controls">
         <span className="segmented">
-          {(['shaded', 'wireframe'] as const).map((m) => (
-            <button key={m} className={mode === m ? 'on' : ''} onClick={() => setMode(m)}>
-              {m === 'shaded' ? 'Shaded' : 'Wireframe'}
+          {(
+            [
+              ['shaded', 'Shaded', 'Solid parts in their material colors'],
+              ['wireframe', 'Wireframe', 'See-through outlines of every part'],
+              ['exploded', 'Exploded', 'Parts pulled apart from each box center to show how it goes together'],
+            ] as const
+          ).map(([m, label, title]) => (
+            <button key={m} className={mode === m ? 'on' : ''} title={title} onClick={() => setMode(m)}>
+              {label}
             </button>
           ))}
         </span>
@@ -150,12 +158,15 @@ const PartMesh = memo(function PartMesh({
   part,
   color,
   mode,
+  offset,
   highlighted,
   onSelect,
 }: {
   part: Part;
   color: string;
   mode: View3D;
+  /** Exploded view: how far to move the part, in inches. */
+  offset?: [number, number, number];
   highlighted: boolean;
   onSelect: (p: Part) => void;
 }) {
@@ -169,9 +180,9 @@ const PartMesh = memo(function PartMesh({
     onSelect(part);
   };
   return (
-    <mesh position={[I(b.x) + w / 2, I(b.y) + h / 2, I(b.z) + d / 2]} onClick={onClick}>
+    <mesh position={[I(b.x) + w / 2 + (offset?.[0] ?? 0), I(b.y) + h / 2 + (offset?.[1] ?? 0), I(b.z) + d / 2 + (offset?.[2] ?? 0)]} onClick={onClick}>
       <boxGeometry args={[w, h, d]} />
-      {mode === 'shaded' ? (
+      {mode !== 'wireframe' ? (
         <meshStandardMaterial
           color={color}
           roughness={0.85}
@@ -215,4 +226,30 @@ function ExportMenu({ run, result }: { run: Run; result: RunResult }) {
       <option value="stl">STL (.stl, mm)</option>
     </select>
   );
+}
+
+/**
+ * Exploded view: move each box's parts away from the box center (sides out, top up, fronts
+ * forward), and spread boxes apart from the run's center so they don't collide.
+ */
+function explodeOffsets(result: RunResult): Map<string, [number, number, number]> {
+  const PART = 0.35;
+  const BOX = 0.25;
+  const centers = new Map(
+    result.boxes.map((b) => [b.id, [I(b.carcass.x + b.carcass.width / 2), I(b.carcass.y + b.carcass.height / 2), I(b.carcass.z + b.carcass.depth / 2)] as const]),
+  );
+  const runCenter = [I(result.width) / 2, I(result.ceilingHeight) / 2, 0] as const;
+  const out = new Map<string, [number, number, number]>();
+  for (const p of result.parts) {
+    const c = centers.get(p.ownerId);
+    const b = p.bounds;
+    const pc = [I(b.x + b.width / 2), I(b.y + b.height / 2), I(b.z + b.depth / 2)] as const;
+    if (!c) {
+      // Run- or tier-level parts (toe kicks, countertops, moldings): push out from the run center.
+      out.set(p.id, [(pc[0] - runCenter[0]) * BOX, (pc[1] - runCenter[1]) * BOX, pc[2] * BOX]);
+      continue;
+    }
+    out.set(p.id, [(pc[0] - c[0]) * PART + (c[0] - runCenter[0]) * BOX, (pc[1] - c[1]) * PART + (c[1] - runCenter[1]) * BOX, (pc[2] - c[2]) * PART * 2]);
+  }
+  return out;
 }

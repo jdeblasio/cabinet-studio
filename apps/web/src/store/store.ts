@@ -5,7 +5,7 @@ import { validSelection, type Selection } from './selection';
 
 const HISTORY_LIMIT = 200;
 
-export type View3D = 'shaded' | 'wireframe';
+export type View3D = 'shaded' | 'wireframe' | 'exploded';
 /** Top-level views: the design editor, and outputs derived from the design. */
 export type AppView = 'design' | 'cutlist' | 'sheets' | 'shopping' | 'drawings';
 
