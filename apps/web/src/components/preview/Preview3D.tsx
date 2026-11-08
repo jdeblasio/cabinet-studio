@@ -79,6 +79,8 @@ export function Preview3D() {
         <hemisphereLight intensity={0.85} groundColor="#b8ad9b" />
         <directionalLight position={[W * 0.2, H * 1.6, size * 1.2]} intensity={1.3} />
         <directionalLight position={[W * 1.2, H * 0.5, size * 0.4]} intensity={0.35} />
+        {/* Soft fill from below so undersides (bottoms over openings) read as surfaces, not dark recesses. */}
+        <directionalLight position={[W * 0.4, -H * 0.8, size * 0.8]} intensity={0.6} />
         {/* Wall and floor */}
         <mesh position={[W / 2, H / 2, -0.26]}>
           <boxGeometry args={[W, H, 0.5]} />
@@ -122,6 +124,8 @@ function FitCamera({ width, height, target }: { width: number; height: number; t
   const aspect = useThree((s) => s.size.width / Math.max(1, s.size.height));
   const controls = useThree((s) => s.controls) as { target: Vector3; update: () => void } | null;
   const [done, setDone] = useState(false);
+  // Dev-only handle for inspecting the 3D view (like window.__editor for the store).
+  if (import.meta.env.DEV) (globalThis as Record<string, unknown>).__preview3d = { camera, controls };
   useLayoutEffect(() => {
     if (done || !(camera instanceof PerspectiveCamera) || !Number.isFinite(aspect)) return;
     const half = (camera.fov * Math.PI) / 360;
