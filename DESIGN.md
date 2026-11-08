@@ -1,0 +1,289 @@
+# Built-in Planner — Design
+
+Status: draft · Source: design interview, 2026-11-07
+
+Decisions below were made explicitly unless marked **(assumed)**, which means a default
+chosen to fill a gap; revisit freely. Section 16 lists what is still open.
+
+---
+
+## 1. Vision and audience
+
+Design software for built-in cabinets and shelving, aimed at **serious amateurs and lean
+professional shops**: accurate, build-ready output without every conceivable knob.
+
+The **parametric model is the single source of truth**. Three outputs are equally
+first-class views of it:
+
+1. Cut list + optimized sheet/lumber layouts
+2. Dimensioned 2D drawings
+3. 3D visualization
+
+## 2. Platform and distribution
+
+| Topic | Decision |
+|---|---|
+| Platform | Web app (browser) |
+| Stack | TypeScript, React, react-three-fiber (three.js) for 3D, SVG for 2D |
+| Storage | Local-first: IndexedDB + export/import of project files. No accounts, no backend, works offline |
+| Distribution | Free / open source, static hosting |
+| License | AGPL-3.0 |
+| Shop usage | Print-first. Desktop-sized UI; the shop works from the PDF set. No touch/tablet optimization |
+
+## 3. Space definition
+
+- The user defines **wall runs**: connected wall segments in plan.
+- Each wall carries **measured irregularity**: multiple width/height measurements (e.g.
+  top/middle/bottom), out-of-plumb, out-of-level floor.
+- Each wall carries **obstacles** (windows, outlets, vents, baseboard) and **gaps** where
+  the wall is unavailable (e.g. a door frame taking part of the wall).
+
+### v1 layout scope
+
+| Layout | v1? |
+|---|---|
+| Straight wall runs (with gaps) | Yes |
+| Freestanding units / islands (finished ends and backs) | Yes |
+| Bridges over gaps (e.g. upper box spanning a doorway between two towers) | Yes |
+| Corners (L/U-shaped) | **No**, but the data model supports connected segments with angles from day one so corners can be added without a rewrite |
+| Sloped ceilings | No. All parts are rectangular, which keeps guillotine nesting simple |
+
+## 4. Layout model
+
+```
+Project
+└── Wall run (one or more connected segments; v1: straight)
+    ├── Measurements, obstacles, gaps
+    ├── Spanning elements (run-level): tall boxes, floor gaps; each spans chosen tiers
+    └── Tiers (horizontal bands, e.g. base / countertop / upper / crown zone)
+        │   each with its own height and depth
+        └── Boxes (carcasses), laid out left→right with fixed + flex sizing
+            ├── Interior: fixed shelves, adjustable shelves, vertical dividers/cubbies
+            └── Fronts: doors, drawers (or none = open box)
+```
+
+- **Building block: stacked boxes.** Each module is a real carcass. "Open shelving" means
+  an open box (no fronts); there are no carcass-less shelf elements (cleat shelves,
+  floating shelves, standards) in scope.
+- **Tiers span the whole run.** Each tier lays out its own boxes independently; uppers need
+  not align with bases.
+- **Spanning boxes reserve space.** A tall box or a floor gap (doorway) is placed at the run
+  level and spans chosen tiers. Each spanned tier treats it as a fixed-width reserved slot
+  and flexes around it. A bridge is a box in an upper tier positioned over a gap.
+
+### Width sizing: fixed + flex (CSS-like)
+
+- Each box is either **fixed** width or **flex** (optional min / max / ratio).
+- Flex boxes divide the space left after fixed boxes, reserved slots, gaps, and
+  fillers/scribes.
+- Changing a measurement re-flows the run automatically.
+- After snapping (Section 8), any leftover from flex distribution goes to a designated
+  filler.
+
+## 5. Fitting to measured walls
+
+**Tightest + user choice.**
+
+- Boxes are sized to the **tightest** measurement minus a clearance.
+- For **each edge** where the built-in meets the room, the user chooses how variance is
+  absorbed:
+  - scribe strip
+  - filler
+  - face-frame overhang (stile wider than the box)
+  - trim/molding cover
+- Floor out-of-level defaults to being absorbed by the leveling base / toe kick **(assumed)**.
+
+## 6. Construction
+
+### Carcass
+
+| Topic | Decision |
+|---|---|
+| Construction styles | **Both** frameless (32 mm / European) and face frame, chosen per project, overridable per box |
+| Carcass joinery | **Small preset menu**: butt (screws/pocket), dado, rabbet, dowel/confirmat. Each preset knows how it changes part sizes. Set at project level with per-joint override |
+| Backs | Back presets per box: full back (inset in rabbet/dado, or applied) or no back. Plus **hanging rails / nailers** for fastening to studs. Open boxes typically get a finished back |
+| Freestanding | Finished ends and finished back |
+
+### Face frames
+
+- **Continuous**, not per box: shared stiles where boxes meet, wide stiles at walls for
+  scribing.
+- Frames are grouped by **coplanar front face**, not strictly by tier. A tall box flush with
+  the base tier joins the base frame (long stile running full height). Set-back uppers get
+  their own frame.
+- Face-frame joints use the same preset menu, e.g. pocket screw, dowel, mortise & tenon
+  with tenon-length allowance on rails **(assumed)**.
+
+### Interiors
+
+- Fixed shelves (joined like carcass parts)
+- Adjustable shelves with shelf-pin hole lines
+- Vertical dividers / cubbies
+
+### Fronts
+
+| Topic | Decision |
+|---|---|
+| Types | Doors (single/pair), drawers |
+| Construction | **Slab** (sheet goods) and **5-piece / Shaker** broken into rails, stiles, and panel with tongue/groove allowances in the cut list |
+| Mounting | Full overlay, partial overlay, inset. Set per project, overridable per box |
+| Drawer boxes | Full parts (sides, front, back, bottom) sized from slide specs, with a preset joinery menu: butt, rabbet, dado, lock-rabbet; dovetail as a size-only option |
+
+### Trim and finishing (all in 3D, drawings, and cut list)
+
+- Toe kick: integral, or separate leveling base/platform, plus kick boards
+- Scribe strips and fillers (derived from measurements and per-edge choices)
+- Edge banding / solid edging, including its effect on part dimensions
+- Crown molding, base molding, countertops/top panels with overhangs
+
+## 7. Materials and hardware
+
+### Materials library (user-editable)
+
+- **Sheet goods:** actual thickness (e.g. 23/32"), sheet size, grain direction.
+- **Solid lumber:** for face frames, edging, 5-piece fronts; tracked by length / board feet.
+- Parts get a material **by role** (carcass, back, drawer box, face frame, ...).
+- **No prices.**
+
+### Hardware
+
+- **Generic parametric types**: drawer slides (side clearance, available lengths), hinges
+  (overlay, cup boring), shelf pins (diameter).
+- Shipped with a **seed catalog** of a handful of common real products (Blum, Salice,
+  Accuride, ...) that users can copy and edit.
+- Hardware specs drive clearances, drilling, and the shopping list.
+
+## 8. Units and precision
+
+- **Per-project unit system**: each project is imperial or metric. Its grid (e.g. 1/32" or
+  0.5 mm) is the snap grid.
+- The other unit system is **display-only**: rounded and marked approximate.
+- **Snap to precision**: all inputs and derived sizes snap to the project grid, so what you
+  see is exactly what's computed.
+- **Off-grid material thickness** (e.g. 18 mm in an imperial project): **exterior wins,
+  interior snaps**. User-facing box W/H/D stay on-grid; derived interior parts snap toward
+  a slightly loose fit; lint notes the rounding.
+- Internal storage: integer ticks of **1/8128"** (≈ 3.125 µm), which represent both systems
+  exactly: 1/64" = 127 ticks, 0.1 mm = 32 ticks **(assumed)**.
+
+## 9. Settings: cascade + named styles
+
+- Settings (materials, joinery, overlay, reveals, hardware, ...) cascade:
+  **Project → Run → Tier → Box → Part**.
+- Each level inherits; overrides are visibly marked with "reset to inherited". The inspector
+  shows where each value comes from.
+- **Named styles** (e.g. "Shaker inset, 3/4 ply, dado") can be applied at any level; editing
+  a style propagates to everything using it.
+
+## 10. Validation
+
+- **Lint panel**, never blocking: live problems list split into errors and warnings, with
+  click-to-locate.
+- Geometric/fit checks: part exceeds any sheet, overlaps, no slide fits drawer depth, door
+  too wide, rounding notes from Section 8, etc.
+- **Engineering checks**: shelf sag from span, material, and load.
+
+## 11. Outputs
+
+### Cut list and optimization
+
+- **Guillotine-only** sheet layouts: every cut runs edge-to-edge, so it's buildable on a
+  table saw or track saw. Honors kerf, trim, and grain.
+- **1D lumber optimization** for solid stock (rails and stiles from standard board lengths).
+- No CNC / free-form nesting.
+- **Constraints, not edits**: users don't drag parts on sheets. They steer the optimizer:
+  lock grain per part, mark sheets as offcuts/partial, group parts onto one sheet (e.g.
+  grain-matched doors), set kerf/trim.
+
+### Drawings
+
+- Elevations + plan view
+- Sections (depths, tiers, toe kick, crown, countertop overhangs)
+- Per-box assembly sheets (parts, joinery callouts)
+- Per-part drawings with drilling (shelf pins, hinge cups, slide holes) and dado locations.
+  The model therefore tracks **machining features as real geometry**.
+- **Auto + annotations**: drawings and dimensions regenerate from rules on every change;
+  users can add notes/callouts/extra dimensions **anchored to model geometry** that survive
+  regeneration.
+
+### 3D
+
+- Configurable display modes (e.g. shaded with wood tones, wireframe, exploded).
+  Photoreal rendering is not a goal.
+- Moldings as simplified profiles.
+
+### Exports
+
+- PDF drawing set (drawings, cut list, sheet layouts)
+- CSV / XLSX cut list
+- 3D model: STL / OBJ / glTF
+- No DXF/SVG export
+
+### Shopping list
+
+- Quantities only: sheets, board feet/lengths, hardware counts, edge banding length.
+  **No prices.**
+
+## 12. Editing UX
+
+- **Primary surface: interactive 2D front elevation** (select a box, drag a divider, add a
+  tier) with a side **inspector** for properties.
+- **3D is a live preview** pane, not the main editor.
+- Undo/redo throughout **(assumed)**.
+
+## 13. Architecture (assumed)
+
+- **Derivation engine as a pure TypeScript package** separate from the UI:
+  `design model → derived parts + machining features → cut list → optimization`.
+  Deterministic and heavily unit-tested.
+- Optimizer runs in a **Web Worker** so the editor stays responsive.
+- Project files are **versioned JSON** with schema migrations.
+- Static site; no server components.
+
+## 14. Milestones
+
+### Milestone 1: editor UX (decided)
+
+Proves the design experience:
+
+- Elevation editor + inspector
+- One straight wall run, tiers, fixed + flex layout, spanning boxes
+- **Face-frame** construction, butt joints
+- 3D preview showing **real derived panels** (sides, tops, shelves, doors with thickness);
+  the derivation engine starts here
+- No cut list or nesting yet
+
+### Later milestones (proposed, not decided)
+
+1. Materials library, joinery presets, cut list, guillotine + 1D optimization
+2. Frameless construction, drawers + drawer boxes, hardware library, 5-piece fronts
+3. Measured irregularity + per-edge fit choices, scribes/fillers, trim elements
+4. Drawings (elevation, plan, section, box sheets, part drawings), annotations, PDF export
+5. Cascade + named styles UI, lint panel with engineering checks
+6. Freestanding units, bridges over gaps, CSV/XLSX and 3D exports
+7. Post-v1: corners (L/U), then reconsider sloped ceilings, CNC nesting, tablet shop mode
+
+## 15. Out of scope for v1
+
+- Corners (data model ready; UI and derivation deferred)
+- Sloped ceilings / non-rectangular parts
+- Carcass-less shelving (cleat, floating, standards)
+- CNC / free-form nesting, DXF/SVG export
+- Pricing, labor estimates, quoting
+- Accounts, cloud sync, sharing
+- Tablet/touch UI
+- Photoreal rendering
+
+## 16. Open questions
+
+- **Flex resolution details:** precedence of min/max/ratio, behavior when fixed widths
+  over-fill a run, which filler receives snapped leftovers by default.
+- **Bridges:** how a bridge box is supported (on flanking towers' tops vs. hung from the wall)
+  and how its face frame joins neighbors.
+- **Freestanding units:** modeled as a run with no wall, or a distinct entity?
+- **Countertops:** shop-built (in cut list) vs. ordered (stone/laminate, size-only), or both?
+- **Moldings:** profile library vs. bounding-box profiles; miter returns at run ends.
+- **Grain matching** across door pairs / drawer banks beyond "group onto one sheet".
+- **Shelf sag model:** which formula and default load assumptions.
+- **Drawing layout:** pagination, sheet sizes, title block.
+- **Later milestone ordering** (Section 14).
