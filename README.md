@@ -6,6 +6,9 @@ layouts are derived. See [DESIGN.md](DESIGN.md) for the product design and decis
 
 Free and open source under the AGPL-3.0.
 
+Try it at **https://jdeblasio.github.io/cabinet-studio/**. Projects are saved in your browser;
+use Export and Import to move them between browsers or sites.
+
 ## What it does
 
 - **Design** a wall run as tiers of boxes with fixed and flex widths, tall boxes and gaps
@@ -74,3 +77,6 @@ pnpm dev          # start the web editor
 pnpm test         # run all tests
 pnpm typecheck
 ```
+
+Every push to `main` builds the editor and publishes it to GitHub Pages
+([.github/workflows/pages.yml](.github/workflows/pages.yml)).
