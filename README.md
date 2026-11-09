@@ -4,7 +4,7 @@ Design software for built-in cabinets and shelving: a parametric model of a wall
 (tiers of boxes, tall boxes, doorways) from which parts, drawings, cut lists and sheet
 layouts are derived. See [DESIGN.md](DESIGN.md) for the product design and decisions.
 
-Free and open source under the AGPL-3.0.
+Free and open source under the [AGPL-3.0](LICENSE).
 
 Try it at **https://jdeblasio.github.io/cabinet-studio/**. Projects are saved in your browser;
 use Export and Import to move them between browsers or sites.
