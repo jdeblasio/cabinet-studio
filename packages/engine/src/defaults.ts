@@ -177,7 +177,6 @@ export function flexBox(content: Section, ratio = 1): Box {
   return { kind: 'box', id: newId(), width: { kind: 'flex', ratio }, content };
 }
 
-/** A classic face-frame built-in: base cabinets with door pairs, open bookcases above. */
 /** A wall run with the default base and upper tiers. */
 export function createDefaultRun(name = 'Wall 1'): Run {
   return {
@@ -252,13 +251,19 @@ export function createIsland(name = 'Island'): { front: Run; back: Run } {
   return { front, back };
 }
 
+/**
+ * A new project: a classic face-frame built-in, base cabinets with door pairs and open bookcases
+ * above. Its tops and bottoms use auto joints, so the base boxes' sides don't show end grain on
+ * the ledge in front of the bookcases. (DEFAULT_SETTINGS keeps 'between': it fills in settings
+ * missing from older saved projects, which must not change when loaded.)
+ */
 export function createDefaultProject(): Project {
   return {
     schemaVersion: SCHEMA_VERSION,
     id: newId(),
     name: 'Untitled built-in',
     units: { system: 'imperial', grid: DEFAULT_GRID.imperial },
-    settings: DEFAULT_SETTINGS,
+    settings: { ...DEFAULT_SETTINGS, carcass: { ...DEFAULT_SETTINGS.carcass, topJoint: 'auto', bottomJoint: 'auto' } },
     styles: [],
     materials: DEFAULT_MATERIALS,
     runs: [createDefaultRun()],

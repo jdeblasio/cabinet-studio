@@ -8,8 +8,13 @@ import { deriveRun } from './index';
 const T = inches(23 / 32); // default carcass thickness
 const TB = inches(7 / 32); // default back thickness
 
+/**
+ * The starter project, with tops and bottoms 'between' the sides (the settings default; the
+ * starter itself uses 'auto'), so sizes here don't depend on which edges happen to show.
+ */
 function setup(mutate?: (p: Project, run: Run) => void): { project: Project; run: Run; result: RunResult } {
-  const project = createDefaultProject();
+  const starter = createDefaultProject();
+  const project = { ...starter, settings: { ...starter.settings, carcass: { ...starter.settings.carcass, topJoint: 'between' as const, bottomJoint: 'between' as const } } };
   const run = project.runs[0]!;
   mutate?.(project, run);
   return { project, run, result: deriveRun(project, run.id) };
@@ -49,6 +54,13 @@ describe('deriveRun: default project', () => {
 
   it('has no problems', () => {
     expect(notRawEdges(result)).toEqual([]);
+  });
+
+  it('opens a new project with no problems or notes: auto joints hide the base sides on the ledge', () => {
+    const starter = createDefaultProject();
+    const r = deriveRun(starter, starter.runs[0]!.id);
+    expect(r.issues).toEqual([]);
+    expect(r.parts.filter((p) => p.rawEdges?.length).map((p) => p.id)).toEqual([]);
   });
 
   it('stacks tiers bottom to top with the ceiling scribe left over', () => {
